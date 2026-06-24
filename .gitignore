@@ -39,3 +39,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+\n# Ignore landing build and deps\nrankhire-landing/node_modules/\nrankhire-landing/.next/\nrankhire-landing/package.json\nrankhire-landing/README.md\n
