@@ -1,0 +1,302 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* RankHire BR Premium Light Theme (Taste Skill: Branco, Azul Royal, Dourado) */
+  --color-rh-bg: #FFFFFF; /* Main white background */
+  --color-rh-surface: #FAFAFA; /* Ultra-light neutral surface for premium feel */
+  --color-rh-primary: #2563EB; /* Royal Blue */
+  --color-rh-secondary: #D4AF37; /* Premium Gold */
+  --color-rh-text: #09090B; /* True dark for high contrast text (Zinc 950) */
+  --color-rh-text-muted: #52525B; /* Zinc 600 for muted text */
+}
+
+html {
+  font-size: 16px;
+  color-scheme: light;
+}
+
+:root {
+  /* Backgrounds */
+  --bg-page:        #FFFFFF;
+  --bg-sidebar:     #FAFAFA;
+  --bg-card:        #FFFFFF;
+  --bg-card-hover:  #F4F4F5;
+  --bg-input:       #FAFAFA;
+  --bg-active:      #EFF6FF;
+
+  /* Borders */
+  --border-default: #E4E4E7;
+  --border-sidebar: #E4E4E7;
+
+  /* Text */
+  --text-primary:   #09090B;
+  --text-secondary: #52525B;
+  --text-muted:     #71717A;
+
+  /* Brand colors */
+  --green:          #2563EB; /* Keeping old var name for compat but it is Royal Blue */
+  --green-bg:       #EFF6FF;
+  --gold:           #D4AF37;
+  --cyan:           #00B4D8;
+
+  --background: var(--bg-page);
+  --foreground: var(--text-primary);
+  --radius: 8px; /* Taste Skill: sharper, more premium corners (8px instead of 12px) */
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+.admin-shell,
+.admin-shell *,
+.admin-shell *::before,
+.admin-shell *::after {
+  animation: none !important;
+  animation-delay: 0s !important;
+  animation-duration: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* Base Components Styles */
+.card-rh {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.input-rh {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+.input-rh::placeholder {
+  color: var(--text-muted);
+}
+.input-rh:focus {
+  border-color: var(--green);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn-primary {
+  background: var(--green);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 6px;
+  padding: 8px 16px;
+  border: none;
+  transition: opacity 0.2s;
+}
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 13px;
+  border-radius: 6px;
+  padding: 8px 16px;
+  transition: all 0.2s;
+}
+.btn-ghost:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+/* Custom animations */
+@keyframes pulse-dot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes progress-fill {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.animate-progress-fill {
+  animation: progress-fill 2.5s infinite linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Landing Page Dark Theme Isolation ── */
+.landing-dark {
+  background-color: #030307;
+  color: #ffffff;
+  color-scheme: dark;
+}
+
+.landing-dark .glass-nav {
+  background: rgba(10, 10, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+.landing-dark .glass-card {
+  background: rgba(15, 15, 25, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+}
+
+.landing-dark .glass-card-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-dark .glass-card-hover:hover {
+  background: rgba(20, 20, 35, 0.6);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -10px rgba(37, 99, 235, 0.2);
+}
+
+.landing-dark .text-gradient-blue {
+  background: linear-gradient(to right, #2563EB, #60A5FA);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.landing-dark .text-gradient-gold {
+  background: linear-gradient(to right, #D4AF37, #F3E5AB);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.landing-dark .auth-input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #09090b;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #ffffff;
+  outline: none;
+}
+
+.landing-dark .auth-input::placeholder {
+  color: #3f3f46;
+}
+
+.landing-dark .auth-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.profile-input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+  outline: none;
+}
+
+.profile-input:focus {
+  border-color: #1b4fd8;
+  box-shadow: 0 0 0 1px #1b4fd8;
+}
+
+/* Hide scrollbar utility (used by sidebar) */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Scrollbar customization for dark landing page */
+.landing-dark::-webkit-scrollbar {
+  width: 10px;
+}
+.landing-dark::-webkit-scrollbar-track {
+  background: #030307;
+}
+.landing-dark::-webkit-scrollbar-thumb {
+  background: #1e1e2f;
+  border-radius: 5px;
+  border: 2px solid #030307;
+}
+.landing-dark::-webkit-scrollbar-thumb:hover {
+  background: #2b2b3f;
+}
+
+/* ── Printing Styles ── */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  /* Show only the candidate drawer and its contents */
+  .candidate-drawer-print,
+  .candidate-drawer-print * {
+    visibility: visible;
+  }
+  .candidate-drawer-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+    background-color: white !important;
+  }
+  /* Hide close buttons and action buttons */
+  .candidate-drawer-print button,
+  .candidate-drawer-print select,
+  .candidate-drawer-print a,
+  .candidate-drawer-print .no-print {
+    display: none !important;
+  }
+  /* Hide the overlay backdrops */
+  .fixed.inset-0.bg-black\/30 {
+    display: none !important;
+  }
+}

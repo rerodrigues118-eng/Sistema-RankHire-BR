@@ -1,0 +1,225 @@
+# RankHire BR — Regras globais de desenvolvimento
+# Aplica em TODOS os arquivos do sistema e da landing page.
+
+━━━━━━━━━━━━━━━━━━
+STACK OBRIGATÓRIA
+━━━━━━━━━━━━━━━━━━
+Next.js 14 App Router · TypeScript · Tailwind CSS
+Supabase (Auth + PostgreSQL + Storage + Realtime)
+BullMQ + Upstash Redis · Groq API · DeepSeek API
+Brevo (email, futuro) · Pagar.me (billing, futuro)
+Deploy: Vercel (app) + Vercel (landing, localhost porta 3001)
+
+━━━━━━━━━━━━━━━━━━
+REGRAS DE SEGURANÇA — NÍVEL CRÍTICO
+━━━━━━━━━━━━━━━━━━
+
+[SEC-01] API KEYS — NUNCA NO FRONTEND
+Nenhuma chave de API pode aparecer em arquivos
+dentro de /app, /components, /hooks ou /lib/client.
+Toda chave fica APENAS em /app/api/* (server-side).
+Prefixo NEXT_PUBLIC_ é PROIBIDO para qualquer chave
+de acesso. Aceito apenas:
+  NEXT_PUBLIC_SUPABASE_URL
+  NEXT_PUBLIC_SUPABASE_ANON_KEY
+Todas as demais variáveis ficam na Vercel (dashboard)
+e nunca no repositório ou no código.
+
+[SEC-02] VARIÁVEIS DE AMBIENTE
+.env, .env.local, .env.production → sempre no .gitignore
+Template sem valores reais: .env.example (commitar este)
+Nunca logar process.env.* no console
+Variáveis de produção configuradas APENAS no dashboard
+da Vercel, não no código-fonte.
+
+[SEC-03] ROTAS PROTEGIDAS
+Toda rota em /app/(dashboard)/* exige sessão válida.
+Toda rota /api/* (exceto /api/auth/*) verifica:
+  const session = await getServerSession(authOptions)
+  if (!session) return Response.json(
+    { error: 'Não autorizado' }, { status: 401 })
+O middleware.ts protege todas as rotas privadas.
+Quem decide o acesso é SEMPRE o back-end.
+Nunca confiar em dados vindos do cliente para
+determinar permissões.
+
+[SEC-04] AUTENTICAÇÃO
+Login e validação de sessão ocorrem exclusivamente
+no servidor (Supabase Auth server-side).
+Tokens de autenticação: cookie httpOnly + Secure + SameSite=Strict
+NUNCA armazenar token em localStorage ou sessionStorage.
+Refresh token invalidado no logout:
+  await supabase.auth.signOut({ scope: 'global' })
+Sessões expiram em 24h. Refresh tokens em 7 dias.
+sessionStorage limpa automaticamente ao fechar a aba
+(comportamento nativo — não armazenar nada crítico nele).
+
+[SEC-05] CORS
+Configura em next.config.js:
+  allowedOrigins: [
+    'https://rankhirebr.com.br',
+    'https://app.rankhirebr.com.br',
+    process.env.NODE_ENV === 'development' && 'http://localhost:3000',
+    process.env.NODE_ENV === 'development' && 'http://localhost:3001',
+  ].filter(Boolean)
+Nenhuma origem wildcard (*) em produção.
+Headers de CORS definidos apenas em API routes server-side.
+
+[SEC-06] CSP (Content Security Policy)
+Adiciona em next.config.js headers():
+  Content-Security-Policy:
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' (apenas dev);
+    connect-src 'self' https://*.supabase.co
+                https://api.groq.com
+                https://api.deepseek.com
+                https://api.apify.com;
+    img-src 'self' data: https:;
+    frame-ancestors 'none';
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+[SEC-07] RATE LIMITING
+Toda API route tem rate limit com Upstash Ratelimit:
+  import { Ratelimit } from '@upstash/ratelimit'
+  import { Redis } from '@upstash/redis'
+  const ratelimit = new Ratelimit({
+    redis: Redis.fromEnv(),
+    limiter: Ratelimit.slidingWindow(20, '1 m'),
+  })
+Limites por endpoint:
+  /api/auth/*         → 10 req/min por IP
+  /api/upload-batch   → 5 req/min por empresa
+  /api/linkedin-search → 10 req/min por empresa
+  /api/groq/*         → 30 req/min por empresa
+  /api/admin/*        → 20 req/min por admin
+Resposta ao ultrapassar: status 429 + Retry-After header
+
+[SEC-08] VALIDAÇÃO E SANITIZAÇÃO
+Todo input do usuário é validado com Zod antes de
+qualquer processamento:
+  import { z } from 'zod'
+  const schema = z.object({ ... })
+  const result = schema.safeParse(req.body)
+  if (!result.success) return Response.json(
+    { error: result.error.flatten() }, { status: 400 })
+Sanitização de texto livre com DOMPurify (client)
+e sanitize-html (server):
+  npm install sanitize-html zod
+Nenhum dado do usuário vai diretamente para query SQL.
+Usar sempre o cliente Supabase (previne SQL injection).
+
+[SEC-09] SOURCE MAPS
+Em produção: source maps desativados.
+Em next.config.js:
+  productionBrowserSourceMaps: false
+Nunca expor o código TypeScript compilado ao browser.
+
+[SEC-10] LOGS DE SEGURANÇA
+Toda ação sensível gera log estruturado:
+  console.error(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    nivel: 'WARN' | 'ERROR' | 'INFO',
+    evento: 'login_falhou' | 'rota_negada' | 'rate_limit',
+    ip: req.headers['x-forwarded-for'],
+    userId: session?.user?.id || null,
+    detalhes: { ... }
+  }))
+Monitorar padrões suspeitos:
+  - Mais de 5 logins falhos do mesmo IP em 5 min
+  - Acesso a /admin sem role superadmin
+  - Requisições com payload > 10MB
+  - Tokens inválidos repetidos
+
+[SEC-11] RLS — ROW LEVEL SECURITY
+RLS ativo em TODAS as tabelas do Supabase.
+Toda tabela com empresa_id tem política:
+  CREATE POLICY "empresa_isolamento" ON tabela
+  FOR ALL USING (empresa_id = auth.jwt()->>'empresa_id');
+Nenhum dado de uma empresa aparece para outra.
+Supabase anon key nunca acessa dados sem RLS.
+Todas as operações admin usam service_role key
+APENAS no servidor.
+
+[SEC-12] EXPOSIÇÃO DE DADOS
+O usuário vê apenas o necessário:
+  Email: mostrar jo**@exemplo.com
+  CPF/CNPJ: mostrar ***.***.***-**
+  Cartão: mostrar apenas últimos 4 dígitos
+  Token/chave API: nunca exibir completo
+Dados sensíveis mascarados na UI com função:
+  maskEmail(email: string): string
+  maskDocument(doc: string): string
+
+[SEC-13] ROBOTS.TXT
+O arquivo robots.txt bloqueia tudo exceto páginas públicas:
+  User-agent: *
+  Disallow: /admin
+  Disallow: /api/
+  Disallow: /dashboard
+  Disallow: /configuracoes
+  Disallow: /cadastro
+  Allow: /
+  Allow: /planos
+  Sitemap: https://rankhirebr.com.br/sitemap.xml
+Nenhuma rota interna indexável por crawlers.
+
+━━━━━━━━━━━━━━━━━━
+REGRAS DE PERFORMANCE
+━━━━━━━━━━━━━━━━━━
+
+[PERF-01] TEMPO DE CARREGAMENTO
+Alvo: First Contentful Paint < 1,5s
+      Largest Contentful Paint < 2,5s
+      Time to Interactive < 3s
+Ferramentas: Vercel Speed Insights + next/bundle-analyzer
+WP Rocket NÃO se aplica (é plugin WordPress).
+Para Next.js usar:
+  - next/image para todas as imagens (lazy loading nativo)
+  - next/font para fontes (elimina CLS)
+  - dynamic import para componentes pesados
+  - Vercel Edge Network (CDN global automático)
+  - Cache-Control nos headers das API routes estáticas
+
+[PERF-02] BUNDLE SIZE
+Nenhuma página com First Load JS > 300kb.
+Verificar com: npm run build (output mostra por rota)
+Componentes pesados com dynamic():
+  const HeavyComponent = dynamic(() => import('./Heavy'),
+    { loading: () => <Skeleton />, ssr: false })
+
+[PERF-03] RESPONSIVIDADE
+Mobile-first. Breakpoints Tailwind:
+  sm: 640px  md: 768px  lg: 1024px  xl: 1280px
+Testar em: 375px (iPhone SE), 768px (tablet), 1440px (desktop)
+Nenhum overflow-x em nenhuma largura.
+Touch targets mínimo 44x44px.
+
+[PERF-04] OTIMIZAÇÕES OBRIGATÓRIAS
+- Queries Supabase com .select() específico (nunca *)
+- Promise.all() para fetches paralelos
+- Skeleton loading em todas as listas
+- Revalidate em rotas que não mudam frequentemente
+- AbortController in fetches longos
+
+━━━━━━━━━━━━━━━━━━
+REGRAS DE QUALIDADE
+━━━━━━━━━━━━━━━━━━
+
+[QUAL-01] TYPESCRIPT
+Zero uso de 'any' sem comentário justificando.
+Interfaces definidas para todos os dados do Supabase
+em /types/database.ts gerado pelo Supabase CLI.
+
+[QUAL-02] ERROS
+Todo try/catch loga o erro e retorna mensagem legível.
+Nunca expor stack trace ao usuário em produção.
+Error boundaries em todas as páginas principais.
+
+[QUAL-03] CÓDIGO LIMPO
+Zero console.log em produção (apenas console.error).
+Zero TODO/FIXME sem issue associada.
+Funções utilitárias em /lib/utils.ts.
+Componentes reutilizáveis em /components/ui/.

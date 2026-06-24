@@ -1,0 +1,12 @@
+User-agent: *
+Disallow: /admin
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /configuracoes
+Disallow: /cadastro
+Disallow: /onboarding
+Allow: /
+Allow: /planos
+Allow: /privacidade
+Allow: /termos
+Sitemap: https://rankhirebr.com.br/sitemap.xml

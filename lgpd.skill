@@ -1,0 +1,200 @@
+# Skill: Conformidade LGPD — RankHire BR
+# Aplica em todas as implementações legais,
+# políticas, formulários e comunicações.
+
+━━━━━━━━━━━━━━━━━━
+LGPD-01: POLÍTICA DE PRIVACIDADE
+━━━━━━━━━━━━━━━━━━
+Cria página /privacidade com:
+
+Seções obrigatórias:
+1. Quem somos (controlador dos dados)
+   RankHire BR · operado por [Razão Social] · CNPJ XX
+   Contato DPO: privacidade@rankhirebr.com.br
+
+2. Dados que coletamos
+   - Dados de cadastro: nome, email, empresa, cargo
+   - Dados de uso: vagas criadas, buscas realizadas
+   - Dados de candidatos: coletados pelo RECRUTADOR
+     (RankHire BR é operadora, não controladora desses dados)
+   - Dados de pagamento: processados pelo Pagar.me
+     (não armazenamos dados de cartão)
+   - Cookies técnicos: sessão, preferências (não rastreamento)
+
+3. Como usamos os dados
+   - Prestação do serviço contratado
+   - Comunicações transacionais (não marketing sem consentimento)
+   - Melhoria da plataforma (dados anonimizados)
+   - Cumprimento de obrigações legais
+
+4. NÃO VENDEMOS DADOS
+   Cláusula explícita em negrito:
+   "O RankHire BR NUNCA vende, aluga ou compartilha
+   seus dados pessoais com terceiros para fins comerciais.
+   Dados de candidatos inseridos por recrutadores são de
+   responsabilidade exclusiva do recrutador (controlador)."
+
+5. Base legal (Art. 7º LGPD)
+   - Execução do contrato (Art. 7º, V)
+   - Legítimo interesse (Art. 7º, IX)
+   - Consentimento para comunicações de marketing (Art. 7º, I)
+
+6. Compartilhamento necessário
+   - Supabase (infraestrutura — DPA assinado)
+   - Groq/DeepSeek (processamento IA — dados anonimizados)
+   - Apify (enriquecimento — dados públicos do LinkedIn)
+   - Brevo (envio de emails — dados mínimos)
+   - Pagar.me (pagamentos — dados necessários para cobrança)
+
+7. Direitos do titular (Arts. 17–22 LGPD)
+   - Confirmação de existência de tratamento
+   - Acesso aos dados
+   - Correção de dados incompletos ou desatualizados
+   - Anonimização ou eliminação
+   - Portabilidade
+   - Revogação do consentimento
+   - Oposição ao tratamento
+   Exercer em: privacidade@rankhirebr.com.br
+   Prazo de resposta: 15 dias úteis
+
+8. Retenção de dados
+   - Conta ativa: durante toda a vigência
+   - Após cancelamento: 90 dias para backup, depois eliminado
+   - Dados fiscais: 5 anos (obrigação legal)
+   - Logs de segurança: 12 meses
+
+9. Cookies
+   Apenas cookies técnicos necessários.
+   Sem cookies de rastreamento de terceiros.
+   Sem Google Analytics sem consentimento.
+
+10. Atualizações desta política
+    Data da última atualização visível no topo.
+    Notificação por email em caso de alterações relevantes.
+
+━━━━━━━━━━━━━━━━━━
+LGPD-02: TERMOS DE SERVIÇO
+━━━━━━━━━━━━━━━━━━
+Cria página /termos com:
+
+1. RESPONSABILIDADE DO RECRUTADOR (CONTROLADOR)
+   "O recrutador é o controlador dos dados de candidatos
+   inseridos na plataforma. O RankHire BR atua como
+   operadora (Art. 5º, VII LGPD). O recrutador é
+   responsável por: obter base legal para tratamento,
+   responder a titulares, garantir exatidão dos dados."
+
+2. CONTEÚDO DO USUÁRIO
+   "Todo conteúdo inserido (vagas, critérios, dados de
+   candidatos) é de responsabilidade exclusiva do usuário.
+   O RankHire BR não valida a legalidade do uso dos dados
+   inseridos, mas pode suspender contas que violem a LGPD."
+
+3. CLÁUSULA DE REMOÇÃO
+   "O usuário pode solicitar a exclusão completa de sua
+   conta e dados a qualquer momento em:
+   Configurações → Conta → Excluir conta
+   ou por email: privacidade@rankhirebr.com.br
+   A exclusão é irreversível e ocorre em até 30 dias."
+
+4. PROIBIÇÕES EXPRESSAS
+   - Inserir dados de candidatos sem base legal
+   - Usar a plataforma para discriminação (gênero, raça, etc.)
+   - Compartilhar acesso da conta com terceiros não autorizados
+   - Tentar acessar dados de outras empresas
+
+5. SUSPENSÃO E CANCELAMENTO
+   O RankHire BR pode suspender contas que:
+   - Violem a LGPD ou outros direitos de terceiros
+   - Realizem uso abusivo das APIs
+   - Tentem comprometer a segurança da plataforma
+   Com aviso prévio de 48h, exceto em casos graves.
+
+━━━━━━━━━━━━━━━━━━
+LGPD-03: CONFORMIDADE DE E-MAIL
+━━━━━━━━━━━━━━━━━━
+
+Todos os emails enviados pelo sistema devem ter:
+
+Obrigatório em todo email:
+  - Identificação clara do remetente: "RankHire BR <nao-responda@rankhirebr.com.br>"
+  - Link de descadastro em texto simples no rodapé:
+    "Para não receber mais emails do RankHire BR: [Cancelar inscrição]"
+  - Endereço físico da empresa no rodapé (requisito CAN-SPAM/LGPD)
+  - Motivo do envio: "Você recebe este email porque se cadastrou no RankHire BR"
+
+Categorias de email e base legal:
+  TRANSACIONAL (não precisa de consentimento extra):
+    - Confirmação de cadastro
+    - Confirmação de assinatura/pagamento
+    - Notificações do Agente IA (serviço contratado)
+    - Alertas de segurança
+    - Lembretes de trial (contrato)
+  
+  MARKETING (exige consentimento explícito):
+    - Novidades e features
+    - Promoções
+    - Newsletter
+    Checkbox no cadastro: □ "Aceito receber novidades e
+    dicas de recrutamento do RankHire BR (opcional)"
+    Armazenar: consentimento_marketing + data + IP
+
+Implementação no Brevo:
+  - Listas separadas: transacional vs marketing
+  - Descadastro de marketing NÃO cancela emails transacionais
+  - Endpoint POST /api/email/unsubscribe processa descadastro
+    e atualiza campo consentimento_marketing = false no banco
+
+━━━━━━━━━━━━━━━━━━
+LGPD-04: ASSINATURAS E CANCELAMENTO
+━━━━━━━━━━━━━━━━━━
+
+Fluxo de assinatura:
+  1. Antes de cobrar: exibir resumo completo do plano
+  2. Checkbox obrigatório: "Li e aceito os Termos de Serviço
+     e a Política de Privacidade"
+  3. Segundo checkbox: "Autorizo a cobrança recorrente de
+     R$X/mês no cartão terminado em XXXX até o cancelamento"
+  Armazenar: data, IP, user_agent do consentimento
+
+Cancelamento — caminho SIMPLES (exigência LGPD + PROCON):
+  Configurações → Plano → Cancelar assinatura
+  Máximo 3 clicks do dashboard até o cancelamento efetivo.
+  NÃO pode exigir ligação telefônica ou email para cancelar.
+  Após cancelar:
+    - Acesso mantido até o fim do período pago
+    - Email de confirmação imediato
+    - Dados mantidos por 90 dias, depois eliminados
+    - Reativação disponível durante os 90 dias
+
+━━━━━━━━━━━━━━━━━━
+LGPD-05: CONSENTIMENTO NO CADASTRO
+━━━━━━━━━━━━━━━━━━
+
+Formulário de cadastro deve ter:
+  □ "Li e aceito os Termos de Serviço e a 
+    Política de Privacidade" (OBRIGATÓRIO — bloqueia cadastro)
+  □ "Aceito receber novidades e dicas de recrutamento
+    por email" (OPCIONAL — não bloqueia cadastro)
+
+Armazenar na tabela usuarios:
+  termos_aceitos_em: timestamptz
+  termos_versao: text (ex: "v2.0-2026-06")
+  consentimento_marketing: boolean
+  consentimento_marketing_em: timestamptz
+  ip_cadastro: text (para prova de consentimento)
+
+━━━━━━━━━━━━━━━━━━
+LGPD-06: COOKIE BANNER
+━━━━━━━━━━━━━━━━━━
+
+Banner no primeiro acesso ao site:
+  "Usamos apenas cookies técnicos necessários
+  para o funcionamento da plataforma. Não usamos
+  cookies de rastreamento ou publicidade."
+  [Entendido]
+
+Não usar Google Analytics, Facebook Pixel ou
+qualquer tracker de terceiro sem consentimento explícito.
+Cookie de sessão: httpOnly + Secure + SameSite=Strict
+Cookie de preferências: SameSite=Lax, expira em 1 ano
