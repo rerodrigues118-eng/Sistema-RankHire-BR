@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRedisConnection } from '@/lib/queue';
+import { Redis } from '@upstash/redis';
 
 export async function POST(req: Request) {
   try {
@@ -11,12 +11,15 @@ export async function POST(req: Request) {
     }
 
     const emailTrimmed = email.trim().toLowerCase();
-    const redis = getRedisConnection();
     
-    if (!redis) {
+    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+    
+    if (!redisUrl || !redisToken) {
       return NextResponse.json({ error: 'Serviço temporariamente indisponível' }, { status: 503 });
     }
 
+    const redis = new Redis({ url: redisUrl, token: redisToken });
     const savedOtp = await redis.get(`otp:${emailTrimmed}`);
 
     if (!savedOtp) {

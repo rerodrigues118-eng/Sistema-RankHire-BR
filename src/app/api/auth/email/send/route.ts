@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendVerificationEmail } from '@/lib/email';
-import { getRedisConnection } from '@/lib/queue';
+import { Redis } from '@upstash/redis';
 
 export async function POST(req: Request) {
   try {
@@ -40,12 +40,15 @@ export async function POST(req: Request) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     // 3. Salvar no Redis (validade de 10 minutos)
-    const redis = getRedisConnection();
-    if (redis) {
-      await redis.set(`otp:${emailTrimmed}`, otp, 'EX', 600); // 600 segundos = 10 minutos
+    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+    
+    if (redisUrl && redisToken) {
+      const redis = new Redis({ url: redisUrl, token: redisToken });
+      await redis.set(`otp:${emailTrimmed}`, otp, { ex: 600 });
     } else {
       console.warn('Redis indisponível, simulando OTP...');
-      // Apenas fallback, idealmente o Redis tem que funcionar
+      // Apenas fallback
     }
 
     // 4. Enviar e-mail via Brevo
