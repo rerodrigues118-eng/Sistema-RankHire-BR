@@ -1,109 +1,77 @@
 import { createServerClient } from '@supabase/ssr'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Rotas acessíveis sem login
+const PUBLIC_ROUTES = [
+  '/',
+  '/login',
+  '/cadastro',
+  '/onboarding',
+  '/lgpd',
+  '/privacidade',
+  '/termos',
+  '/fotos-site',
+  '/api/pagarme/webhook',
+  '/api/email/unsubscribe',
+  '/api/auth',
+]
 
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(route + '/') || pathname.startsWith(route + '?')
+  )
+}
 
+/**
+ * Atualiza a sessão Supabase e redireciona usuários não autenticados.
+ * ATENÇÃO: este middleware roda no Edge Runtime — não use Node.js APIs,
+ * módulos nativos ou o cliente admin do Supabase aqui.
+ */
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // Se as variáveis de ambiente não estiverem configuradas, deixa passar
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return supabaseResponse
+  }
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        supabaseResponse = NextResponse.next({ request })
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        )
+      },
+    },
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
+  // Atualiza o token de sessão (não remova — mantém o cookie fresco)
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isPublicRoute = 
-    request.nextUrl.pathname === '/' ||
-    request.nextUrl.pathname.startsWith('/login') || 
-    request.nextUrl.pathname.startsWith('/auth') ||
-    request.nextUrl.pathname.startsWith('/cadastro') ||
-    request.nextUrl.pathname.startsWith('/onboarding') ||
-    request.nextUrl.pathname.startsWith('/lgpd') ||
-    request.nextUrl.pathname.startsWith('/privacidade') ||
-    request.nextUrl.pathname.startsWith('/termos') ||
-    request.nextUrl.pathname.startsWith('/fotos-site') ||
-    request.nextUrl.pathname.startsWith('/api/pagarme/webhook') ||
-    request.nextUrl.pathname.startsWith('/_next') ||
-    request.nextUrl.pathname.startsWith('/favicon.ico');
+  const pathname = request.nextUrl.pathname
 
-  if (!user && !isPublicRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  // Bloquear rota /admin legada
+  if (pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // Verificação de Billing (Acesso ao Sistema)
-  if (
-    user && 
-    !isPublicRoute &&
-    !request.nextUrl.pathname.startsWith('/configuracoes/plano') &&
-    !request.nextUrl.pathname.startsWith('/api')
-  ) {
-    const admin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    
-    const { data: usuario } = await admin
-      .from('usuarios')
-      .select('empresa_id')
-      .eq('id', user.id)
-      .single()
-
-    if (usuario?.empresa_id) {
-      const { data: empresa } = await admin
-        .from('empresas')
-        .select('plano, subscription_status, trial_expires_at')
-        .eq('id', usuario.empresa_id)
-        .single()
-
-      if (empresa) {
-        let bloqueado = false;
-
-        if (empresa.subscription_status === 'canceled' || empresa.subscription_status === 'ended') {
-          bloqueado = true;
-        } else if (empresa.plano === 'trial') {
-          const expirou = new Date(empresa.trial_expires_at) < new Date();
-          if (expirou) bloqueado = true;
-        }
-
-        if (bloqueado) {
-          const url = request.nextUrl.clone()
-          url.pathname = '/configuracoes/plano'
-          return NextResponse.redirect(url)
-        }
-      }
-    }
-  }
-
-  // Bloquear rota /admin legada — redireciona para home sem revelar que existe algo ali
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
+  // Redirecionar usuário não autenticado para /login
+  if (!user && !isPublicRoute(pathname) && !pathname.startsWith('/api/')) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   return supabaseResponse
 }
+
