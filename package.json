@@ -2,9 +2,6 @@
   "name": "rankhire-br",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "painel-admin"
-  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
