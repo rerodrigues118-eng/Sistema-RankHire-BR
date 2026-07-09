@@ -39,6 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent skills (pasta interna de ferramentas, nao deve ir ao repositorio)
+tools/
 # Ignore landing build and deps
 rankhire-landing/node_modules/
 rankhire-landing/.next/
