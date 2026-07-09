@@ -1,3 +1,4 @@
+import { requireAuth } from "@/lib/auth-guard";
 import { fetchWithTimeout, handleApiError } from "@/lib/api";
 import { logAdminAction, requireAdminContext } from "@/lib/admin";
 import { NextResponse } from "next/server";
@@ -13,6 +14,8 @@ type EmpresaEmailRow = {
 };
 
 export async function POST(req: Request) {
+  const { userId, supabase } = await requireAuth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
   try {
     const { userId, admin } = await requireAdminContext();
     const { empresa_id, tipo } = (await req.json()) as {

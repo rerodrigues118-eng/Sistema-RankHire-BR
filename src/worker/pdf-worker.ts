@@ -2,12 +2,21 @@ import 'dotenv/config';
 
 import { fetchWithTimeout } from "../lib/api";
 import { callAI } from "../lib/ai-client";
-import { redisConnection } from "../lib/queue";
+import { getRedisConnection } from "../lib/queue";
 import { buildScoringPrompt } from "../lib/scoring-prompt";
 import { createClient } from "@supabase/supabase-js";
 import { Job, Worker } from "bullmq";
 
 import pdfParse from 'pdf-parse';
+
+// Early-exit guards for missing environment variables
+if (!process.env.REDIS_URL) {
+  process.exit(0);
+}
+
+if (!process.env.GROQ_API_KEY) {
+  // IA scoring disabled
+}
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,7 +69,6 @@ async function downloadPdf(storagePath: string): Promise<Buffer> {
 }
 
 const processor = async (job: Job) => {
-  console.log(`[Worker] Started job ${job.id} for candidate ${job.data.candidateId}`);
   const { candidateId, storagePath, vagaId, batchId } = job.data as {
     candidateId: string;
     storagePath: string;
@@ -69,12 +77,12 @@ const processor = async (job: Job) => {
   };
 
   try {
-    console.log(`[Worker] Downloading PDF for ${candidateId}...`);
+
     const pdfBuffer = await downloadPdf(storagePath);
-    console.log(`[Worker] Parsing PDF for ${candidateId}...`);
+    
     const pdfData = await pdfParse(pdfBuffer);
     const cvText = sanitizeText(pdfData.text);
-    console.log(`[Worker] Extracted ${cvText.length} chars from PDF for ${candidateId}`);
+    
 
     const { data: criteriaData, error: critError } = await supabaseAdmin
       .from("criteria")
@@ -94,10 +102,10 @@ const processor = async (job: Job) => {
       }))
       .filter((c) => c.name); // skip rows with no name at all
 
-    console.log(`[Worker] Calling AI for ${candidateId}...`);
+    
     const prompt = buildScoringPrompt(cvText, formattedCriteria);
     const jsonString = await callAI(prompt);
-    console.log(`[Worker] AI response received for ${candidateId}`);
+    
     
     const cleanJsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
     const result = JSON.parse(cleanJsonString) as ScoringResult;
@@ -172,22 +180,22 @@ const processor = async (job: Job) => {
         .eq("id", batchId);
     }
 
-    console.log(`[Worker] Successfully completed job ${job.id} for ${candidateId} (score: ${safeScoreFinal})`);
     return { success: true, score: safeScoreFinal };
   } catch (error) {
     console.error(`[Worker] Failed job ${job.id} for ${candidateId}:`, error);
     await supabaseAdmin
       .from("pdf_candidates")
       .update({ status: "erro" })
-      .eq("id", candidateId)
-      .catch(() => {});
+      .eq("id", candidateId);
     throw error;
   }
 };
 
-console.log("[Worker] PDF processing worker started and listening for jobs...");
-
-new Worker("pdf-processing", processor, {
-  connection: redisConnection,
-  concurrency: 3, // process up to 3 PDFs in parallel
-});
+// PDF processing worker initialized
+const conn = getRedisConnection();
+if (conn) {
+  new Worker("pdf-processing", processor, {
+    connection: conn as any,
+    concurrency: 3, // process up to 3 PDFs in parallel
+  });
+}

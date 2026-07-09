@@ -1,19 +1,13 @@
-import { cookies, NextResponse } from "next/headers";
+import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase";
-import { getAdminSessionByToken, getSessionCookieName } from "@/lib/session";
+import { requireAdmin } from "@/lib/require-admin";
 import { logAdminAction } from "@/lib/log";
 
 export async function PATCH(request: Request) {
-  const token = cookies().get(getSessionCookieName())?.value;
-  if (!token) {
-    return NextResponse.json({ error: "Sessão inválida." }, { status: 401 });
-  }
+  const auth = await requireAdmin("suporte");
+  if (auth.error) return auth.error;
 
-  const session = await getAdminSessionByToken(token);
-  if (!session) {
-    return NextResponse.json({ error: "Sessão inválida." }, { status: 401 });
-  }
-
+  const adminUser = auth.admin;
   const body = await request.json();
   const { chave, valor } = body;
 
@@ -21,16 +15,16 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Chave e valor são obrigatórios." }, { status: 400 });
   }
 
-  const admin = createSupabaseAdminClient();
-  const { data: before } = await admin.from("configuracoes_globais").select("*").eq("chave", chave).single();
-  const { error } = await admin.from("configuracoes_globais").upsert({ chave, valor, descricao: before?.descricao ?? null, updated_by: session.admin_id, updated_at: new Date().toISOString() });
+  const supabase = createSupabaseAdminClient();
+  const { data: before } = await supabase.from("configuracoes_globais").select("*").eq("chave", chave).single();
+  const { error } = await supabase.from("configuracoes_globais").upsert({ chave, valor, descricao: before?.descricao ?? null, updated_by: adminUser.id, updated_at: new Date().toISOString() });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   await logAdminAction({
-    adminId: session.admin_id,
+    adminId: adminUser.id,
     acao: "configuracao_atualizada",
     nivel: "INFO",
     dadosAntes: before,

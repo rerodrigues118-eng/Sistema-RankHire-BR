@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Bot, Calendar, Target, Plus, Settings, TrendingUp, CheckCircle, Search, ArrowRight } from "lucide-react";
+import { Bot, Calendar, Plus, Settings, TrendingUp, Search, ArrowRight } from "lucide-react";
 import AgenteCalibrationModal from "@/components/AgenteCalibrationModal";
 import { useRouter } from "next/navigation";
 

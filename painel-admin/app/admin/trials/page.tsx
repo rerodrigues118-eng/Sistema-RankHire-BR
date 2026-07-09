@@ -1,12 +1,21 @@
 import { createSupabaseAdminClient } from '@/lib/supabase';
 
+type TrialCliente = {
+  id: string;
+  nome?: string | null;
+  email?: string | null;
+  plano?: string | null;
+  status?: string | null;
+  trial_ends_at?: string | null;
+};
+
 export default async function TrialsPage() {
   const supabase = createSupabaseAdminClient();
-  const today = new Date().toISOString();
+  const currentDate = new Date();
   const { data } = await supabase
-    .from('empresas')
+    .from<TrialCliente>('empresas')
     .select('id,nome,email,plano,status,trial_ends_at')
-    .gte('trial_ends_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+    .gte('trial_ends_at', new Date(currentDate.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString())
     .order('trial_ends_at', { ascending: true })
     .limit(100);
 
@@ -14,9 +23,9 @@ export default async function TrialsPage() {
     <main style={{ padding: 24 }}>
       <h1>Trials expirando</h1>
       <div style={{ marginTop: 16, display: 'grid', gap: 16 }}>
-        {(data || []).map((cliente: any) => {
+        {(data || []).map((cliente) => {
           const endsAt = cliente.trial_ends_at ? new Date(cliente.trial_ends_at) : null;
-          const daysLeft = endsAt ? Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : null;
+          const daysLeft = endsAt ? Math.max(0, Math.ceil((endsAt.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))) : null;
           const statusLabel = daysLeft !== null ? `${daysLeft} dias restantes` : 'Sem data';
           const color = daysLeft !== null ? (daysLeft <= 3 ? '#da3633' : daysLeft <= 7 ? '#d29922' : '#238636') : '#8b949e';
 

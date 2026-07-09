@@ -26,7 +26,6 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
-  const [processedCount] = useState(12);
   const [quota, setQuota] = useState<{
     isAdmin: boolean;
     used: number;
@@ -45,6 +44,37 @@ export default function Home() {
     setCandidates((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
   }, []);
 
+  const refreshAppData = useCallback(async () => {
+    try {
+      const res = await fetch("/api/app-data");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Falha ao carregar os dados do app.");
+      }
+
+      if (Array.isArray(data.jobs)) {
+        setJobs(data.jobs);
+        setSelectedJobId((prev) => prev || data.jobs[0]?.id || "");
+      } else {
+        setJobs([]);
+        setSelectedJobId("");
+      }
+
+      if (Array.isArray(data.candidates)) {
+        setCandidates(data.candidates);
+      } else {
+        setCandidates([]);
+      }
+
+      if (data.quota) {
+        setQuota(data.quota);
+      }
+    } catch (error: unknown) {
+      setBootstrapError(error instanceof Error ? error.message : "Falha ao carregar os dados do app.");
+    }
+  }, []);
+
   useEffect(() => {
     let alive = true;
 
@@ -53,36 +83,7 @@ export default function Home() {
       setBootstrapError(null);
 
       try {
-        const res = await fetch("/api/app-data");
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || "Falha ao carregar os dados do app.");
-        }
-
-        if (!alive) return;
-
-        if (Array.isArray(data.jobs)) {
-          setJobs(data.jobs);
-          setSelectedJobId(data.jobs[0]?.id || "");
-        } else {
-          setJobs([]);
-          setSelectedJobId("");
-        }
-
-        if (Array.isArray(data.candidates)) {
-          setCandidates(data.candidates);
-        } else {
-          setCandidates([]);
-        }
-
-        if (data.quota) {
-          setQuota(data.quota);
-        }
-      } catch (error: unknown) {
-        if (alive) {
-          setBootstrapError(error instanceof Error ? error.message : "Falha ao carregar os dados do app.");
-        }
+        await refreshAppData();
       } finally {
         if (alive) {
           setIsBootstrapping(false);
@@ -95,7 +96,45 @@ export default function Home() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [refreshAppData]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT") {
+        setJobs([]);
+        setCandidates([]);
+        setQuota(null);
+        setSelectedJobId("");
+        setBootstrapError(null);
+        setIsBootstrapping(false);
+        return;
+      }
+
+      if (event === "SIGNED_IN") {
+        setBootstrapError(null);
+        setIsBootstrapping(true);
+        try {
+          await refreshAppData();
+        } finally {
+          setIsBootstrapping(false);
+        }
+      } else if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        refreshAppData();
+      }
+
+      if (!session) {
+        setJobs([]);
+        setCandidates([]);
+        setQuota(null);
+        setSelectedJobId("");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [refreshAppData]);
 
   const handleToggleShortlist = useCallback((id: string) => {
     fetch(`/api/candidates/${id}`, {
@@ -163,10 +202,60 @@ export default function Home() {
     [activeJob]
   );
 
-  const handleNewUpload = useCallback(() => {
-    setActivePage("pdf-ranker");
-    setTimeout(() => fileInputRef.current?.click(), 100);
-  }, []);
+  const addCandidateFromData = useCallback((candData: Record<string, unknown>, batchData: Record<string, unknown>) => {
+    const actualScore = (candData.score_final as number | null) ?? (candData.score as number | null);
+    if (actualScore == null) return;
+
+    const batchCandidates = batchData.candidates as Array<Record<string, unknown>> | undefined;
+    const candMeta = batchCandidates?.find((c: Record<string, unknown>) => c.id === candData.id);
+    if (!candMeta) return;
+
+    const file_url = candMeta.file_url as string;
+    const fallbackBasename =
+      file_url.split("/").pop()?.replace(/\.pdf$/i, "").replace(/[-_]/g, " ") || "Candidato";
+    const parts = fallbackBasename.split(" ").filter(Boolean);
+    const fallbackName =
+      parts.length >= 2
+        ? `${parts[0].charAt(0).toUpperCase()}${parts[0].slice(1)} ${parts[1].charAt(0).toUpperCase()}${parts[1].slice(1)}`
+        : fallbackBasename;
+
+    const finalName = (candData.nome_candidato as string | null) || fallbackName;
+    const color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+
+    const newCand: Candidate = {
+      id: candData.id as string,
+      name: finalName,
+      role: activeJob?.title || "Vaga selecionada",
+      company: "Via upload",
+      city: "São Paulo, SP",
+      score: actualScore as number,
+      avatarColor: color,
+      initials: finalName
+        .split(" ")
+        .map((part: string) => part[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase(),
+      confirmedTags: ["Extraído via AI"],
+      partialTags: [],
+      otherTags: [],
+      shortlist: false,
+      status: "triado" as KanbanStatus,
+      linkedinUrl: "#",
+      createdAt: new Date().toISOString(),
+    };
+
+    setCandidates((prev) => {
+      if (prev.some((c) => c.id === newCand.id)) return prev;
+      return [newCand, ...prev];
+    });
+
+    setUploads((prev) => {
+      const pending = prev.filter((u) => u.status !== "completed" && u.status !== "failed");
+      if (pending.length === 0) setIsUploading(false);
+      return prev;
+    });
+  }, [activeJob]);
 
   const handleFileUpload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -297,173 +386,10 @@ export default function Home() {
 
       e.target.value = "";
     },
-    [activeJob, uploads.length]
+    [activeJob, uploads.length, addCandidateFromData]
   );
 
-  function addCandidateFromData(candData: any, batchData: any) {
-    const actualScore = candData.score_final ?? candData.score;
-    if (actualScore == null) return;
-
-    const candMeta = batchData.candidates?.find((c: any) => c.id === candData.id);
-    if (!candMeta) return;
-
-    const fallbackBasename =
-      candMeta.file_url.split("/").pop()?.replace(/\.pdf$/i, "").replace(/[-_]/g, " ") || "Candidato";
-    const parts = fallbackBasename.split(" ").filter(Boolean);
-    const fallbackName =
-      parts.length >= 2
-        ? `${parts[0].charAt(0).toUpperCase()}${parts[0].slice(1)} ${parts[1].charAt(0).toUpperCase()}${parts[1].slice(1)}`
-        : fallbackBasename;
-
-    const finalName = candData.nome_candidato || fallbackName;
-    const color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
-
-    const newCand: Candidate = {
-      id: candData.id,
-      name: finalName,
-      role: activeJob?.title || "Vaga selecionada",
-      company: "Via upload",
-      city: "São Paulo, SP",
-      score: actualScore,
-      avatarColor: color,
-      initials: finalName
-        .split(" ")
-        .map((part: string) => part[0])
-        .join("")
-        .substring(0, 2)
-        .toUpperCase(),
-      confirmedTags: ["Extraído via AI"],
-      partialTags: [],
-      otherTags: [],
-      shortlist: false,
-      status: "triado",
-      linkedinUrl: "#",
-      createdAt: new Date().toISOString(),
-    };
-
-    setCandidates((prev) => {
-      if (prev.some((c) => c.id === newCand.id)) return prev;
-      return [newCand, ...prev];
-    });
-
-    setUploads((prev) => {
-      const pending = prev.filter((u) => u.status !== "completed" && u.status !== "failed");
-      if (pending.length === 0) setIsUploading(false);
-      return prev;
-    });
-  }
-
-  const renderPage = () => {
-    switch (activePage) {
-      case "dashboard":
-        return (
-          <DashboardPage
-            activeJob={activeJob}
-            jobs={jobs}
-            candidates={candidates}
-            onToggleShortlist={handleToggleShortlist}
-            onSelectCandidate={handleOpenDrawer}
-          />
-        );
-      case "pdf-ranker":
-        if (!activeJob) {
-          return (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
-              Crie ou selecione uma vaga para usar o PDF Ranker.
-            </div>
-          );
-        }
-        return (
-          <PdfRankerPage
-            activeJob={activeJob}
-            candidates={candidates}
-            uploads={uploads}
-            isUploading={isUploading}
-            onFileUpload={handleFileUpload}
-            fileInputRef={fileInputRef}
-            onSelectCandidate={handleOpenDrawer}
-            quota={quota}
-          />
-        );
-      case "linkedin":
-        if (!activeJob) {
-          return (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
-              Crie ou selecione uma vaga para buscar candidatos no LinkedIn.
-            </div>
-          );
-        }
-        return <LinkedinPage activeJob={activeJob} onImportCandidate={handleImportCandidate} />;
-      case "pipeline":
-        return (
-          <PipelinePage
-            candidates={candidates}
-            onMoveCandidate={handleMoveCandidateStatus}
-            onResetPipeline={handleResetPipeline}
-            onSelectCandidate={handleOpenDrawer}
-          />
-        );
-      case "analytics":
-        return <AnalyticsPage jobs={jobs} candidates={candidates} quota={quota} />;
-      case "settings":
-        return <SettingsPage />;
-      case "vagas":
-        return (
-          <VagasPage
-            jobs={jobs}
-            onCreateJob={async (newJob) => {
-              const res = await fetch("/api/vagas", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: newJob.title,
-                  area: newJob.department,
-                  contract: newJob.contract,
-                  location: newJob.location,
-                  briefing: newJob.briefing,
-                  status: newJob.status,
-                }),
-              });
-              const data = await res.json();
-              const createdJob: Job = data.vaga
-                ? {
-                    ...newJob,
-                    id: data.vaga.id,
-                    createdDate: new Date(data.vaga.created_at).toLocaleDateString("pt-BR"),
-                    createdAt: data.vaga.created_at,
-                  }
-                : { ...newJob, createdAt: new Date().toISOString() };
-              setJobs((prev) => [createdJob, ...prev]);
-            }}
-            onUpdateJob={async (updatedJob) => {
-              await fetch(`/api/vagas/${updatedJob.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: updatedJob.title,
-                  area: updatedJob.department,
-                  contract: updatedJob.contract,
-                  location: updatedJob.location,
-                  briefing: updatedJob.briefing,
-                  status: updatedJob.status,
-                }),
-              });
-              setJobs((prev) => prev.map((job) => (job.id === updatedJob.id ? updatedJob : job)));
-            }}
-            onOpenJob={(jobId) => {
-              setSelectedJobId(jobId);
-              setActivePage("dashboard");
-            }}
-          />
-        );
-      case "agente-ia":
-        return <AgenteIAPage />;
-      case "candidatos":
-        return <CandidatosPage candidates={candidates} onSelectCandidate={handleOpenDrawer} />;
-      default:
-        return null;
-    }
-  };
+  // renderPage function removed as we now render all pages and hide them with CSS
 
   if (isBootstrapping) {
     return (
@@ -489,7 +415,124 @@ export default function Home() {
               {bootstrapError}
             </div>
           )}
-          <div className="w-full">{renderPage()}</div>
+          <div className="w-full h-full relative">
+            <div className={activePage === "dashboard" ? "block h-full" : "hidden"}>
+              <DashboardPage
+                activeJob={activeJob}
+                jobs={jobs}
+                candidates={candidates}
+                onToggleShortlist={handleToggleShortlist}
+                onSelectCandidate={handleOpenDrawer}
+              />
+            </div>
+            <div className={activePage === "pdf-ranker" ? "block h-full" : "hidden"}>
+              {!activeJob ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
+                  Crie ou selecione uma vaga para usar o PDF Ranker.
+                </div>
+              ) : (
+                <PdfRankerPage
+                  activeJob={activeJob}
+                  candidates={candidates}
+                  uploads={uploads}
+                  isUploading={isUploading}
+                  onFileUpload={handleFileUpload}
+                  fileInputRef={fileInputRef}
+                  onSelectCandidate={handleOpenDrawer}
+                  quota={quota}
+                />
+              )}
+            </div>
+            <div className={activePage === "linkedin" ? "block h-full" : "hidden"}>
+              {!activeJob ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
+                  Crie ou selecione uma vaga para buscar candidatos no LinkedIn.
+                </div>
+              ) : (
+                <LinkedinPage activeJob={activeJob} onImportCandidate={handleImportCandidate} />
+              )}
+            </div>
+            <div className={activePage === "pipeline" ? "block h-full" : "hidden"}>
+              <PipelinePage
+                candidates={candidates}
+                onMoveCandidate={handleMoveCandidateStatus}
+                onResetPipeline={handleResetPipeline}
+                onSelectCandidate={handleOpenDrawer}
+              />
+            </div>
+            <div className={activePage === "analytics" ? "block h-full" : "hidden"}>
+              <AnalyticsPage jobs={jobs} candidates={candidates} quota={quota} />
+            </div>
+            <div className={activePage === "settings" ? "block h-full" : "hidden"}>
+              <SettingsPage />
+            </div>
+            <div className={activePage === "agente-ia" ? "block h-full" : "hidden"}>
+              <AgenteIAPage />
+            </div>
+            <div className={activePage === "candidatos" ? "block h-full" : "hidden"}>
+              <CandidatosPage candidates={candidates} onSelectCandidate={handleOpenDrawer} />
+            </div>
+            <div className={activePage === "vagas" ? "block h-full" : "hidden"}>
+              <VagasPage
+                jobs={jobs}
+                onCreateJob={async (newJob) => {
+                  const res = await fetch("/api/vagas", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      title: newJob.title,
+                      area: newJob.department,
+                      contract: newJob.contract,
+                      location: newJob.location,
+                      briefing: newJob.briefing,
+                      status: newJob.status,
+                    }),
+                  });
+                  const data = await res.json();
+
+                  if (!res.ok) {
+                    throw new Error(data.error || "Falha ao criar a vaga.");
+                  }
+
+                  const createdJob: Job = {
+                    ...newJob,
+                    id: data.vaga.id,
+                    createdDate: new Date(data.vaga.created_at).toLocaleDateString("pt-BR"),
+                    createdAt: data.vaga.created_at,
+                  };
+                  setJobs((prev) => [createdJob, ...prev]);
+                  setSelectedJobId(createdJob.id);
+                  setActivePage("dashboard");
+                  await refreshAppData();
+                }}
+                onUpdateJob={async (updatedJob) => {
+                  const res = await fetch(`/api/vagas/${updatedJob.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      title: updatedJob.title,
+                      area: updatedJob.department,
+                      contract: updatedJob.contract,
+                      location: updatedJob.location,
+                      briefing: updatedJob.briefing,
+                      status: updatedJob.status,
+                    }),
+                  });
+                  const data = await res.json();
+
+                  if (!res.ok) {
+                    throw new Error(data.error || "Falha ao atualizar a vaga.");
+                  }
+
+                  setJobs((prev) => prev.map((job) => (job.id === updatedJob.id ? updatedJob : job)));
+                  await refreshAppData();
+                }}
+                onOpenJob={(jobId) => {
+                  setSelectedJobId(jobId);
+                }}
+              />
+            </div>
+          </div>
         </main>
       </div>
 

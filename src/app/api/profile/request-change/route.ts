@@ -15,8 +15,7 @@ export async function POST(req: Request) {
     const expiresAt = Date.now() + 15 * 60 * 1000;
     pendingChanges.set(`${userId}:${body.type}`, { code, newValue: body.newValue, expiresAt });
 
-    // In production, send via email/SMS. For now log to server for dev.
-    console.log(`[profile:request-change] user=${userId} type=${body.type} code=${code} newValue=${body.newValue}`);
+    // In production, send via email/SMS. For now, not logged in production.
 
     return NextResponse.json({ message: 'Codigo de seguranca enviado (ver logs no servidor em dev).' });
   } catch (error: unknown) {

@@ -8,12 +8,8 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * Match most request paths, but exclude public routes and static assets.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|login|auth|cadastro|onboarding|lgpd|privacidade|termos|fotos-site|api/pagarme/webhook|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

@@ -1,4 +1,4 @@
-require("dotenv").config();
+import 'dotenv/config';
 
 async function run() {
   console.log("=== GROQ TEST ===");

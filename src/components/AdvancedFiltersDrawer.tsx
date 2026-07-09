@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Plus, Trash2, Globe, GraduationCap, Briefcase, Languages, Search, Sparkles } from "lucide-react";
+import { X, Plus, Globe, GraduationCap, Briefcase, Languages, Search, Sparkles } from "lucide-react";
 
 const ESTADOS_BR = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',

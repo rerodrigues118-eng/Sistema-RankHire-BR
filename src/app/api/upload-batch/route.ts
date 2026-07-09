@@ -1,11 +1,13 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
-import { pdfQueue } from "@/lib/queue";
+import { getPdfQueue } from "@/lib/queue";
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from '@/lib/admin';
+import { getPdfLimitFromPlan } from '@/lib/planos';
 
 export async function POST(req: Request) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
     const { storagePaths, vaga_id } = (await req.json()) as {
       storagePaths?: string[];
       vaga_id?: string;
@@ -19,7 +21,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "vaga_id obrigatorio" }, { status: 400 });
     }
 
-    const { data: vaga, error: vagaError } = await supabase
+    const admin = createSupabaseAdminClient();
+    const { data: vaga, error: vagaError } = await admin
       .from("vagas")
       .select("id, empresa_id")
       .eq("id", vaga_id)
@@ -29,8 +32,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Vaga nao encontrada para este usuario" }, { status: 404 });
     }
 
+    // Check quota before creating batch
+    const { data: empresa } = await admin.from('empresas').select('id,plano,limite_pdfs_mes').eq('id', vaga.empresa_id).single();
+
+    const planLimit = getPdfLimitFromPlan(empresa?.plano, empresa || undefined) ?? empresa?.limite_pdfs_mes ?? 10;
+
+    if (planLimit !== null) {
+      const currentMonth = new Date().toISOString().slice(0,7);
+      const { count } = await admin.from('pdf_exports').select('id', { count: 'exact', head: true }).eq('empresa_id', vaga.empresa_id).eq('mes_referencia', currentMonth);
+      const used = count ?? 0;
+      if (used >= planLimit) {
+        return NextResponse.json({ error: 'Limite de uploads/exports de PDFs atingido', limit: planLimit, used, mes: currentMonth, upgrade_message: `Você atingiu o limite de ${planLimit} PDFs neste mês. Faça upgrade para processar mais.` }, { status: 403 });
+      }
+    }
+
     const batchId = crypto.randomUUID();
-    const { error: batchError } = await supabase.from("pdf_batches").insert({
+    const { error: batchError } = await admin.from("pdf_batches").insert({
       id: batchId,
       vaga_id,
       empresa_id: vaga.empresa_id,
@@ -50,7 +67,7 @@ export async function POST(req: Request) {
       file_url: path,
     }));
 
-    const { error: candError } = await supabase.from("pdf_candidates").insert(candidatesData);
+    const { error: candError } = await admin.from("pdf_candidates").insert(candidatesData);
 
     if (candError) {
       return NextResponse.json({ error: "Erro na insercao de dados" }, { status: 500 });
@@ -67,7 +84,8 @@ export async function POST(req: Request) {
       },
     }));
 
-    await pdfQueue.addBulk(jobsToQueue);
+    const queue = await getPdfQueue();
+    await queue.addBulk(jobsToQueue);
 
     return NextResponse.json({
       queued: jobsToQueue.length,

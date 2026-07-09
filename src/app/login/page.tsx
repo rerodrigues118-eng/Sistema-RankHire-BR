@@ -6,7 +6,14 @@ export const metadata = {
   description: "Acesse sua conta para continuar recrutando com IA.",
 };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ reset?: string }>;
+}) {
+  const resolvedParams = await searchParams;
+  const showResetSuccess = resolvedParams?.reset === "1";
+
   return (
     <div className="landing-dark min-h-screen flex bg-[#030307] font-sans text-white relative overflow-hidden select-none">
       {/* Background glowing backlights */}
@@ -44,6 +51,12 @@ export default async function LoginPage() {
             <h2 className="text-2xl font-bold text-white tracking-tight mb-2">Bem-vindo de volta</h2>
             <p className="text-zinc-500 text-xs">Acesse sua conta para continuar gerenciando suas vagas.</p>
           </div>
+
+          {showResetSuccess ? (
+            <div className="mb-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+              Sua senha foi redefinida com sucesso. Faça login novamente.
+            </div>
+          ) : null}
 
           <LoginForm />
         </div>

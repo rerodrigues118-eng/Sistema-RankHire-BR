@@ -424,10 +424,10 @@ function AgentCandidateCard({
 
 export default function AgenteIAPage() {
   const [activeTab, setActiveTab] = useState<AgentTab>("criar");
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [candidates, setCandidates] = useState<AgentCandidate[]>([]);
-  const [notifications, setNotifications] = useState<AgentNotification[]>([]);
+  const [jobs, setJobs] = useState<Job[]>(seedJobs);
+  const [agents, setAgents] = useState<Agent[]>(seedAgents);
+  const [candidates, setCandidates] = useState<AgentCandidate[]>(seedCandidates);
+  const [notifications, setNotifications] = useState<AgentNotification[]>(seedNotifications);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);

@@ -16,13 +16,6 @@ export function generateSessionToken() {
   return randomHex(32);
 }
 
-function generateTokenId() {
-  if (typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return randomHex(12);
-}
-
 export function getSessionExpiration(): string {
   return new Date(Date.now() + SESSION_DURATION_MS).toISOString();
 }

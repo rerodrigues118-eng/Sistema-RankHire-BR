@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  X,
 } from "lucide-react";
 
 interface PdfCriterion {
@@ -112,13 +111,7 @@ export default function PdfRankerPage({
   }, []);
 
   /* ── Load criteria when switching to Funil tab ── */
-  useEffect(() => {
-    if (activeTab === "funil" && activeJob?.id) {
-      fetchCriteria();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, activeJob?.id]);
-  const fetchCriteria = async () => {
+  async function fetchCriteria() {
     setIsLoadingCriteria(true);
     try {
       const res = await fetch(`/api/vagas/${activeJob.id}/criteria`);
@@ -139,7 +132,17 @@ export default function PdfRankerPage({
     } finally {
       setIsLoadingCriteria(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    if (activeTab === "funil" && activeJob?.id) {
+      (async () => {
+        await fetchCriteria();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, activeJob?.id]);
+  
 
   const handleAddCriteria = (nome: string = "", peso: number = 3) => {
     setCriteria((prev) => [

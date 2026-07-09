@@ -23,6 +23,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const update = {
       titulo: body.title,
+      title: body.title,
       area: body.area,
       tipo_contrato: body.contract,
       localizacao: body.location,
@@ -33,7 +34,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const cleanUpdate = Object.fromEntries(Object.entries(update).filter(([, value]) => value !== undefined));
 
-    const { data, error } = await supabase
+    const admin = await import('@/lib/admin').then(m => m.createSupabaseAdminClient());
+    const { data, error } = await admin
       .from("vagas")
       .update(cleanUpdate)
       .eq("id", id)

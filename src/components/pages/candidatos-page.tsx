@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import React, { useState, useMemo } from "react";
 import type { Candidate } from "@/lib/types";
 import { Search, SlidersHorizontal, Filter, MoreHorizontal, ExternalLink, MessageCircle } from "lucide-react";
@@ -168,9 +170,9 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
                       <button className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-[#06D6A0] hover:bg-[#F0FDF9] transition-colors">
                         <MessageCircle className="w-4 h-4" />
                       </button>
-                      <a href={c.linkedinUrl !== "#" ? c.linkedinUrl : undefined} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-[#06D6A0] hover:bg-[#F0FDF9] transition-colors">
+                      <Link href={c.linkedinUrl && c.linkedinUrl !== "#" ? c.linkedinUrl : "#"} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-[#06D6A0] hover:bg-[#F0FDF9] transition-colors">
                         <ExternalLink className="w-4 h-4" />
-                      </a>
+                      </Link>
                       <button className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] transition-colors">
                         <MoreHorizontal className="w-4 h-4" />
                       </button>

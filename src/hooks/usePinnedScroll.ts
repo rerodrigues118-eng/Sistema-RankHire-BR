@@ -19,13 +19,19 @@ interface UsePinnedScrollReturn {
  * @param containerRef - Ref do container principal (hero section)
  */
 const usePinnedScroll = (containerRef?: RefObject<HTMLDivElement>): UsePinnedScrollReturn => {
-  const heroRef = useRef<HTMLDivElement>(containerRef?.current || null);
+  const heroRef = useRef<HTMLDivElement | null>(null);
   const [frameIndex, setFrameIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [pinProgress, setPinProgress] = useState(0);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(() => {
+    try {
+      return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {
+      return false;
+    }
+  });
   const prefersReducedMotionRef = useRef(prefersReducedMotion);
   const rafRef = useRef<number | null>(null);
 
@@ -44,7 +50,6 @@ const usePinnedScroll = (containerRef?: RefObject<HTMLDivElement>): UsePinnedScr
   // Verificar preferências de acessibilidade
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
     prefersReducedMotionRef.current = mediaQuery.matches;
 
     const handleChange = (e: MediaQueryListEvent) => {

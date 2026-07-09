@@ -1,33 +1,45 @@
+import { requireAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/api";
 import { createSupabaseAdminClient } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-type OnboardingBody =
-  | {
-      step: "company";
-      nome: string;
-      email?: string;
-      cargo?: string;
-      telefone?: string;
-      nomeEmpresa: string;
-      cnpj?: string;
-      tamanho?: string;
-      segmento?: string;
-      termosAceitos?: boolean;
-      termosVersao?: string;
-      consentimentoMarketing?: boolean;
-    }
-  | {
-      step: "job";
-      jobTitle: string;
-      area?: string;
-      contract?: string;
-      location?: string;
-      briefing?: string;
-    };
+import { z } from "zod";
+
+const OnboardingCompanySchema = z.object({
+  step: z.literal("company"),
+  nome: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  cargo: z.string().optional(),
+  telefone: z.string().optional(),
+  nomeEmpresa: z.string().min(1, "Nome da empresa é obrigatório."),
+  cnpj: z.string().optional(),
+  tamanho: z.string().optional(),
+  segmento: z.string().optional(),
+  termosAceitos: z.boolean().optional(),
+  termosVersao: z.string().optional(),
+  consentimentoMarketing: z.boolean().optional(),
+});
+
+const OnboardingJobSchema = z.object({
+  step: z.literal("job"),
+  jobTitle: z.string().min(1, "Titulo da vaga e obrigatorio"),
+  area: z.string().optional(),
+  contract: z.string().optional(),
+  location: z.string().optional(),
+  briefing: z.string().optional(),
+});
+
+const OnboardingSchema = z.discriminatedUnion("step", [
+  OnboardingCompanySchema,
+  OnboardingJobSchema,
+]);
+
+type OnboardingBody = z.infer<typeof OnboardingSchema>;
 
 export async function POST(req: Request) {
+  const { userId, supabase } = await requireAuth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
   try {
     const supabase = await createClient();
     const {
@@ -39,22 +51,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = (await req.json()) as OnboardingBody;
+    const jsonBody = await req.json();
+    const parseResult = OnboardingSchema.safeParse(jsonBody);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.flatten().formErrors[0] || parseResult.error.issues[0]?.message || "Entrada inválida" }, { status: 400 });
+    }
+    const body = parseResult.data;
     const admin = createSupabaseAdminClient();
 
-    const { data: usuarioAtual } = await admin
+    const { data: usuarioAtual, error: usuarioAtualError } = await admin
       .from("usuarios")
       .select("empresa_id, role")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
+
+    if (usuarioAtualError) {
+      return NextResponse.json({ error: usuarioAtualError.message || "Falha ao carregar usuario" }, { status: 500 });
+    }
 
     if (body.step === "company") {
-      const normalizedPhone = body.telefone?.replace(/\D/g, "");
+      const companyBody = body;
+      const companyName = companyBody.nomeEmpresa.trim();
+
+      const normalizedPhone = companyBody.telefone?.replace(/\D/g, "");
       const telefone = normalizedPhone ? `+${normalizedPhone}` : null;
+      const userName = companyBody.nome?.trim() || user.user_metadata?.nome || null;
+      const userEmail = user.email ? user.email : companyBody.email?.trim() || null;
+      const userCargo = companyBody.cargo?.trim() || user.user_metadata?.cargo || null;
+      const role = usuarioAtual?.role === "superadmin" ? "superadmin" : usuarioAtual?.role || "admin";
 
       const empresaPayload = {
-        nome: body.nomeEmpresa.trim(),
-        cnpj: body.cnpj?.trim() || null,
+        nome: companyName,
+        cnpj: companyBody.cnpj?.trim() || null,
         tamanho: body.tamanho || "1-10",
         segmento: body.segmento || "Tecnologia",
         plano: "trial_starter",
@@ -68,12 +96,12 @@ export async function POST(req: Request) {
             .from("empresas")
             .update(empresaPayload)
             .eq("id", empresaId)
-            .select("id,nome,plano,trial_expires_at")
+            .select("id,nome,cnpj,tamanho,segmento,plano,trial_expires_at")
             .single()
         : await admin
             .from("empresas")
             .insert(empresaPayload)
-            .select("id,nome,plano,trial_expires_at")
+            .select("id,nome,cnpj,tamanho,segmento,plano,trial_expires_at")
             .single();
 
       if (empresaError || !empresa) {
@@ -88,12 +116,12 @@ export async function POST(req: Request) {
         .upsert(
           {
             id: user.id,
-            email: user.email ?? body.email?.trim() ?? null,
-            nome: body.nome.trim(),
+            email: userEmail,
+            nome: userName,
             telefone,
-            cargo: body.cargo?.trim() || null,
+            cargo: userCargo,
             empresa_id: empresa.id,
-            role: usuarioAtual?.role === "superadmin" ? "superadmin" : "admin",
+            role,
             termos_aceitos_em: body.termosAceitos ? new Date().toISOString() : null,
             termos_versao: body.termosAceitos ? (body.termosVersao || "v2.0-2026-06") : null,
             consentimento_marketing: body.consentimentoMarketing ?? false,
@@ -107,29 +135,54 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: userError.message }, { status: 500 });
       }
 
-      return NextResponse.json({ empresa });
+      return NextResponse.json({
+        empresa: {
+          id: empresa.id,
+          nome: empresa.nome,
+          cnpj: empresa.cnpj,
+          tamanho: empresa.tamanho,
+          segmento: empresa.segmento,
+          plano: empresa.plano,
+        },
+      });
     }
 
-    const { data: usuario } = await admin
+    const { data: usuario, error: usuarioError } = await admin
       .from("usuarios")
       .select("empresa_id")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
+
+    if (usuarioError) {
+      return NextResponse.json({ error: usuarioError.message || "Falha ao carregar usuario" }, { status: 500 });
+    }
 
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
 
-    if (!body.jobTitle.trim()) {
-      return NextResponse.json({ error: "Titulo da vaga e obrigatorio" }, { status: 400 });
+    const { data: empresa, error: empresaError } = await admin
+      .from("empresas")
+      .select("id")
+      .eq("id", usuario.empresa_id)
+      .maybeSingle();
+
+    if (empresaError) {
+      return NextResponse.json({ error: empresaError.message || "Falha ao carregar empresa" }, { status: 500 });
     }
+
+    if (!empresa) {
+      return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
+    }
+
+    const jobTitle = body.jobTitle.trim();
 
     const { data: vaga, error: vagaError } = await admin
       .from("vagas")
       .insert({
         empresa_id: usuario.empresa_id,
         criado_por: user.id,
-        titulo: body.jobTitle.trim(),
+        titulo: jobTitle,
         area: body.area || "Geral",
         tipo_contrato: body.contract || "CLT",
         localizacao: body.location || "",

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { PLANOS, getPlanoAtual } from '@/lib/planos';
-import { CreditCard, QrCode, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CreditCard, QrCode, FileText, CheckCircle2 } from 'lucide-react';
 // import PagarMe from '@pagarme/pagarme-js';
 
 type EmpresaPlano = {
@@ -107,7 +107,8 @@ export default function PlanosConfigPage() {
         if (res.ok) {
           setFeedback({ type: 'success', text: 'Assinatura ativada com sucesso.' });
         }
-      } catch (err) {
+      } catch (error) {
+        console.error(error);
         setFeedback({ type: 'error', text: 'Erro ao processar pagamento.' });
       }
     } else if (paymentMethod === 'pix') {
@@ -123,7 +124,8 @@ export default function PlanosConfigPage() {
           setPixCopiacola(data.pix_qr_code);
           setFeedback({ type: 'success', text: 'PIX gerado com sucesso.' });
         }
-      } catch (err) {
+      } catch (error) {
+        console.error(error);
         setFeedback({ type: 'error', text: 'Erro ao gerar PIX.' });
       }
     } else if (paymentMethod === 'boleto') {
@@ -138,7 +140,8 @@ export default function PlanosConfigPage() {
           setBoletoUrl(data.boleto_url);
           setFeedback({ type: 'success', text: 'Boleto gerado com sucesso.' });
         }
-      } catch (err) {
+      } catch (error) {
+        console.error(error);
         setFeedback({ type: 'error', text: 'Erro ao gerar boleto.' });
       }
     }
@@ -156,7 +159,7 @@ export default function PlanosConfigPage() {
       if (res.ok) {
         setFeedback({ type: 'success', text: 'Assinatura cancelada com sucesso.' });
       }
-    } catch (err) {
+    } catch {
       setFeedback({ type: 'error', text: 'Erro ao cancelar assinatura.' });
     }
   }
@@ -242,7 +245,7 @@ export default function PlanosConfigPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    {f.url_boleto && <a href={f.url_boleto} target="_blank" className="text-indigo-600 hover:underline">Ver Boleto</a>}
+                    {f.url_boleto && <Link href={f.url_boleto} target="_blank" className="text-indigo-600 hover:underline">Ver Boleto</Link>}
                   </td>
                 </tr>
               ))}
@@ -343,9 +346,9 @@ export default function PlanosConfigPage() {
                       <h4 className="font-bold text-gray-900">Boleto gerado com sucesso!</h4>
                       <p className="text-sm text-gray-500 mt-1">Vence em 3 dias úteis</p>
                     </div>
-                    <a href={boletoUrl} target="_blank" className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
+                    <Link href={boletoUrl} target="_blank" className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
                       Abrir Boleto (PDF)
-                    </a>
+                    </Link>
                   </div>
                 )}
 

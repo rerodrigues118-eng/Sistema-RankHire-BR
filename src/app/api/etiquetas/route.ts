@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-guard";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function GET() {
   try {
-    const { supabase, userId } = await requireAuth();
+    const { supabase: _supabase, userId } = await requireAuth();
+    const admin = createSupabaseAdminClient();
 
     // get user's empresa_id
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
     const empresaId = usuario?.empresa_id;
 
     if (!empresaId) {
@@ -16,11 +19,11 @@ export async function GET() {
 
     // rate limit: 60 req/min por empresa para buscas de etiquetas
     if (empresaId) {
-      const rl = checkRateLimit(`empresa:${empresaId}:etiquetas`, 60, 60_000);
+      const rl = await checkRateLimit(`empresa:${empresaId}:etiquetas`, 60, 60_000);
       if (!rl.ok) return NextResponse.json({ error: 'Rate limit atingido' }, { status: 429 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("etiquetas")
       .select("id,nome,cor,posicao")
       .eq("empresa_id", empresaId)
@@ -30,7 +33,7 @@ export async function GET() {
 
     return NextResponse.json({ etiquetas: data || [] });
   } catch (err: unknown) {
-    console.error("Erro em GET /api/etiquetas", err);
+    logger.error("Erro em GET /api/etiquetas", err);
     return NextResponse.json({ error: (err as Error).message || "Erro" }, { status: 500 });
   }
 }

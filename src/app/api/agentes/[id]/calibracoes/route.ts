@@ -1,6 +1,7 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type CalibrationInput = {
   linkedinUrl: string;
@@ -10,11 +11,12 @@ type CalibrationInput = {
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
     const { id } = await params;
     const body = (await req.json()) as { calibracoes?: CalibrationInput[] };
 
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
@@ -30,7 +32,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       dados_perfil: calibracao.dadosPerfil || {},
     }));
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("agente_calibracoes")
       .insert(rows)
       .select("id,agente_id,linkedin_url,decisao,created_at");
@@ -39,7 +41,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await admin
       .from("agentes_ia")
       .update({
         calibracoes_realizadas: body.calibracoes.length,

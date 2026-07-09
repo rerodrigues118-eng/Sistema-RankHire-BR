@@ -9,11 +9,12 @@ type Params = {
 
 export async function PUT(req: Request, { params }: Params) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
     const { id: candidateId } = await params;
     const { etiquetaId } = (await req.json()) as { etiquetaId?: string | null };
 
-    const { data: usuario } = await supabase
+    const admin = createSupabaseAdminClient();
+    const { data: usuario } = await admin
       .from("usuarios")
       .select("empresa_id")
       .eq("id", userId)
@@ -22,8 +23,6 @@ export async function PUT(req: Request, { params }: Params) {
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada." }, { status: 404 });
     }
-
-    const admin = createSupabaseAdminClient();
 
     const { data: candidate } = await admin
       .from("pdf_candidates")

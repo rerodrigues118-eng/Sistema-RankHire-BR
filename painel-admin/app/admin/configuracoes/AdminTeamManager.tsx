@@ -1,10 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import styles from "./admin-team-manager.module.css";
 
-export default function AdminTeamManager({ initialAdmins }: { initialAdmins: Array<any> }) {
-  const [admins, setAdmins] = useState(initialAdmins);
+const ADMIN_ROLES = ["readonly", "suporte", "financeiro", "administrador", "superadmin"];
+
+export default function AdminTeamManager({ initialAdmins }: { initialAdmins: Array<AdminUser> }) {
+  const [admins, setAdmins] = useState<AdminUser[]>(initialAdmins);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState("readonly");
 
   async function updateAdmin(adminId: string, patch: { ativo?: boolean; role?: string }) {
     setSavingId(adminId);
@@ -23,50 +31,118 @@ export default function AdminTeamManager({ initialAdmins }: { initialAdmins: Arr
     setAdmins((prev) => prev.map((item) => (item.id === adminId ? { ...item, ...patch } : item)));
   }
 
+  async function createAdmin() {
+    if (!newEmail || !newPassword) {
+      alert("Email e senha são obrigatórios.");
+      return;
+    }
+
+    setCreating(true);
+    const response = await fetch("/api/admin/admin-usuarios", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome: newName, email: newEmail, senha: newPassword, role: newRole }),
+    });
+    setCreating(false);
+
+    if (!response.ok) {
+      const body = await response.json();
+      alert(body.error || "Falha ao criar o administrador.");
+      return;
+    }
+
+    const created = await response.json();
+    setAdmins((prev) => [...prev, created.admin]);
+    setNewName("");
+    setNewEmail("");
+    setNewPassword("");
+    setNewRole("readonly");
+  }
+
   return (
-    <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 20, padding: 24, marginTop: 24 }}>
-      <h2>Equipe de administração</h2>
-      <div style={{ overflowX: "auto", marginTop: 16 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead style={{ color: "#8b949e" }}>
-            <tr>
-              <th style={{ textAlign: "left", padding: 12 }}>Nome</th>
-              <th style={{ textAlign: "left", padding: 12 }}>Email</th>
-              <th style={{ textAlign: "left", padding: 12 }}>Role</th>
-              <th style={{ textAlign: "left", padding: 12 }}>Ativo</th>
-              <th style={{ textAlign: "left", padding: 12 }}>Ações</th>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div>
+          <h2 className={styles.title}>Equipe de administração</h2>
+          <p style={{ color: "#8b949e", margin: "8px 0 0" }}>Crie e gerencie os administradores do painel.</p>
+        </div>
+      </div>
+
+      <div className={styles.formRow}>
+        <input
+          className={`${styles.input}`}
+          value={newName}
+          onChange={(event) => setNewName(event.target.value)}
+          placeholder="Nome"
+        />
+        <input
+          className={`${styles.input}`}
+          value={newEmail}
+          onChange={(event) => setNewEmail(event.target.value)}
+          placeholder="Email"
+          type="email"
+        />
+        <input
+          className={`${styles.input}`}
+          value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)}
+          placeholder="Senha"
+          type="password"
+        />
+        <select className={styles.select} value={newRole} onChange={(event) => setNewRole(event.target.value)}>
+          {ADMIN_ROLES.map((role) => (
+            <option key={role} value={role}>
+              {role}
+            </option>
+          ))}
+        </select>
+        <button className={styles.button} onClick={createAdmin} disabled={creating}>
+          {creating ? "Criando..." : "Criar administrador"}
+        </button>
+      </div>
+
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead className={styles.thead}>
+            <tr className={styles.tr}>
+              <th className={styles.th}>Nome</th>
+              <th className={styles.th}>Email</th>
+              <th className={styles.th}>Role</th>
+              <th className={styles.th}>Ativo</th>
+              <th className={styles.th}>Ações</th>
             </tr>
           </thead>
           <tbody>
             {admins.map((admin) => (
-              <tr key={admin.id} style={{ borderTop: "1px solid #23272b" }}>
-                <td style={{ padding: 12 }}>{admin.nome || "—"}</td>
-                <td style={{ padding: 12 }}>{admin.email || "—"}</td>
-                <td style={{ padding: 12 }}>
+              <tr key={admin.id} className={styles.tr}>
+                <td className={styles.td}>{admin.nome || "—"}</td>
+                <td className={styles.td}>{admin.email || "—"}</td>
+                <td className={styles.td}>
                   <select
                     value={admin.role}
                     onChange={(event) => updateAdmin(admin.id, { role: event.target.value })}
                     disabled={savingId === admin.id}
-                    style={{ width: "100%", padding: 8, borderRadius: 10, background: "#0d1117", color: "#e6edf3", border: "1px solid #30363d" }}
+                    className={styles.select}
                   >
-                    <option value="readonly">readonly</option>
-                    <option value="suporte">suporte</option>
-                    <option value="financeiro">financeiro</option>
-                    <option value="administrador">administrador</option>
-                    <option value="superadmin">superadmin</option>
+                    {ADMIN_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
                   </select>
                 </td>
-                <td style={{ padding: 12 }}>
+                <td className={styles.td}>
                   <button
                     disabled={savingId === admin.id}
                     onClick={() => updateAdmin(admin.id, { ativo: !admin.ativo })}
-                    style={{ background: admin.ativo ? "#238636" : "#8b949e", border: "none", color: "#fff", padding: "8px 12px", borderRadius: 10, cursor: "pointer" }}
+                    className={styles.actionButton}
+                    style={{ background: admin.ativo ? "#238636" : "#8b949e", color: "#fff" }}
                   >
                     {admin.ativo ? "Ativo" : "Inativo"}
                   </button>
                 </td>
-                <td style={{ padding: 12 }}>
-                  <span style={{ color: "#8b949e", fontSize: 13 }}>{savingId === admin.id ? "Atualizando..." : "Pronto"}</span>
+                <td className={styles.td}>
+                  <span className={styles.statusTag}>{savingId === admin.id ? "Atualizando..." : "Pronto"}</span>
                 </td>
               </tr>
             ))}

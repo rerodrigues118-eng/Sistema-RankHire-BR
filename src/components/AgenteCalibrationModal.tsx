@@ -44,7 +44,7 @@ export default function AgenteCalibrationModal({ agenteName, onComplete, onClose
     }
   ];
 
-  const handleAction = (action: 'approve' | 'reject' | 'skip') => {
+  const handleAction = (action: string) => {
     if (currentIndex < perfis.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
@@ -110,7 +110,7 @@ export default function AgenteCalibrationModal({ agenteName, onComplete, onClose
             </div>
 
             <p className="text-[14px] text-[#4B5563] italic max-w-sm mx-auto bg-[#F3F4F6] p-3 rounded-lg">
-              "{perfil.resumo}"
+              &quot;{perfil.resumo}&quot;
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-2 pt-2">

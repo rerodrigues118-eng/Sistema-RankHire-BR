@@ -5,6 +5,7 @@ export type EmpresaSimples = {
   plano: string;
   subscription_status: string;
   trial_expires_at: string;
+  limite_pdfs_mes?: number;
 };
 
 export interface PlanoInfo {
@@ -85,4 +86,34 @@ export function podeLinkedIn(empresa: EmpresaSimples): boolean {
   const planoKey = empresa.plano as keyof typeof PLANOS;
   const plano = PLANOS[planoKey] || PLANOS.trial;
   return !plano.linkedin_bloqueado && empresa.subscription_status === 'active';
+}
+
+// Return PDF export/upload limit for a given company plan key or empresa object.
+export function getPdfLimitFromPlan(planKey?: string | null, empresa?: Partial<EmpresaSimples>): number | null {
+  // Normalize known external plan keys
+  const mapping: Record<string, string> = {
+    'trial_starter': 'trial',
+    'profissional': 'starter',
+    'enterprise': 'pro',
+    'superadmin': 'agencia',
+    'admin': 'agencia',
+  };
+
+  if (!planKey && empresa?.plano) planKey = empresa.plano;
+
+  const normalized = planKey ? (mapping[planKey] ?? planKey) : undefined;
+
+  if (!normalized) {
+    // fallback to empresa limit or default 10
+    return empresa?.limite_pdfs_mes ?? 10;
+  }
+
+  // Known named plans
+  if (normalized === 'trial') return 10;
+  if (normalized === 'starter') return 100;
+  if (normalized === 'pro') return 500;
+  if (normalized === 'agencia') return null; // effectively unlimited
+
+  // fallback
+  return empresa?.limite_pdfs_mes ?? 10;
 }

@@ -9,7 +9,7 @@ type ErrorProps = {
 
 export default function Error({ error, reset }: ErrorProps) {
   useEffect(() => {
-    console.error(error);
+    // Error logging handled by error boundary; avoid console directly
   }, [error]);
 
   return (

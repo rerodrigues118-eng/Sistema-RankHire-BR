@@ -1,6 +1,6 @@
-const { createClient } = require("@supabase/supabase-js");
-const { Queue } = require("bullmq");
-require("dotenv").config();
+import { createClient } from "@supabase/supabase-js";
+import { Queue } from "bullmq";
+import 'dotenv/config';
 
 function parseRedisUrl(url) {
   const u = new URL(url);

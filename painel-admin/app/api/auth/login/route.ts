@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { verifyPassword } from "@/lib/auth";
 import { incrementLoginAttempt, isIpBlocked, resetLoginAttempts } from "@/lib/login-attempts";
 import { logAdminAction } from "@/lib/log";
+import { createAdminSession, getSessionCookieName } from "@/lib/session";
 
 export async function POST(request: Request) {
   try {
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     const admin = createSupabaseAdminClient();
     const { data: user, error } = await admin
       .from("admin_usuarios")
-      .select("id,nome,email,senha_hash,role,ativo,totp_enabled,totp_secret")
+      .select("id,nome,email,senha_hash,role,ativo")
       .eq("email", email)
       .single();
 
@@ -59,22 +60,28 @@ export async function POST(request: Request) {
 
     await resetLoginAttempts(ip);
 
-    const requires2fa = Boolean(user.totp_enabled);
-    const needsSetup = !user.totp_enabled;
-    await logAdminAction({
-      adminId: user.id,
-      acao: "login_tentativa",
-      nivel: "INFO",
-      ipAddress: ip,
-      dadosDepois: { requires2fa, needsSetup },
+    const userAgent = request.headers.get("user-agent") || "unknown";
+    const sessionToken = await createAdminSession(user.id, ip, userAgent);
+    const response = NextResponse.json({ success: true });
+
+    response.cookies.set({
+      name: getSessionCookieName(),
+      value: sessionToken,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      sameSite: "lax",
+      maxAge: 8 * 60 * 60,
     });
 
-    return NextResponse.json({
+    await logAdminAction({
       adminId: user.id,
-      requires2fa,
-      needsSetup,
-      email: user.email,
+      acao: "login_admin",
+      nivel: "INFO",
+      ipAddress: ip,
     });
+
+    return response;
   } catch (error: unknown) {
     return handleApiError(error);
   }

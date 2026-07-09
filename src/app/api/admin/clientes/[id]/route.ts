@@ -1,3 +1,4 @@
+import { requireAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/api";
 import { logAdminAction, requireAdminContext } from "@/lib/admin";
 import { NextResponse } from "next/server";
@@ -50,6 +51,8 @@ const camposPermitidos = [
 ] as const;
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { userId, supabase } = await requireAuth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
   try {
     const { admin } = await requireAdminContext();
     const { id } = await params;
@@ -101,6 +104,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { userId, supabase } = await requireAuth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
   try {
     const { userId, admin } = await requireAdminContext();
     const { id } = await params;
@@ -151,6 +156,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { userId, supabase } = await requireAuth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
   try {
     const { userId, admin } = await requireAdminContext();
     const { id } = await params;

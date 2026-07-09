@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  X, ExternalLink, Star, CheckCircle2, Eye, EyeOff,
+  X, ExternalLink, Star, CheckCircle2, EyeOff,
   ChevronDown, ChevronUp, Briefcase, GraduationCap, 
   Languages, Sparkles, Building2, MapPin
 } from "lucide-react";
@@ -112,7 +112,6 @@ function formatPeriod(inicio: string, fim: string | null): string {
 
 export default function LinkedinPreviewDrawer({ profile, onClose, onShortlist, onAddPipeline, onHide }: LinkedinPreviewDrawerProps) {
   const [aboutExpanded, setAboutExpanded] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Marca o perfil como visto ao abrir
   useEffect(() => {
@@ -127,7 +126,7 @@ export default function LinkedinPreviewDrawer({ profile, onClose, onShortlist, o
         empresa: profile.company,
       })
     }).catch(() => {});
-  }, [profile?.linkedinUrl]);
+  }, [profile]);
 
   if (!profile) return null;
 

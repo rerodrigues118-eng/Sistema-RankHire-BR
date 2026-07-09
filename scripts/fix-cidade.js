@@ -1,5 +1,5 @@
-require("dotenv").config();
-const { createClient } = require("@supabase/supabase-js");
+import 'dotenv/config';
+import { createClient } from "@supabase/supabase-js";
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,

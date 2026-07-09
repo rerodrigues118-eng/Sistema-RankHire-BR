@@ -1,17 +1,7 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
-import { redisConnection } from "@/lib/queue";
-import { Queue } from "bullmq";
+import { getRedisConnection } from "@/lib/queue";
 import { NextResponse } from "next/server";
-
-let enrichmentQueue: any;
-if (redisConnection) {
-  enrichmentQueue = new Queue("linkedin-enrichment", { connection: redisConnection });
-} else {
-  enrichmentQueue = {
-    add: async () => { throw new Error("Redis nao configurado; fila indisponivel em ambiente de build"); },
-  } as unknown as Queue;
-}
 
 export async function POST(req: Request) {
   try {
@@ -29,6 +19,17 @@ export async function POST(req: Request) {
       );
     }
 
+    const conn = getRedisConnection();
+    if (!conn) {
+      return NextResponse.json(
+        { error: "Serviço de fila não disponível (Redis não configurado)" },
+        { status: 503 },
+      );
+    }
+
+    const { Queue } = await import("bullmq");
+    const enrichmentQueue = new Queue("linkedin-enrichment", { connection: conn as any });
+
     const batchId = `apify-${Date.now()}`;
 
     await enrichmentQueue.add(
@@ -45,8 +46,11 @@ export async function POST(req: Request) {
       },
     );
 
+    await enrichmentQueue.close();
+
     return NextResponse.json({ success: true, batchId, message: "Enriquecimento na fila." });
   } catch (error: unknown) {
     return handleApiError(error);
   }
 }
+

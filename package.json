@@ -2,6 +2,9 @@
   "name": "rankhire-br",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "painel-admin"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,7 +12,9 @@
     "worker": "tsx src/worker/pdf-worker.ts",
     "worker:linkedin": "tsx src/worker/linkedin-worker.ts",
     "dev:all": "concurrently \"npm run dev\" \"npm run worker\"",
+    "dev:admin": "npm --workspace painel-admin run dev",
     "diagnose": "tsx -r dotenv/config scripts/diagnose.ts",
+    "check": "node scripts/check-health.mjs",
     "lint": "eslint"
   },
   "dependencies": {
@@ -19,6 +24,8 @@
     "@radix-ui/react-slot": "^1.2.5",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "bullmq": "^5.78.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -32,11 +39,12 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^26.1.1",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -47,6 +55,6 @@
     "shadcn-ui": "^0.9.5",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5.5.4"
   }
 }

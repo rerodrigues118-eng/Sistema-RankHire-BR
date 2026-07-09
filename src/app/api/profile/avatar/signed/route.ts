@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/api';
 import { requireAuth } from '@/lib/auth-guard';
 import { createSupabaseAdminClient } from '@/lib/admin';
+import { logger } from '@/lib/logger';
 
 type Body = { filename?: string; contentType?: string; size?: number };
 
@@ -31,16 +32,16 @@ export async function POST(req: Request) {
     const path = `${userId}.${ext}`;
 
     // create signed upload URL
-    // @ts-ignore - supabase client typing variations
-    const signedResult = await (admin.storage.from('avatars') as any).createSignedUploadUrl(path);
+    // @ts-expect-error - supabase client typing variations
+    const signedResult = await (admin.storage.from('avatars') as Record<string, unknown>).createSignedUploadUrl(path);
 
     if (!signedResult) {
-      console.error('createSignedUploadUrl returned empty result', { path });
+      logger.error('createSignedUploadUrl returned empty result', { path });
       return NextResponse.json({ error: 'Resposta invalida ao criar URL assinado.' }, { status: 500 });
     }
 
     if (signedResult?.error) {
-      console.error('createSignedUploadUrl error', signedResult.error);
+      logger.error('createSignedUploadUrl error', signedResult.error);
       const msg = signedResult.error?.message || JSON.stringify(signedResult.error || {});
       return NextResponse.json({ error: msg }, { status: 500 });
     }
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ signedUrl, token, publicUrl, path });
   } catch (err: unknown) {
-    console.error('signed route error', err);
+    logger.error('signed route error', err);
     return handleApiError(err);
   }
 }

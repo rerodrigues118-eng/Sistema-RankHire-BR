@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/api';
 import { requireAuth } from '@/lib/auth-guard';
 import { createSupabaseAdminClient } from '@/lib/admin';
+import { logger } from '@/lib/logger';
 
 type Body = { filename?: string; contentType?: string; data?: string };
 
@@ -20,10 +21,10 @@ export async function POST(req: Request) {
     const { error: uploadError } = await admin.storage.from('avatars').upload(path, buffer, {
       contentType: body.contentType || 'image/jpeg',
       upsert: true,
-    } as any);
+    } as Record<string, unknown>);
 
     if (uploadError) {
-      console.error('server upload error', uploadError);
+      logger.error('server upload error', uploadError);
       return NextResponse.json({ error: uploadError.message || 'Erro ao enviar arquivo.' }, { status: 500 });
     }
 
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     const publicUrl = publicRes?.data?.publicUrl;
 
     if (!publicUrl) {
-      console.error('no public url', publicRes);
+      logger.error('no public url', publicRes);
       return NextResponse.json({ error: 'Nao foi possivel obter a URL publica.' }, { status: 500 });
     }
 

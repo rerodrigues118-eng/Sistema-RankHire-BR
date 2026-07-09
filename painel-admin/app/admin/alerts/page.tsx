@@ -1,8 +1,22 @@
 import { createSupabaseAdminClient } from '@/lib/supabase';
 
+type AlertItem = {
+  id: string;
+  tipo: string;
+  nivel: string;
+  descricao?: string | null;
+  ip_origem?: string | null;
+  resolvido?: boolean | null;
+  created_at: string;
+};
+
 export default async function AlertsPage() {
   const supabase = createSupabaseAdminClient();
-  const { data } = await supabase.from('alertas_seguranca').select('id,tipo,nivel,descricao,ip_origem,empresa_id,resolvido,created_at').order('created_at', { ascending: false }).limit(50);
+  const { data } = await supabase
+    .from<AlertItem>('alertas_seguranca')
+    .select('id,tipo,nivel,descricao,ip_origem,empresa_id,resolvido,created_at')
+    .order('created_at', { ascending: false })
+    .limit(50);
 
   return (
     <main style={{ padding: 24 }}>
@@ -13,7 +27,7 @@ export default async function AlertsPage() {
             <tr><th>Data</th><th>Tipo</th><th>Nível</th><th>Descrição</th><th>IP</th><th>Resolvido</th></tr>
           </thead>
           <tbody>
-            {(data || []).map((item: any) => (
+            {(data || []).map((item) => (
               <tr key={item.id} style={{ borderTop: '1px solid #23272b' }}>
                 <td style={{ padding: 10 }}>{new Date(item.created_at).toLocaleString()}</td>
                 <td style={{ padding: 10 }}>{item.tipo}</td>

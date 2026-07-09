@@ -1,8 +1,11 @@
+import { requireAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/api";
 import { requireAdminContext } from "@/lib/admin";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
+  const { userId, supabase } = await requireAuth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
   try {
     const { admin } = await requireAdminContext();
     const { searchParams } = new URL(req.url);

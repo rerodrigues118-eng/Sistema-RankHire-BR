@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import styles from "./page.module.css";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -27,16 +28,6 @@ export default function LoginPage() {
         return;
       }
 
-      if (body.requires2fa) {
-        window.location.href = "/login/2fa?adminId=" + encodeURIComponent(body.adminId);
-        return;
-      }
-
-      if (body.needsSetup) {
-        window.location.href = "/login/setup-2fa?adminId=" + encodeURIComponent(body.adminId);
-        return;
-      }
-
       setSuccess(true);
       window.location.href = "/admin/overview";
     } finally {
@@ -45,48 +36,62 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="page-shell">
-      <section className="card">
-        <div>
-          <p className="status-chip">RankHire BR · Admin</p>
-          <h1>Entrar no painel administrativo</h1>
-          <p>Login exclusivo para administradores. Use suas credenciais e 2FA.</p>
+    <main className={styles.shell}>
+      <div className={styles.grid}>
+        <div className={styles.copy}>
+          <span className={styles.badge}>RankHire BR · Admin</span>
+          <h1>Bem-vindo de volta</h1>
+          <p>Faça login com sua conta administrativa para acessar o painel do RankHire.</p>
+
+          <div className={styles.infoPanel}>
+            <p>Login seguro com e-mail e senha.</p>
+            <p>Mantenha seus acessos atualizados e utilize apenas dispositivos confiáveis.</p>
+          </div>
         </div>
 
-        {error ? <div className="alert">{error}</div> : null}
-
-        <form onSubmit={handleSubmit}>
-          <div className="field">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              autoComplete="email"
-            />
+        <section className={styles.loginCard}>
+          <div className={styles.cardHeader}>
+            <p className={styles.title}>Entrar no painel administrativo</p>
+            <p className={styles.subtitle}>Acesse sua conta com e-mail e senha.</p>
           </div>
 
-          <div className="field">
-            <label htmlFor="password">Senha</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
+          {error ? <div className={styles.alert}>{error}</div> : null}
 
-          <button type="submit" className="button" disabled={loading}>
-            {loading ? "Verificando..." : "Entrar"}
-          </button>
-        </form>
+          <form className={styles.form} onSubmit={handleSubmit}>
+            <div className={styles.field}>
+              <label htmlFor="email">Email corporativo</label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="seu@empresa.com.br"
+                required
+                autoComplete="email"
+              />
+            </div>
 
-        {success ? <p className="footer-text">Login realizado. Redirecionando...</p> : null}
-      </section>
+            <div className={styles.field}>
+              <label htmlFor="password">Senha</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+              />
+            </div>
+
+            <button className={styles.submit} type="submit" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar na plataforma"}
+            </button>
+          </form>
+
+          {success ? <p className={styles.footer}>Login realizado. Redirecionando...</p> : null}
+        </section>
+      </div>
     </main>
   );
 }

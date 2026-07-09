@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 require("dotenv").config();
 const { createClient } = require("@supabase/supabase-js");
 const bcrypt = require("bcryptjs");

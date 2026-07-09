@@ -1,6 +1,6 @@
 import { fetchWithTimeout } from "../lib/api";
 import { callAI } from "../lib/ai-client";
-import { redisConnection } from "../lib/queue";
+import { getRedisConnection } from "../lib/queue";
 import { buildScoringPrompt } from "../lib/scoring-prompt";
 import { createClient } from "@supabase/supabase-js";
 import { Job, Worker } from "bullmq";
@@ -126,6 +126,9 @@ async function processLinkedinJob(job: Job) {
   return { success: true, score: result.score_final };
 }
 
-new Worker("linkedin-enrichment", processLinkedinJob, {
-  connection: redisConnection,
-});
+const linkedinConn = getRedisConnection();
+if (linkedinConn) {
+  new Worker("linkedin-enrichment", processLinkedinJob, {
+    connection: linkedinConn as any,
+  });
+}

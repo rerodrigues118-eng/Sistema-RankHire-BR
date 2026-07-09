@@ -24,7 +24,7 @@ async function diagnostico() {
     console.log('  Redis: ✅ conectado')
     
     // Verifica jobs na fila
-    const queue = new Queue('pdf-processing', { connection: redis })
+    const queue = new Queue('pdf-processing', { connection: redis as any })
     const waiting = await queue.getWaiting()
     const active = await queue.getActive()
     const failed = await queue.getFailed()
@@ -49,8 +49,9 @@ async function diagnostico() {
     }
     
     await redis.quit()
-  } catch (err: any) {
-    console.log('  Redis: ❌ ERRO -', err.message)
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.log('  Redis: ❌ ERRO -', errMsg)
   }
 
   // Teste 3: Supabase
@@ -66,11 +67,17 @@ async function diagnostico() {
       console.log('  Supabase: ❌ ERRO -', error.message)
     } else {
       console.log('  Supabase: ✅ conectado')
-      console.log(`  Candidatos encontrados: ${data.length}`)
-      data.forEach(c => console.log(`    ID: ${c.id}, status: ${c.status}`))
+      const candidates = data as Array<Record<string, unknown>> | null
+      console.log('  Candidatos encontrados:', candidates?.length ?? 0)
+      for (const candidate of candidates ?? []) {
+        const id = candidate && typeof candidate === 'object' && 'id' in candidate ? String(candidate['id']) : 'N/A'
+        const status = candidate && typeof candidate === 'object' && 'status' in candidate ? String(candidate['status']) : 'N/A'
+        console.log('    ID:', id, 'status:', status)
+      }
     }
-  } catch (err: any) {
-    console.log('  Supabase: ❌ ERRO -', err.message)
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.log('  Supabase: ❌ ERRO -', errMsg)
   }
 
   // Teste 4: Groq API
@@ -85,8 +92,9 @@ async function diagnostico() {
       const text = await res.text()
       console.log('  Detalhe:', text.slice(0, 200))
     }
-  } catch (err: any) {
-    console.log('  Groq: ❌ ERRO -', err.message)
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.log('  Groq: ❌ ERRO -', errMsg)
   }
 
   console.log('\n=== FIM DO DIAGNÓSTICO ===\n')

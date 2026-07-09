@@ -30,19 +30,33 @@ async function getEmpresaId(userId: string) {
 export async function GET() {
   try {
     const { userId } = await requireAuth();
-    const { admin, empresaId } = await getEmpresaId(userId);
 
+    // Buscar empresa_id do usuário
+    const admin = createSupabaseAdminClient();
     const { data, error } = await admin
+      .from("usuarios")
+      .select("empresa_id")
+      .eq("id", userId)
+      .single();
+
+    // Se o usuário não tem empresa_id ainda, retornar lista vazia (estado válido)
+    if (error || !data?.empresa_id) {
+      return NextResponse.json({ labels: [] });
+    }
+
+    const empresaId = data.empresa_id as string;
+
+    const { data: labelData, error: labelError } = await admin
       .from("etiquetas")
       .select("id,nome,cor,posicao")
       .eq("empresa_id", empresaId)
       .order("posicao", { ascending: true });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (labelError) {
+      return NextResponse.json({ error: labelError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ labels: data || [] });
+    return NextResponse.json({ labels: labelData || [] });
   } catch (error: unknown) {
     return handleApiError(error);
   }

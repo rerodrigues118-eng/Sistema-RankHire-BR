@@ -1,14 +1,16 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
     const { id: vagaId } = await params;
 
     // Check if the vacancy belongs to the user's company
-    const { data: usuario } = await supabase
+    const { data: usuario } = await admin
       .from("usuarios")
       .select("empresa_id")
       .eq("id", userId)
@@ -18,7 +20,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Empresa não encontrada" }, { status: 404 });
     }
 
-    const { data: vaga } = await supabase
+    const { data: vaga } = await admin
       .from("vagas")
       .select("id")
       .eq("id", vagaId)
@@ -29,7 +31,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Vaga não encontrada" }, { status: 404 });
     }
 
-    const { data: rawCriteria, error } = await supabase
+    const { data: rawCriteria, error } = await admin
       .from("criteria")
       .select("id, nome, peso, description, weight")
       .eq("vaga_id", vagaId)
@@ -54,7 +56,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
     const { id: vagaId } = await params;
     const body = (await req.json()) as {
       criteria: { id?: string; nome: string; peso: number }[];
@@ -65,7 +68,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     // Check if the vacancy belongs to the user's company
-    const { data: usuario } = await supabase
+    const { data: usuario } = await admin
       .from("usuarios")
       .select("empresa_id")
       .eq("id", userId)
@@ -75,7 +78,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Empresa não encontrada" }, { status: 404 });
     }
 
-    const { data: vaga } = await supabase
+    const { data: vaga } = await admin
       .from("vagas")
       .select("id")
       .eq("id", vagaId)
@@ -87,7 +90,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     // Fetch existing criteria
-    const { data: existingCriteria } = await supabase
+    const { data: existingCriteria } = await admin
       .from("criteria")
       .select("id")
       .eq("vaga_id", vagaId);
@@ -98,18 +101,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // Identify criteria to delete
     const idsToDelete = existingIds.filter((id) => !newIds.includes(id));
 
+    // Delete removed criteria
     if (idsToDelete.length > 0) {
       // 1. Delete evaluations for removed criteria
-      await supabase
+      await admin
         .from("candidate_evaluations")
         .delete()
         .in("criteria_id", idsToDelete);
 
       // 2. Delete criteria
-      await supabase
+      const { error: deleteError } = await admin
         .from("criteria")
         .delete()
         .in("id", idsToDelete);
+
+      if (deleteError) {
+        return NextResponse.json({ error: deleteError.message }, { status: 500 });
+      }
     }
 
     // Insert or update criteria
@@ -119,14 +127,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       if (crit.id) {
         // Update
-        await supabase
+        await admin
           .from("criteria")
           .update({ nome: crit.nome.trim(), peso })
           .eq("id", crit.id)
           .eq("vaga_id", vagaId);
       } else {
         // Insert
-        await supabase
+        await admin
           .from("criteria")
           .insert({
             vaga_id: vagaId,
@@ -138,7 +146,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     // Fetch updated criteria to return
-    const { data: rawUpdated } = await supabase
+    const { data: rawUpdated } = await admin
       .from("criteria")
       .select("id, nome, peso, description, weight")
       .eq("vaga_id", vagaId)

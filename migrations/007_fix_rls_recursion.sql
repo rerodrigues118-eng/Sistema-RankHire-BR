@@ -6,15 +6,36 @@
 -- 1. Adicionar coluna 'shortlist' na tabela 'pdf_candidates' se não existir
 ALTER TABLE public.pdf_candidates ADD COLUMN IF NOT EXISTS shortlist boolean DEFAULT false;
 
+-- NOTE: Review any unused_index warnings manually before removing indexes.
+-- NOTE: Enable leaked-password protection via the Supabase Console security settings, not via SQL.
+
 -- 2. Criar a função SECURITY DEFINER para buscar o empresa_id sem RLS (Bypassa a recursão)
 CREATE OR REPLACE FUNCTION public.get_user_empresa_id()
 RETURNS uuid
 LANGUAGE sql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT empresa_id FROM public.usuarios WHERE id = auth.uid();
 $$;
+
+ALTER FUNCTION public.get_user_empresa_id() SET search_path = 'public, pg_temp';
+
+-- Attempt to move pg_net into public schema; may fail without extension privileges.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_net') THEN
+    BEGIN
+      EXECUTE 'ALTER EXTENSION pg_net SET SCHEMA public';
+    EXCEPTION WHEN insufficient_privilege THEN
+      RAISE NOTICE 'Skipping pg_net schema move: missing extension privileges.';
+    END;
+  END IF;
+END;
+$$;
+
+-- WARNING: If SECURITY DEFINER views exist, drop and recreate them without SECURITY DEFINER.
+--   This can break dependencies; test in staging first.
 
 -- 3. Corrigir a política da tabela 'usuarios'
 DROP POLICY IF EXISTS "Ver usuarios da mesma empresa" ON public.usuarios;

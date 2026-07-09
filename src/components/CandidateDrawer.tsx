@@ -14,6 +14,7 @@ interface CandidateDrawerProps {
   onToggleShortlist: (id: string) => void;
   onMoveCandidate: (id: string, newStatus: KanbanStatus) => void;
   onUpdateCandidate?: (updated: Candidate) => void;
+  onExportSuccess?: () => void;
   quota?: {
     isAdmin: boolean;
     used: number;
@@ -22,7 +23,6 @@ interface CandidateDrawerProps {
     plano: string;
     mes: string;
   } | null;
-  onExportSuccess?: () => void;
 }
 
 type ToastType = "success" | "error";
@@ -118,7 +118,6 @@ export default function CandidateDrawer({
   onToggleShortlist,
   onMoveCandidate,
   onUpdateCandidate,
-  quota,
   onExportSuccess,
 }: CandidateDrawerProps) {
   const [showRawText, setShowRawText] = useState(false);
@@ -230,7 +229,7 @@ export default function CandidateDrawer({
         if (res.ok && mounted) {
           setEtiquetas(data.etiquetas || []);
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -488,7 +487,7 @@ export default function CandidateDrawer({
                         setLocalCandidate(updated);
                         if (onUpdateCandidate) onUpdateCandidate(updated);
                         showToast('success', val ? 'Etiqueta aplicada' : 'Etiqueta removida');
-                      } catch (err) {
+                      } catch {
                         showToast('error', 'Erro de conexão ao salvar etiqueta');
                       }
                     }}
@@ -725,7 +724,7 @@ export default function CandidateDrawer({
                     <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Resumo do Candidato (IA)
                   </span>
                   <p className="text-sm text-gray-700 italic bg-blue-50/40 rounded-xl p-3 border border-blue-100/30 leading-relaxed">
-                    "{localCandidate.aiSummary}"
+                    &quot;{localCandidate.aiSummary}&quot;
                   </p>
                 </div>
               )}

@@ -3,14 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   typescript: {
-    // Ignora erros de checagem de tipos durante o build para evitar bloqueios de CI temporários.
-    // Remover / ajustar depois de corrigir incompatibilidades de dependências (ioredis/bullmq).
-    ignoreBuildErrors: true,
   },
   async headers() {
     const cspHeader = `
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval';
+      style-src 'self' 'unsafe-inline';
       connect-src 'self' https://*.supabase.co https://api.groq.com https://api.deepseek.com https://api.apify.com ws://localhost:* http://localhost:*;
       img-src 'self' data: https:;
       frame-ancestors 'none';

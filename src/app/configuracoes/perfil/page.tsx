@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from 'next/image';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -80,21 +81,26 @@ export default function PerfilConfigPage() {
   }, [nome, profile?.email]);
 
   useEffect(() => {
+    let active = true;
+
     async function load() {
       setLoading(true);
-      const supabase = createClient();
 
-      const [profileRes, labelsRes, sessionRes] = await Promise.all([
+      const [profileRes, labelsRes] = await Promise.all([
         fetch("/api/profile"),
         fetch("/api/profile/labels"),
-        supabase.auth.getSession(),
       ]);
+
+      if (!active) return;
 
       if (profileRes.ok) {
         const data = await profileRes.json();
         setProfile(data.profile);
         setNome(data.profile?.nome || "");
         setCargo(data.profile?.cargo || "");
+        if (data.sessionExpiresAt) {
+          setSessionInfo(`Expira em ${new Date(data.sessionExpiresAt * 1000).toLocaleString("pt-BR")}`);
+        }
       }
 
       if (labelsRes.ok) {
@@ -105,18 +111,20 @@ export default function PerfilConfigPage() {
         }
       }
 
-      const expiresAt = sessionRes.data.session?.expires_at;
-      if (expiresAt) {
-        setSessionInfo(`Expira em ${new Date(expiresAt * 1000).toLocaleString("pt-BR")}`);
+      if (active) {
+        setLoading(false);
       }
-
-      setLoading(false);
     }
 
     load().catch(() => {
+      if (!active) return;
       setFeedback({ type: "error", text: "Nao foi possivel carregar seu perfil." });
       setLoading(false);
     });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function handleSaveProfile() {
@@ -256,7 +264,7 @@ export default function PerfilConfigPage() {
             <div className="flex flex-col items-center">
               <div className="relative h-24 w-24 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                  <Image src={profile.avatar_url} alt="Avatar do usuário" width={96} height={96} className="h-full w-full object-cover" unoptimized />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-[24px] font-semibold text-slate-500">
                     {initials}

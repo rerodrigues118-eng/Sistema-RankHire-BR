@@ -1,17 +1,19 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function GET() {
   try {
-    const { userId, supabase } = await requireAuth();
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
+    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
 
     if (!usuario?.empresa_id) {
       return NextResponse.json({ candidates: [] });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("pdf_candidates")
       .select("id,nome_candidato,cargo_atual,empresa_atual,cidade,score_final,linkedin_url,status,parsed_text")
       .eq("empresa_id", usuario.empresa_id)
@@ -29,7 +31,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
     const body = (await req.json()) as {
       name?: string;
       role?: string;
@@ -40,12 +43,12 @@ export async function POST(req: Request) {
       status?: string;
     };
 
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("pdf_candidates")
       .insert({
         empresa_id: usuario.empresa_id,

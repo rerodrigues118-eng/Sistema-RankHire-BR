@@ -1,5 +1,5 @@
-const { Queue } = require("bullmq");
-require("dotenv").config();
+import { Queue } from "bullmq";
+import 'dotenv/config';
 
 function parseRedisUrl(url) {
   const u = new URL(url);

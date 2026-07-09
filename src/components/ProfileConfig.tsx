@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Image from 'next/image';
 import { createClient } from "@/lib/supabase/client";
-import { getCachedProfile, setCachedProfile, clearCachedProfile } from "@/lib/profile-cache";
+import { getCachedProfile, setCachedProfile } from "@/lib/profile-cache";
 import {
-  ArrowLeft,
   Camera,
   CheckCircle2,
   KeyRound,
@@ -83,7 +82,11 @@ export default function ProfileConfig() {
     );
   }, [nome, profile?.email]);
 
+  // Ref para evitar double-fetch causado pelo React StrictMode em dev
   useEffect(() => {
+
+    let active = true;
+
     async function load() {
       setLoading(true);
       // hydrate from local cache first so UI doesn't flash empty values
@@ -95,13 +98,13 @@ export default function ProfileConfig() {
           setCargo((prev) => prev || (cached.cargo || ""));
         }
       } catch {}
-      const supabase = createClient();
 
-      const [profileRes, labelsRes, sessionRes] = await Promise.all([
+      const [profileRes, labelsRes] = await Promise.all([
         fetch("/api/profile"),
         fetch("/api/profile/labels"),
-        supabase.auth.getSession(),
       ]);
+
+      if (!active) return;
 
       if (profileRes.ok) {
         const data = await profileRes.json();
@@ -109,26 +112,8 @@ export default function ProfileConfig() {
         setNome(data.profile?.nome || "");
         setCargo(data.profile?.cargo || "");
         try { setCachedProfile(data.profile); } catch {}
-      } else {
-        // fallback: use session user info so fields don't disappear
-        try {
-          const s = await supabase.auth.getUser();
-          const u = s.data.user;
-          const fallbackProfile: Profile = {
-            id: u?.id || "",
-            empresa_id: null,
-            nome: u?.user_metadata?.name || null,
-            email: u?.email || null,
-            cargo: null,
-            telefone: null,
-            avatar_url: u?.user_metadata?.avatar_url || null,
-            role: null,
-          };
-          setProfile((p) => p ?? fallbackProfile);
-          setNome((prev) => prev || (u?.user_metadata?.name || ""));
-          try { setCachedProfile(fallbackProfile); } catch {}
-        } catch {
-          // ignore
+        if (data.sessionExpiresAt) {
+          setSessionInfo(`Expira em ${new Date(data.sessionExpiresAt * 1000).toLocaleString("pt-BR")}`);
         }
       }
 
@@ -140,18 +125,20 @@ export default function ProfileConfig() {
         }
       }
 
-      const expiresAt = sessionRes.data.session?.expires_at;
-      if (expiresAt) {
-        setSessionInfo(`Expira em ${new Date(expiresAt * 1000).toLocaleString("pt-BR")}`);
+      if (active) {
+        setLoading(false);
       }
-
-      setLoading(false);
     }
 
     load().catch(() => {
+      if (!active) return;
       setFeedback({ type: "error", text: "Nao foi possivel carregar seu perfil." });
       setLoading(false);
     });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function handleSaveProfile() {
@@ -210,7 +197,6 @@ export default function ProfileConfig() {
       });
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok) {
-        console.error('server upload failed', uploadRes.status, uploadData);
         throw new Error(uploadData.error || 'Erro ao enviar avatar para o servidor.');
       }
 
@@ -225,7 +211,6 @@ export default function ProfileConfig() {
       const updated = await res.json();
 
       if (!res.ok) {
-        console.error('profile PATCH failed', res.status, updated);
         throw new Error(updated.error || 'Erro ao salvar avatar.');
       }
 
@@ -235,7 +220,6 @@ export default function ProfileConfig() {
       try { window.dispatchEvent(new CustomEvent('profile-updated', { detail: updated.profile })); } catch {}
       setPreviewUrl(null); setSelectedFile(null);
     } catch (err: unknown) {
-      console.error('avatar upload error:', err);
       setFeedback({ type: 'error', text: err instanceof Error ? err.message : 'Nao foi possivel enviar o avatar.' });
     } finally {
       setUploadingAvatar(false);
@@ -376,7 +360,7 @@ export default function ProfileConfig() {
           <div className="flex flex-col items-center">
             <div className="relative h-24 w-24 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                <Image src={profile.avatar_url} alt="Avatar do usuário" width={96} height={96} className="h-full w-full object-cover" unoptimized />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-[24px] font-semibold text-slate-500">{initials}</div>
               )}
@@ -391,7 +375,7 @@ export default function ProfileConfig() {
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;
-                    console.log('file selected', f);
+                    
                     if (f) {
                       setSelectedFile(f);
                       setPreviewLoadError(false);
@@ -411,11 +395,14 @@ export default function ProfileConfig() {
                 <div className="mt-3 flex flex-col items-center gap-2">
                   <div className="relative">
                     {!previewLoadError ? (
-                      <img
-                        src={previewUrl ?? undefined}
-                        alt=""
+                      <Image
+                        src={previewUrl ?? ''}
+                        alt="Preview do avatar"
+                        width={80}
+                        height={80}
                         onError={() => setPreviewLoadError(true)}
                         className="h-20 w-20 rounded-full object-cover border"
+                        unoptimized
                       />
                     ) : (
                       <div className="h-20 w-20 rounded-full border bg-slate-50 flex items-center justify-center text-slate-500 font-semibold">{initials}</div>

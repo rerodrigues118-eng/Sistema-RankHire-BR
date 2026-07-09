@@ -2,13 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const ADMIN_EMAIL_ALLOWLIST = new Set([
-  "delski.contato@gmail.com",
-]);
 
-function normalizeRole(role: string | null | undefined) {
-  return String(role || "").trim().toLowerCase();
-}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -24,7 +18,7 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -50,7 +44,9 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/privacidade') ||
     request.nextUrl.pathname.startsWith('/termos') ||
     request.nextUrl.pathname.startsWith('/fotos-site') ||
-    request.nextUrl.pathname.startsWith('/api/pagarme/webhook');
+    request.nextUrl.pathname.startsWith('/api/pagarme/webhook') ||
+    request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname.startsWith('/favicon.ico');
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
@@ -63,7 +59,6 @@ export async function updateSession(request: NextRequest) {
     user && 
     !isPublicRoute &&
     !request.nextUrl.pathname.startsWith('/configuracoes/plano') &&
-    !request.nextUrl.pathname.startsWith('/sys-control') &&
     !request.nextUrl.pathname.startsWith('/api')
   ) {
     const admin = createAdminClient(
@@ -108,30 +103,6 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
-  }
-
-  // Painel Admin Seguro — /sys-control — usa service role para ignorar RLS
-  if (user && request.nextUrl.pathname.startsWith('/sys-control')) {
-    const admin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data: usuario } = await admin
-      .from('usuarios')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    const email = user.email?.toLowerCase() || '';
-    const isAllowedEmail = email ? ADMIN_EMAIL_ALLOWLIST.has(email) : false;
-    const role = normalizeRole(usuario?.role);
-
-    if ((!usuario && !isAllowedEmail) || (!isAllowedEmail && role !== 'superadmin' && role !== 'admin')) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
-    }
   }
 
   return supabaseResponse

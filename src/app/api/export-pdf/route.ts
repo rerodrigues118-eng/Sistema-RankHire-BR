@@ -3,14 +3,7 @@ import { requireAuth } from "@/lib/auth-guard";
 import { createSupabaseAdminClient } from "@/lib/admin";
 import { NextResponse } from "next/server";
 
-// Limits per plan (null = unlimited)
-const PLAN_LIMITS: Record<string, number | null> = {
-  trial_starter: 10,
-  profissional: 100,
-  enterprise: 500,
-  superadmin: null,
-  admin: null,
-};
+import { getPdfLimitFromPlan } from '@/lib/planos';
 
 export async function POST(req: Request) {
   try {
@@ -49,7 +42,7 @@ export async function POST(req: Request) {
 
     // Superadmins and admins get unlimited exports
     if (!isAdmin) {
-      const planLimit = PLAN_LIMITS[empresa.plano] ?? empresa.limite_pdfs_mes ?? 10;
+      const planLimit = getPdfLimitFromPlan(empresa.plano, empresa) ?? empresa.limite_pdfs_mes ?? 10;
 
       if (planLimit !== null) {
         // Count exports this month
@@ -129,7 +122,7 @@ export async function GET() {
       });
     }
 
-    const planLimit = PLAN_LIMITS[empresa?.plano || "trial_starter"] ?? empresa?.limite_pdfs_mes ?? 10;
+    const planLimit = getPdfLimitFromPlan(empresa?.plano || "trial_starter", empresa ?? undefined);
     const currentMonth = new Date().toISOString().slice(0, 7);
 
     const { count } = await admin

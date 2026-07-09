@@ -3,6 +3,7 @@ import { callAI } from "@/lib/ai-client";
 import { requireAuth } from "@/lib/auth-guard";
 import type { Agent, AgentCriterion, AgentFilterSet, AgentRun, AgentCandidate } from "@/lib/types";
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type VagaRow = {
   id: string;
@@ -187,16 +188,18 @@ function formatAgent(
 
 export async function GET() {
   try {
-    const { userId, supabase } = await requireAuth();
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
+    
+    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
 
     if (!usuario?.empresa_id) {
       return NextResponse.json({ agentes: [], vagas: [], candidatos: [], runs: [], notificacoes: [] });
     }
 
     const [vagasRes, agentesRes] = await Promise.all([
-      supabase.from("vagas").select("id,titulo").eq("empresa_id", usuario.empresa_id).order("created_at", { ascending: false }),
-      supabase
+      admin.from("vagas").select("id,titulo").eq("empresa_id", usuario.empresa_id).order("created_at", { ascending: false }),
+      admin
         .from("agentes_ia")
         .select("id,empresa_id,vaga_id,nome,briefing,status,frequencia,score_minimo_notificacao,calibracoes_realizadas,ultima_busca,proxima_busca,created_at,criterios_ia,filtros_ia")
         .eq("empresa_id", usuario.empresa_id)
@@ -216,12 +219,12 @@ export async function GET() {
 
     const [runsRes, candidatesRes] = agentIds.length
       ? await Promise.all([
-          supabase
+          admin
             .from("agente_runs")
             .select("id,agente_id,perfis_analisados,candidatos_encontrados,candidatos_score_alto,status,executado_em")
             .in("agente_id", agentIds)
             .order("executado_em", { ascending: false }),
-          supabase
+          admin
             .from("agente_candidatos")
             .select("id,agente_id,linkedin_url,dados_perfil,score_final,criterios_avaliacao,visto,status,descoberto_em")
             .in("agente_id", agentIds)
@@ -309,7 +312,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
     const body = (await req.json()) as {
       nome?: string;
       vagaId?: string;
@@ -318,7 +322,7 @@ export async function POST(req: Request) {
       scoreMinimoNotificacao?: number;
     };
 
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
@@ -327,7 +331,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Nome, vaga e briefing sao obrigatorios" }, { status: 400 });
     }
 
-    const { data: vaga } = await supabase
+    const { data: vaga } = await admin
       .from("vagas")
       .select("id,titulo")
       .eq("id", body.vagaId)
@@ -385,40 +389,40 @@ Retorne exatamente este JSON:
       // Fallback heuristico ja preparado acima.
     }
 
-    const { data, error } = await supabase
+    const { data: agente, error: agentError } = await admin
       .from("agentes_ia")
       .insert({
         empresa_id: usuario.empresa_id,
-        vaga_id: vaga.id,
+        vaga_id: body.vagaId,
         nome: body.nome.trim(),
         briefing: body.briefing.trim(),
-        status: "pausado",
+        status: "ativo",
         frequencia: body.frequencia || "diaria",
-        score_minimo_notificacao: body.scoreMinimoNotificacao ?? 4.0,
-        calibracoes_realizadas: 0,
+        score_minimo_notificacao: body.scoreMinimoNotificacao || 4.0,
         criterios_ia: criterios,
         filtros_ia: filtros,
+        calibracoes_realizadas: 0,
       })
       .select("id,empresa_id,vaga_id,nome,briefing,status,frequencia,score_minimo_notificacao,calibracoes_realizadas,ultima_busca,proxima_busca,created_at,criterios_ia,filtros_ia")
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (agentError) {
+      return NextResponse.json({ error: agentError.message }, { status: 500 });
     }
 
     const agenteCriado: Agent = {
-      id: (data as AgentRow).id,
-      empresaId: (data as AgentRow).empresa_id,
-      vagaId: (data as AgentRow).vaga_id,
-      nome: (data as AgentRow).nome,
-      briefing: (data as AgentRow).briefing || "",
-      status: (data as AgentRow).status,
-      frequencia: (data as AgentRow).frequencia,
-      scoreMinimoNotificacao: Number((data as AgentRow).score_minimo_notificacao ?? body.scoreMinimoNotificacao ?? 4),
-      calibracoesRealizadas: Number((data as AgentRow).calibracoes_realizadas ?? 0),
-      ultimaBusca: (data as AgentRow).ultima_busca,
-      proximaBusca: (data as AgentRow).proxima_busca,
-      createdAt: (data as AgentRow).created_at || new Date().toISOString(),
+      id: (agente as AgentRow).id,
+      empresaId: (agente as AgentRow).empresa_id,
+      vagaId: (agente as AgentRow).vaga_id,
+      nome: (agente as AgentRow).nome,
+      briefing: (agente as AgentRow).briefing || "",
+      status: (agente as AgentRow).status,
+      frequencia: (agente as AgentRow).frequencia,
+      scoreMinimoNotificacao: Number((agente as AgentRow).score_minimo_notificacao ?? body.scoreMinimoNotificacao ?? 4),
+      calibracoesRealizadas: Number((agente as AgentRow).calibracoes_realizadas ?? 0),
+      ultimaBusca: (agente as AgentRow).ultima_busca,
+      proximaBusca: (agente as AgentRow).proxima_busca,
+      createdAt: (agente as AgentRow).created_at || new Date().toISOString(),
       vagaTitulo: vaga.titulo || "Vaga vinculada",
       criteriosIa: criterios,
       filtrosIa: filtros,

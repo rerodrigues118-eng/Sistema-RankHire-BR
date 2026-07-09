@@ -1,14 +1,40 @@
-import React from "react";
+"use client";
 
-export default function Topbar({ admin }: { admin: any }) {
+import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
+
+type AdminProfile = {
+  email?: string | null;
+};
+
+export default function Topbar({ admin }: { admin: AdminProfile | null }) {
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.localStorage.getItem("admin-theme") || "dark";
+    }
+    return "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    window.localStorage.setItem("admin-theme", next);
+    setTheme(next);
+  };
+
   return (
-    <header style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', borderBottom: '1px solid #23272b', background: '#0d1117' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button style={{ background: 'transparent', border: 'none', color: '#8b949e' }}>☰</button>
-        <div style={{ fontWeight: 700 }}>RankHire BR Admin</div>
+    <header className="topbar">
+      <div className="topbar-title-group">
+        <div className="topbar-title">RankHire BR Admin</div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ color: '#8b949e' }}>{admin?.email ?? ''}</div>
+      <div className="topbar-actions">
+        <div className="topbar-email">{admin?.email ?? ""}</div>
+        <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label="Alternar tema">
+          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
       </div>
     </header>
   );

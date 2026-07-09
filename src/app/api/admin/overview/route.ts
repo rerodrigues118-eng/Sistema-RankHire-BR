@@ -1,3 +1,4 @@
+import { requireAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/api";
 import { requireAdminContext } from "@/lib/admin";
 import { NextResponse } from "next/server";
@@ -23,6 +24,8 @@ function normalizeStatus(value: string | null | undefined) {
 }
 
 export async function GET() {
+  const { userId, supabase } = await requireAuth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
   try {
     const { admin } = await requireAdminContext();
 

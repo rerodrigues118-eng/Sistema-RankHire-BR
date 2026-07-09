@@ -1,7 +1,8 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
-import type { Agent } from "@/lib/types";
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import type { Agent } from "@/lib/types";
 
 type AgentRow = {
   id: string;
@@ -22,15 +23,16 @@ type AgentRow = {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
     const { id } = await params;
 
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
 
-    const { data: agente, error } = await supabase
+    const { data: agente, error } = await admin
       .from("agentes_ia")
       .select("id,empresa_id,vaga_id,nome,briefing,status,frequencia,score_minimo_notificacao,calibracoes_realizadas,ultima_busca,proxima_busca,created_at,criterios_ia,filtros_ia")
       .eq("id", id)
@@ -42,23 +44,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
 
     const [runsRes, candidatesRes, calibracoesRes, vagaRes] = await Promise.all([
-      supabase
+      admin
         .from("agente_runs")
         .select("id,agente_id,perfis_analisados,candidatos_encontrados,candidatos_score_alto,status,executado_em")
         .eq("agente_id", id)
         .order("executado_em", { ascending: false }),
-      supabase
+      admin
         .from("agente_candidatos")
         .select("id,agente_id,linkedin_url,dados_perfil,score_final,criterios_avaliacao,visto,status,descoberto_em")
         .eq("agente_id", id)
         .order("descoberto_em", { ascending: false }),
-      supabase
+      admin
         .from("agente_calibracoes")
         .select("id,agente_id,linkedin_url,dados_perfil,decisao,created_at")
         .eq("agente_id", id)
         .order("created_at", { ascending: false })
         .limit(12),
-      supabase.from("vagas").select("id,titulo").eq("id", (agente as AgentRow).vaga_id).single(),
+      admin.from("vagas").select("id,titulo").eq('empresa_id', usuario.empresa_id).eq("id", (agente as AgentRow).vaga_id).single(),
     ]);
 
     if (runsRes.error) {
@@ -108,7 +110,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
     const { id } = await params;
     const body = (await req.json()) as Partial<{
       status: Agent["status"];
@@ -123,7 +126,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       filtrosIa: unknown;
     }>;
 
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
@@ -140,7 +143,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (typeof body.criteriosIa !== "undefined") update.criterios_ia = body.criteriosIa;
     if (typeof body.filtrosIa !== "undefined") update.filtros_ia = body.filtrosIa;
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("agentes_ia")
       .update(update)
       .eq("id", id)

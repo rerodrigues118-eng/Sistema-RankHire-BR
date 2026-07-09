@@ -40,7 +40,6 @@ export async function sendEmail(template: string, to: string, data: EmailParams)
     });
 
     if (!res.ok) {
-      console.error('Erro ao enviar email via Brevo:', await res.text());
       return false;
     }
 

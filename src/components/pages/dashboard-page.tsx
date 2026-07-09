@@ -53,6 +53,34 @@ export default function DashboardPage({
 
   const recentJobs = jobs.slice(0, 2);
 
+  const selectedJobSection = activeJob ? (
+    <div className="bg-white rounded-[12px] p-6 border border-[#E5E7EB] mb-8">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <span className="text-[12px] text-[#6B7280] uppercase tracking-wide">Vaga selecionada</span>
+          <h2 className="text-[20px] font-semibold text-[#111827] mt-2">{activeJob.title}</h2>
+          <p className="text-[13px] text-[#6B7280] mt-2">
+            {activeJob.department} • {activeJob.contract || "Contrato não informado"}
+          </p>
+          {activeJob.location ? (
+            <p className="text-[13px] text-[#6B7280] mt-1">Localização: {activeJob.location}</p>
+          ) : null}
+        </div>
+        <div className="flex flex-col items-end gap-2 text-right">
+          <span className="inline-flex items-center rounded-full bg-[#ECFDF5] px-3 py-1 text-[11px] font-semibold text-[#047857]">
+            {activeJob.status === "active" ? "Ativa" : activeJob.status === "paused" ? "Em pausa" : "Encerrada"}
+          </span>
+          <span className="text-[12px] text-[#6B7280]">Criada em {activeJob.createdDate}</span>
+        </div>
+      </div>
+      {activeJob.briefing ? (
+        <div className="mt-5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] p-4 text-[13px] text-[#334155]">
+          {activeJob.briefing}
+        </div>
+      ) : null}
+    </div>
+  ) : null;
+
   const recentActivities: ActivityWithTs[] = [
     ...jobs
       .filter((job) => job.createdAt)
@@ -86,6 +114,8 @@ export default function DashboardPage({
           {today}
         </p>
       </div>
+
+      {selectedJobSection}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[#FFFFFF] rounded-[12px] p-5 relative" style={{ border: "1px solid #E5E7EB" }}>

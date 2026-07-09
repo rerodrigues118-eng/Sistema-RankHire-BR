@@ -15,7 +15,7 @@ async function setupDatabase() {
   const email = "superadmin@delski.com";
   const password = "password123";
 
-  const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
+  const { error: userError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
     email_confirm: true // Pula a etapa de confirmação de email

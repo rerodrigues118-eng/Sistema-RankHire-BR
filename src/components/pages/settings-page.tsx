@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { Sliders, Lock, CreditCard, AlertCircle, UserRound, ArrowRight } from 'lucide-react';
+import { Sliders, Lock, CreditCard, AlertCircle } from 'lucide-react';
 import ProfileConfig from '@/components/ProfileConfig';
+import CompanySection from '../CompanySection';
 
 const criteriaConfig = [
   {
@@ -162,6 +162,9 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      {/* Company card (inline) */}
+      <CompanySection />
 
       {/* Billing card */}
       <div

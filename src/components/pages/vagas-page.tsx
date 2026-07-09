@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Search, Plus, MoreHorizontal, Briefcase, Users, Star, CheckCircle2, X } from "lucide-react";
+import { Search, Plus, MoreHorizontal, Briefcase, Users, Star, CheckCircle2, X, Loader2, ChevronLeft, MapPin, Building, FileText } from "lucide-react";
 import type { Job, JobStatus } from "@/lib/types";
 
 type FilterStatus = "Todas" | "Ativas" | "Em pausa" | "Encerradas";
@@ -39,6 +39,11 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [newJob, setNewJob] = useState<JobDraft>(DEFAULT_DRAFT);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [viewingJobId, setViewingJobId] = useState<string | null>(null);
+
+  const viewingJob = jobs.find(j => j.id === viewingJobId);
 
   const filteredJobs = jobs.filter((job) => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -76,46 +81,56 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
 
   const handleSaveJob = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    setIsSaving(true);
 
     if (!newJob.title.trim()) {
+      setFormError("Informe o nome da vaga.");
+      setIsSaving(false);
       return;
     }
 
-    if (editingJobId) {
-      const existingJob = jobs.find((job) => job.id === editingJobId);
-      if (!existingJob) return;
+    try {
+      if (editingJobId) {
+        const existingJob = jobs.find((job) => job.id === editingJobId);
+        if (!existingJob) return;
 
-      await onUpdateJob({
-        ...existingJob,
-        title: newJob.title.trim(),
-        department: newJob.area,
-        contract: newJob.contract,
-        location: newJob.location,
-        briefing: newJob.briefing,
-        autoAi: newJob.autoAi,
-        status: newJob.status,
-      });
-    } else {
-      const createdJob: Job = {
-        id: `job-${Date.now()}`,
-        title: newJob.title.trim(),
-        department: newJob.area,
-        contract: newJob.contract,
-        location: newJob.location,
-        briefing: newJob.briefing,
-        autoAi: newJob.autoAi,
-        candidatesCount: 0,
-        averageScore: 0,
-        topScore: 0,
-        status: newJob.status,
-        createdDate: new Date().toLocaleDateString("pt-BR"),
-      };
+        await onUpdateJob({
+          ...existingJob,
+          title: newJob.title.trim(),
+          department: newJob.area,
+          contract: newJob.contract,
+          location: newJob.location,
+          briefing: newJob.briefing,
+          autoAi: newJob.autoAi,
+          status: newJob.status,
+        });
+      } else {
+        const createdJob: Job = {
+          id: `job-${Date.now()}`,
+          title: newJob.title.trim(),
+          department: newJob.area,
+          contract: newJob.contract,
+          location: newJob.location,
+          briefing: newJob.briefing,
+          autoAi: newJob.autoAi,
+          candidatesCount: 0,
+          averageScore: 0,
+          topScore: 0,
+          status: newJob.status,
+          createdDate: new Date().toLocaleDateString("pt-BR"),
+        };
 
-      await onCreateJob(createdJob);
-      onOpenJob(createdJob.id);
+        await onCreateJob(createdJob);
+        onOpenJob(createdJob.id);
+      }
+
+      setIsModalOpen(false);
+    } catch (error: unknown) {
+      setFormError(error instanceof Error ? error.message : "Erro ao salvar a vaga. Tente novamente.");
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsModalOpen(false);
   };
 
   const getStatusColor = (status: JobStatus) => {
@@ -129,6 +144,75 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
     if (status === "paused") return "Em pausa";
     return "Encerrada";
   };
+
+  if (viewingJob) {
+    return (
+      <div className="max-w-4xl mx-auto flex flex-col h-full pt-2 pb-10 w-full animate-in fade-in slide-in-from-right-4 duration-300">
+        <button
+          onClick={() => setViewingJobId(null)}
+          className="flex items-center gap-2 text-[13px] font-medium text-[#6B7280] hover:text-[#111827] transition-colors mb-6 w-fit"
+        >
+          <ChevronLeft className="w-4 h-4" /> Voltar para vagas
+        </button>
+
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
+          <div className="p-8 border-b border-[#F3F4F6]">
+            <div className="flex items-center gap-3 mb-4">
+              <span className={`px-3 py-1 rounded-full text-[12px] font-semibold tracking-wide uppercase ${getStatusColor(viewingJob.status)} bg-opacity-10 border border-current`}>
+                {getStatusText(viewingJob.status)}
+              </span>
+              <span className="text-[13px] text-[#6B7280]">Criada em {viewingJob.createdDate}</span>
+            </div>
+            <h1 className="text-[28px] font-bold text-[#111827] tracking-tight mb-2">
+              {viewingJob.title}
+            </h1>
+            <p className="text-[15px] text-[#6B7280]">{viewingJob.department}</p>
+          </div>
+
+          <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="md:col-span-2 space-y-8">
+              <section>
+                <h3 className="text-[14px] font-semibold text-[#111827] uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#9CA3AF]" />
+                  Briefing da vaga
+                </h3>
+                <div className="prose prose-sm max-w-none text-[#4B5563] leading-relaxed whitespace-pre-wrap">
+                  {viewingJob.briefing || "Nenhum briefing fornecido."}
+                </div>
+              </section>
+            </div>
+
+            <div className="space-y-6 bg-[#F9FAFB] p-6 rounded-xl border border-[#F3F4F6] h-fit">
+              <div>
+                <h4 className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mb-1">Localização</h4>
+                <div className="flex items-center gap-2 text-[14px] text-[#111827] font-medium">
+                  <MapPin className="w-4 h-4 text-[#06D6A0]" />
+                  {viewingJob.location || "Não informada"}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mb-1">Contrato</h4>
+                <div className="flex items-center gap-2 text-[14px] text-[#111827] font-medium">
+                  <Building className="w-4 h-4 text-[#06D6A0]" />
+                  {viewingJob.contract || "Não informado"}
+                </div>
+              </div>
+
+              <div className="pt-6 mt-6 border-t border-[#E5E7EB]">
+                <button
+                  onClick={() => handleOpenModal(viewingJob)}
+                  className="w-full btn-primary"
+                >
+                  Editar Vaga
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col h-full pt-2 pb-10">
@@ -228,7 +312,10 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
 
               <div className="mt-auto flex items-center gap-2 pt-1">
                 <button
-                  onClick={() => onOpenJob(job.id)}
+                  onClick={() => {
+                    onOpenJob(job.id);
+                    setViewingJobId(job.id);
+                  }}
                   className="flex-1 bg-[#F9FAFB] hover:bg-[#F3F4F6] text-[#111827] py-2 rounded-[6px] text-[13px] font-medium transition-colors border border-[#E5E7EB]"
                 >
                   Abrir
@@ -365,19 +452,34 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
                   </div>
                 </div>
 
+                {formError ? (
+                  <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {formError}
+                  </div>
+                ) : null}
+
                 <div className="pt-6 mt-4 border-t border-[#E5E7EB] flex justify-end gap-3 sticky bottom-0 bg-white">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
                     className="btn-ghost"
+                    disabled={isSaving}
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="btn-primary"
+                    disabled={isSaving}
+                    className="btn-primary flex items-center justify-center gap-2"
                   >
-                    {editingJobId ? "Salvar alterações" : "Criar vaga"}
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {editingJobId ? "Salvando..." : "Criando..."}
+                      </>
+                    ) : (
+                      editingJobId ? "Salvar alterações" : "Criar vaga"
+                    )}
                   </button>
                 </div>
               </form>

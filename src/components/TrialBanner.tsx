@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, Lock } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { getPlanoAtual, type EmpresaSimples } from '@/lib/planos';
 
 export default function TrialBanner() {
@@ -11,23 +10,13 @@ export default function TrialBanner() {
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: usuario } = await supabase
-        .from('usuarios')
-        .select('empresa_id')
-        .eq('id', user.id)
-        .single();
-
-      if (usuario?.empresa_id) {
-        const { data: emp } = await supabase
-          .from('empresas')
-          .select('id,plano,subscription_status,trial_expires_at')
-          .eq('id', usuario.empresa_id)
-          .single();
-        if (emp) setEmpresa(emp as EmpresaSimples);
+      try {
+        const res = await fetch('/api/empresas');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.empresa) setEmpresa(data.empresa as EmpresaSimples);
+      } catch {
+        // non-fatal
       }
     }
     load();

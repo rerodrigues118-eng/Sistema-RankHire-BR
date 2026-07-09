@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -98,7 +99,9 @@ export default function LoginForm() {
         <div className="space-y-1.5">
           <label className="text-[12px] font-bold text-zinc-400 flex justify-between">
             <span>Senha</span>
-            <a href="#" className="text-blue-500 hover:text-blue-400 hover:underline transition-all font-bold">Esqueceu?</a>
+            <Link href="/login/reset" className="text-blue-500 hover:text-blue-400 hover:underline transition-all font-bold">
+              Esqueceu?
+            </Link>
           </label>
           <input
             type="password"

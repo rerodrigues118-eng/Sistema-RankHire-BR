@@ -1,7 +1,6 @@
-'use client';
+"use client";
 
-import { useRef, useEffect, useState, RefObject } from 'react';
-import { useScroll, useMotionValueEvent } from 'framer-motion';
+import { useRef, useEffect, useState, RefObject } from "react";
 
 interface UseParallaxScrollReturn {
   frameIndex: number;
@@ -10,101 +9,71 @@ interface UseParallaxScrollReturn {
 }
 
 /**
- * Hook para detectar scroll parallax e calcular frame da animação
- * Monitora scroll relativo à Hero Section e calcula qual frame (0-45) deve ser exibido
- * com interpolação suave entre eles.
- * Respeita preferências de acessibilidade (prefers-reduced-motion)
- * 
- * @param containerRef - Ref da Hero Section container para tracking de scroll
+ * Lightweight parallax hook WITHOUT framer-motion.
+ * Replaces heavier implementation to avoid dependency / high CPU usage.
+ * Uses IntersectionObserver + window scroll with requestAnimationFrame.
  */
 const useParallaxScroll = (containerRef?: RefObject<HTMLDivElement>): UseParallaxScrollReturn => {
-  const heroRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement | null>(null);
   const [frameIndex, setFrameIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const prefersReducedMotionRef = useRef(prefersReducedMotion);
   const rafRef = useRef<number | null>(null);
 
-  // Usar containerRef externo se fornecido, caso contrário manter ref local
   useEffect(() => {
-    if (containerRef?.current) {
-      heroRef.current = containerRef.current;
-    }
+    if (containerRef?.current) heroRef.current = containerRef.current;
   }, [containerRef]);
 
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ['start start', 'end center'],
-  });
-
-  // Verificar preferências de acessibilidade
+  // Respect user preference for reduced motion
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-    prefersReducedMotionRef.current = mediaQuery.matches;
+    const mq = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+    if (mq && mq.matches) return; // do nothing when reduced motion requested
 
-    const handleChange = (e: MediaQueryListEvent) => {
-      setPrefersReducedMotion(e.matches);
-      prefersReducedMotionRef.current = e.matches;
+    const el = heroRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect();
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        const visible = rect.top < viewportHeight && rect.bottom > 0;
+        setIsVisible(visible);
+        if (!visible) {
+          setProgress(0);
+          setFrameIndex(0);
+          return;
+        }
+        // progress 0..1 relative to element position in viewport
+        const total = viewportHeight + rect.height;
+        const offset = Math.min(Math.max(viewportHeight - rect.top, 0), total);
+        const p = Math.max(0, Math.min(1, offset / total));
+        const rawFrame = p * 45;
+        setProgress(rawFrame - Math.floor(rawFrame));
+        setFrameIndex(Math.min(45, Math.max(0, Math.floor(rawFrame))));
+      });
     };
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+    // initial
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
 
-  // Monitora mudanças no scrollYProgress
-  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-
-    rafRef.current = requestAnimationFrame(() => {
-      if (prefersReducedMotionRef.current) {
-        setFrameIndex(latest > 0.5 ? 45 : 0);
-        setProgress(0);
-        setIsVisible(true);
-        return;
-      }
-
-      // Calcular frame baseado no progresso de scroll (0-45 = 46 frames)
-      const rawFrame = latest * 45;
-      const calculatedFrameIndex = Math.floor(rawFrame);
-      const interpolatedProgress = rawFrame - calculatedFrameIndex;
-      const clampedFrame = Math.min(Math.max(calculatedFrameIndex, 0), 45);
-
-      setFrameIndex(clampedFrame);
-      setProgress(interpolatedProgress);
-      setIsVisible(latest > 0);
+    // intersection observer to set visibility quickly
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsVisible(entry.isIntersecting || entry.intersectionRatio > 0);
     });
-  });
+    observer.observe(el);
 
-  useEffect(() => {
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      observer.disconnect();
     };
-  }, []);
+  }, [containerRef]);
 
-  // Detectar se hero está na viewport usando Intersection Observer
-  useEffect(() => {
-    if (!heroRef.current) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsVisible(entry.isIntersecting || entry.intersectionRatio > 0);
-      },
-      { threshold: 0 }
-    );
-
-    observer.observe(heroRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  return {
-    frameIndex,
-    progress,
-    isVisible,
-  };
+  return { frameIndex, progress, isVisible };
 };
 
 export { useParallaxScroll };

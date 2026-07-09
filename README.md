@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+This repository is organized as a small npm workspace with two apps:
+- root app: the main `rankhire-br` Next.js site
+- `painel-admin`: the admin panel app in `painel-admin/`
+
+Install dependencies from the repository root so both packages stay in sync.
+
 ## Getting Started
 
 First, run the development server:

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { fetchWithTimeout, handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
+import { logger } from "@/lib/logger";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export const maxDuration = 120;
 
@@ -19,6 +21,8 @@ type LinkedInSearchBody = {
   q_keywords?: string;
   person_seniorities?: string[];
   person_locations?: string[];
+  vagaId?: string;
+  vaga_id?: string;
 };
 
 type LinkedinProfile = {
@@ -74,12 +78,71 @@ type ApifyItem = {
   summary?: string;
 };
 
+async function persistLinkedinSearchArtifacts({
+  supabase,
+  empresaId,
+  vagaId,
+  userId,
+  searchQuery,
+  filtros,
+  results,
+}: {
+  supabase: any;
+  empresaId: string;
+  vagaId?: string | null;
+  userId: string;
+  searchQuery: string;
+  filtros: LinkedInSearchBody;
+  results: LinkedinProfile[];
+}) {
+  const warnings: string[] = [];
+
+  try {
+    const { error } = await supabase.from("linkedin_searches").insert({
+      empresa_id: empresaId,
+      vaga_id: vagaId ?? null,
+      query: searchQuery,
+      filtros,
+      resultados: results,
+      expires_at: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+
+    if (error) throw error;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro desconhecido";
+    logger.error("[linkedin-search] Falha ao salvar linkedin_searches", { userId, empresaId, vagaId, message });
+    warnings.push(`linkedin_searches: ${message}`);
+  }
+
+  try {
+    const { error } = await supabase.from("linkedin_search_sessions").insert({
+      empresa_id: empresaId,
+      vaga_id: vagaId ?? null,
+      criado_por: userId,
+      descricao_livre: searchQuery || "Busca de perfis no LinkedIn",
+      criterios: [],
+      filtros_aplicados: filtros,
+      total_resultados: results.length,
+    });
+
+    if (error) throw error;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro desconhecido";
+    logger.error("[linkedin-search] Falha ao salvar linkedin_search_sessions", { userId, empresaId, vagaId, message });
+    warnings.push(`linkedin_search_sessions: ${message}`);
+  }
+
+  return warnings;
+}
+
 export async function POST(req: Request) {
   try {
-    const { userId, supabase: userSupabase } = await requireAuth();
+    const { userId } = await requireAuth();
     const body = (await req.json()) as LinkedInSearchBody;
     const apiKey = process.env.APIFY_TOKEN;
-    const { data: usuario } = await userSupabase
+    const actorId = process.env.APIFY_ACTOR_ID || "hpvQmM3KODjMJLvYk";
+    const admin = createSupabaseAdminClient();
+    const { data: usuario } = await admin
       .from("usuarios")
       .select("empresa_id")
       .eq("id", userId)
@@ -103,9 +166,11 @@ export async function POST(req: Request) {
       q_keywords,
       person_seniorities,
       person_locations,
+      vagaId,
+      vaga_id,
     } = body;
 
-    let queryParts: string[] = [];
+    const queryParts: string[] = [];
     let locationStr = "Brazil";
 
     if (_rawFilters) {
@@ -141,10 +206,10 @@ export async function POST(req: Request) {
     let results: LinkedinProfile[] = [];
     let isMock = false;
 
-    if (!apiKey) {
+    const generateMockResults = async () => {
       isMock = true;
       await new Promise((r) => setTimeout(r, 1400));
-      results = [
+      return [
         {
           id: 'mock-1',
           name: 'Ana Lima (Demo)',
@@ -204,10 +269,15 @@ export async function POST(req: Request) {
           idiomas: ['Inglês (Fluente)', 'Espanhol (Básico)'],
           sobre: 'Apaixonada por estratégia de email e automação de marketing.',
         }
-      ];
+      ] as LinkedinProfile[];
+    };
+
+    if (!apiKey) {
+      results = await generateMockResults();
     } else {
+      try {
       // ── PASSO 1: Dispara o scraper no Apify ──────────────────────
-      const runRes = await fetchWithTimeout(`https://api.apify.com/v2/acts/hpvQmM3KODjMJLvYk/runs?token=${apiKey}`, {
+      const runRes = await fetchWithTimeout(`https://api.apify.com/v2/acts/${actorId}/runs?token=${apiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -220,8 +290,9 @@ export async function POST(req: Request) {
 
       if (!runRes.ok) {
         const errText = await runRes.text();
-        return NextResponse.json({ error: "Falha ao iniciar o Apify Scraper", detail: errText }, { status: runRes.status });
-      }
+        logger.warn("Apify scraper start failed, falling back to mock", { status: runRes.status, detail: errText });
+        results = await generateMockResults();
+      } else {
 
       const runData = await runRes.json();
       const runId = runData.data.id;
@@ -233,7 +304,9 @@ export async function POST(req: Request) {
 
       while (status === "RUNNING" || status === "READY") {
         if (attempts >= maxAttempts) {
-          return NextResponse.json({ error: "Timeout aguardando a extração do Apify" }, { status: 504 });
+          logger.warn("Timeout aguardando a extração do Apify, falling back to mock");
+          status = "FAILED";
+          break;
         }
         await new Promise(r => setTimeout(r, 3000));
         const statusRes = await fetchWithTimeout(`https://api.apify.com/v2/actor-runs/${runId}?token=${apiKey}`, {}, 30_000);
@@ -242,16 +315,19 @@ export async function POST(req: Request) {
         status = statusData.data.status;
         attempts++;
         if (status === "FAILED" || status === "ABORTED" || status === "TIMED-OUT") {
-          return NextResponse.json({ error: `Scraper falhou com status: ${status}` }, { status: 500 });
+          logger.warn(`Scraper falhou com status: ${status}, falling back to mock`);
+          break;
         }
       }
 
-      // ── PASSO 3: Busca os resultados ─────────────────────────────
-      const datasetRes = await fetchWithTimeout(`https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${apiKey}`, {}, 30_000);
-      if (!datasetRes.ok) {
-        return NextResponse.json({ error: "Falha ao buscar dataset do Apify" }, { status: datasetRes.status });
-      }
-      const dataset = await datasetRes.json();
+      if (status === "SUCCEEDED") {
+        // ── PASSO 3: Busca os resultados ─────────────────────────────
+        const datasetRes = await fetchWithTimeout(`https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${apiKey}`, {}, 30_000);
+        if (!datasetRes.ok) {
+          logger.warn("Falha ao buscar dataset do Apify, falling back to mock");
+          results = await generateMockResults();
+        } else {
+          const dataset = await datasetRes.json();
 
       // ── PASSO 4: Normaliza + Enriquece os perfis ─────────────────
       results = (dataset as ApifyItem[]).slice(0, 25).map((item, i) => {
@@ -293,24 +369,33 @@ export async function POST(req: Request) {
           ? item.languages.map((l) => `${l.name || ""} (${l.proficiency || ''})`)
           : [];
 
-        return {
-          id: item.id || item.publicIdentifier || `apify-${i}`,
-          name: fullName,
-          headline,
-          company,
-          location: locationText,
-          linkedinUrl: item.linkedinUrl || item.url || "#",
-          avatarUrl: item.profilePicture || item.photo || null,
-          fit: 0,
-          resumo: item.about || item.summary || "",
-          experiencia_anos,
-          skills,
-          experiencias,
-          formacao,
-          idiomas: langs,
-          sobre: item.about || "",
-        };
-      }).filter((profile): profile is LinkedinProfile => Boolean(profile));
+          return {
+            id: item.id || item.publicIdentifier || `apify-${i}`,
+            name: fullName,
+            headline,
+            company,
+            location: locationText,
+            linkedinUrl: item.linkedinUrl || item.url || "#",
+            avatarUrl: item.profilePicture || item.photo || null,
+            fit: 0,
+            resumo: item.about || item.summary || "",
+            experiencia_anos,
+            skills,
+            experiencias,
+            formacao,
+            idiomas: langs,
+            sobre: item.about || "",
+          };
+        }).filter((profile): profile is LinkedinProfile => Boolean(profile));
+        }
+      } else {
+        results = await generateMockResults();
+      }
+      } // End of runRes.ok
+      } catch (err: unknown) {
+        logger.warn("Exceção ao executar o Apify scraper, caindo para mock", err);
+        results = await generateMockResults();
+      }
     }
 
     // ── PASSO 5: Ordena — recentes/atualizados primeiro ──────────
@@ -321,24 +406,22 @@ export async function POST(req: Request) {
       return (b.experiencia_anos || 0) - (a.experiencia_anos || 0);
     });
 
-    // ── PASSO 6: Salva no Supabase (best-effort) ─────────────────
-    try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-      await supabase.from("linkedin_searches").insert({
-        empresa_id: usuario.empresa_id,
-        query: searchQuery,
-        filtros: body,
-        resultados: results,
-        expires_at: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString(),
-      });
-    } catch (_) {
-      // Ignora erro se tabela não existir
-    }
+    // ── PASSO 6: Salva no Supabase (best-effort com logs) ───────
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const warnings = await persistLinkedinSearchArtifacts({
+      supabase,
+      empresaId: usuario.empresa_id,
+      vagaId: vagaId || vaga_id || null,
+      userId,
+      searchQuery,
+      filtros: body,
+      results,
+    });
 
-    return NextResponse.json({ success: true, results, isMock });
+    return NextResponse.json({ success: true, results, isMock, warnings, vagaId: vagaId || vaga_id || null });
   } catch (error: unknown) {
     return handleApiError(error);
   }

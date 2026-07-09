@@ -39,4 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-\n# Ignore landing build and deps\nrankhire-landing/node_modules/\nrankhire-landing/.next/\nrankhire-landing/package.json\nrankhire-landing/README.md\n
+# Ignore landing build and deps
+rankhire-landing/node_modules/
+rankhire-landing/.next/
+rankhire-landing/package.json
+rankhire-landing/README.md
+
+# local test logs and artifacts
+*full.txt
+*output.txt
+*.log
+scratch-test.js
+painel-admin/eslint-config-debug.txt
+

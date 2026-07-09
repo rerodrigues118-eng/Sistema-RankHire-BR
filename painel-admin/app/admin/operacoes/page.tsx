@@ -1,8 +1,19 @@
 import { createSupabaseAdminClient } from '@/lib/supabase';
 
+type JobRecord = {
+  id: string;
+  status?: string | null;
+  created_at: string;
+  finished_at?: string | null;
+};
+
 export default async function OperacoesPage() {
   const supabase = createSupabaseAdminClient();
-  const { data: jobs } = await supabase.from('jobs').select('id,status,created_at,finished_at').order('created_at', { ascending: false }).limit(20);
+  const { data: jobs } = await supabase
+    .from<JobRecord>('jobs')
+    .select('id,status,created_at,finished_at')
+    .order('created_at', { ascending: false })
+    .limit(20);
 
   return (
     <main style={{ padding: 24 }}>
@@ -21,7 +32,7 @@ export default async function OperacoesPage() {
               <tr><th>ID</th><th>Status</th><th>Início</th><th>Fim</th></tr>
             </thead>
             <tbody>
-              {(jobs || []).map((job: any) => (
+              {(jobs || []).map((job) => (
                 <tr key={job.id} style={{ borderTop: '1px solid #23272b' }}>
                   <td style={{ padding: 10 }}>{job.id}</td>
                   <td style={{ padding: 10 }}>{job.status}</td>

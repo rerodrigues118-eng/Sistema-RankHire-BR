@@ -1,3 +1,4 @@
+import { requireAuth } from "@/lib/auth-guard";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
@@ -5,6 +6,8 @@ import { NextResponse } from "next/server";
 // Rota de bootstrap única — define o superadmin no banco
 // Acesse: /api/setup-superadmin
 export async function GET() {
+  const { userId, supabase: authSupabase } = await requireAuth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
   // 1. Verifica quem está autenticado usando o client normal (respeita cookies)
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();

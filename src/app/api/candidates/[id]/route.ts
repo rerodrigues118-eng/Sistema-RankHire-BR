@@ -1,6 +1,7 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type CandidatePatchBody = {
   shortlist?: boolean;
@@ -21,17 +22,18 @@ type CandidatePatchBody = {
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
     const { id } = await params;
     const body = (await req.json()) as CandidatePatchBody;
 
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
 
     // Ensure candidate belongs to this company (security constraint 1)
-    const { data: candidate } = await supabase
+    const { data: candidate } = await admin
       .from("pdf_candidates")
       .select("id, vaga_id")
       .eq("id", id)
@@ -42,7 +44,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: "Candidato nao encontrado" }, { status: 404 });
     }
 
-    const update: any = {};
+    const update: Record<string, unknown> = {};
     if (typeof body.shortlist === "boolean") update.shortlist = body.shortlist;
     if (typeof body.status === "string") update.status = body.status;
     if (typeof body.name === "string") update.nome_candidato = body.name;
@@ -60,14 +62,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // Handle manual score updates if provided (score logic 4)
     if (Array.isArray(body.evaluations)) {
       // Load vacancy criteria
-      const { data: criteria } = await supabase
+      const { data: criteria } = await admin
         .from("criteria")
         .select("id, nome, peso")
         .eq("vaga_id", candidate.vaga_id);
 
       if (criteria && criteria.length > 0) {
         // Load existing evaluations
-        const { data: existingEvals } = await supabase
+        const { data: existingEvals } = await admin
           .from("candidate_evaluations")
           .select("id, criteria_id")
           .eq("candidate_id", id);
@@ -82,12 +84,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             : null;
 
           if (existing) {
-            await supabase
+            await admin
               .from("candidate_evaluations")
               .update({ nota_manual: manualScore })
               .eq("id", existing.id);
           } else {
-            await supabase
+            await admin
               .from("candidate_evaluations")
               .insert({
                 candidate_id: id,
@@ -99,7 +101,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }
 
         // Recalculate Final Score using Weighted Average (score logic 3)
-        const { data: updatedEvals } = await supabase
+        const { data: updatedEvals } = await admin
           .from("candidate_evaluations")
           .select("criteria_id, nota, nota_manual")
           .eq("candidate_id", id);
@@ -122,7 +124,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     }
 
-    const { data: updatedCandidate, error } = await supabase
+    const { data: updatedCandidate, error } = await admin
       .from("pdf_candidates")
       .update(update)
       .eq("id", id)
@@ -135,18 +137,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     // Load final evaluations to return to client
-    const { data: finalEvals } = await supabase
+    const { data: finalEvals } = await admin
       .from("candidate_evaluations")
       .select("nota, nota_manual, justificativa, criteria(nome, peso)")
       .eq("candidate_id", id);
 
-    const formattedEvals = (finalEvals || []).map((e: any) => ({
-      name: e.criteria?.nome || "Critério",
-      score: e.nota,
-      manualScore: e.nota_manual,
-      justification: e.justificativa || "",
-      weight: e.criteria?.peso || 1,
-    }));
+    const formattedEvals = ((finalEvals || []) as Array<Record<string, unknown>>).map((e: Record<string, unknown>) => {
+      const criteria = e.criteria as Record<string, unknown> | undefined;
+      return {
+        name: (criteria?.nome as string | undefined) || "Critério",
+        score: e.nota,
+        manualScore: e.nota_manual,
+        justification: (e.justificativa as string | undefined) || "",
+        weight: (criteria?.peso as number | undefined) || 1,
+      };
+    });
 
     return NextResponse.json({
       candidate: {

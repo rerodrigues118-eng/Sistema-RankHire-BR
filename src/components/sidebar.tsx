@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from 'next/image';
 import type { PageId } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import {
@@ -15,7 +16,6 @@ import {
   Users,
   Search as SearchIcon,
   LogOut,
-  ShieldAlert
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getCachedProfile, setCachedProfile } from "@/lib/profile-cache";
@@ -25,13 +25,7 @@ interface SidebarProps {
   onNavigate: (page: PageId) => void;
 }
 
-const ADMIN_EMAIL_ALLOWLIST = new Set([
-  "delski.contato@gmail.com",
-]);
 
-function normalizeRole(value: string | null | undefined) {
-  return String(value || "").trim().toLowerCase();
-}
 
 const NAV_SECTIONS = [
   {
@@ -66,7 +60,6 @@ const NAV_SECTIONS = [
 ];
 
 export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
-  const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("Carregando...");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -83,19 +76,15 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         if (localEmail) {
           setUserEmail(user?.email || "Usuário");
           // use user metadata as fallback display name
-          const metaName = (user as any)?.user_metadata?.full_name || (user as any)?.user_metadata?.name || null;
-          if (metaName) setDisplayName(metaName);
-          if (ADMIN_EMAIL_ALLOWLIST.has(localEmail)) {
-            setIsAdmin(true);
-          }
+          const userObj = user as unknown as Record<string, unknown> | undefined;
+          const metaName = (userObj?.user_metadata as Record<string, unknown> | undefined)?.full_name || (userObj?.user_metadata as Record<string, unknown> | undefined)?.name || null;
+          if (metaName) setDisplayName(metaName as string);
         }
 
         const res = await fetch('/api/me/role');
         if (res.ok) {
           const data = await res.json();
           setUserEmail(data.email || "Usuário");
-          const email = String(data.email || "").toLowerCase();
-          const role = normalizeRole(data.role);
           // prefer cached profile to avoid flashes
           try {
             const cached = getCachedProfile();
@@ -111,31 +100,22 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                 try { setCachedProfile(pd.profile); } catch {}
               }
             }
-          } catch (e) {
+          } catch {
             // ignore
           }
-          if (
-            data.isAdmin ||
-            role === 'superadmin' ||
-            role === 'admin' ||
-            (email && ADMIN_EMAIL_ALLOWLIST.has(email))
-          ) {
-            setIsAdmin(true);
-          }
         }
-      } catch (err) {
-        console.error("Erro ao verificar role:", err);
+      } catch {
+        // role check failed
       }
     }
     checkRole();
-    const onProfileUpdated = (e: Event) => {
+        const onProfileUpdated = (e: Event) => {
       try {
-        // @ts-ignore
         const profile = (e as CustomEvent).detail;
         if (profile) {
           setAvatarUrl(profile.avatar_url || null);
           setDisplayName(profile.nome || profile.email || null);
-          setUserEmail(profile.email || userEmail);
+              setUserEmail((prev) => profile.email || prev);
           try { setCachedProfile(profile); } catch {}
         }
       } catch {}
@@ -219,24 +199,6 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
           </div>
         ))}
 
-        {isAdmin && (
-          <div className="mb-4 last:mb-0">
-            <span className="block px-5 pb-1 pt-4 text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-[0.08em] text-red-500/80">
-              Sistema Interno
-            </span>
-            <ul className="flex flex-col">
-              <li className="w-full">
-                <a
-                  href="/sys-control"
-                  className="flex items-center gap-2.5 w-full text-left transition-colors text-[13px] text-[var(--text-secondary)] hover:bg-red-50 hover:text-red-600 py-2 px-3 mx-2 rounded-[6px] w-[calc(100%-16px)] font-semibold"
-                >
-                  <ShieldAlert size={16} strokeWidth={2} />
-                  <span className="truncate">Painel Admin</span>
-                </a>
-              </li>
-            </ul>
-          </div>
-        )}
       </nav>
 
       {/* User footer */}
@@ -244,7 +206,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
             {avatarUrl ? (
-              <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+              <Image src={avatarUrl} alt="avatar" width={32} height={32} className="h-full w-full object-cover" unoptimized />
             ) : (
               <div className="w-8 h-8 rounded-full bg-[#059669] text-white flex items-center justify-center text-[12px] font-medium">
                 {(displayName || userEmail || 'U').charAt(0).toUpperCase()}

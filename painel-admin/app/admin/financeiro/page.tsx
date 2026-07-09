@@ -1,11 +1,17 @@
 import { createSupabaseAdminClient } from '@/lib/supabase';
 
+type EmpresaPlan = {
+  plano?: string | null;
+  mrr_centavos?: number | string | null;
+};
+
 export default async function FinanceiroPage() {
   const supabase = createSupabaseAdminClient();
-  const { data: planos } = await supabase.from('empresas').select('plano,mrr_centavos').not('plano', 'is', null);
+  const { data: planos } = await supabase.from<EmpresaPlan>('empresas').select('plano,mrr_centavos').not('plano', 'is', null);
 
-  const totals = (planos || []).reduce((acc: { [key: string]: number }, item: any) => {
-    acc[item.plano] = (acc[item.plano] || 0) + Number(item.mrr_centavos || 0);
+  const totals = (planos || []).reduce((acc: { [key: string]: number }, item) => {
+    const plano = item.plano || 'outros';
+    acc[plano] = (acc[plano] || 0) + Number(item.mrr_centavos || 0);
     return acc;
   }, {});
 

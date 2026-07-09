@@ -1,7 +1,33 @@
 "use client";
 
-import React, { useState } from "react";
-import { ArrowLeft, Bot, Search, BarChart3, Filter, Check, X, Star } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { ArrowLeft, Bot, Search, BarChart3, Filter, X, Star } from "lucide-react";
+
+// Component to render mocked bar chart with pre-computed random values
+function MockBarChart() {
+  // Pre-computed deterministic heights (seeded with index)
+  const randomHeights = useMemo(() => {
+    const heights = [];
+    for (let i = 0; i < 15; i++) {
+      // Deterministic "random" values based on index
+      const seed = (i * 9973) % 256;
+      const outer = Math.max(10, ((seed * 1.5) % 100));
+      const inner = Math.max(10, ((seed * 0.9) % 60));
+      heights.push({ outer, inner });
+    }
+    return heights;
+  }, []);
+  
+  return (
+    <div className="h-48 w-full flex items-end justify-between gap-1 mt-4">
+      {randomHeights.map((heights, i) => (
+        <div key={i} className="w-full bg-[#E0E7FF] rounded-t-sm" style={{ height: `${heights.outer}%` }}>
+          <div className="bg-[#635BFF] rounded-t-sm" style={{ height: `${heights.inner}%` }}></div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function AgenteDetailsPage() {
   const [activeTab, setActiveTab] = useState("candidatos");
@@ -212,14 +238,7 @@ export default function AgenteDetailsPage() {
             {/* Gráfico Simulado */}
             <div className="bg-white border border-[#E5E7EB] p-6 rounded-xl shadow-sm">
               <h3 className="text-[15px] font-bold text-[#111827] mb-4">Candidatos Descobertos (30 dias)</h3>
-              <div className="h-48 w-full flex items-end justify-between gap-1 mt-4">
-                {/* Mock barras */}
-                {[...Array(15)].map((_, i) => (
-                  <div key={i} className="w-full bg-[#E0E7FF] rounded-t-sm" style={{ height: `${Math.max(10, Math.random() * 100)}%` }}>
-                    <div className="bg-[#635BFF] rounded-t-sm" style={{ height: `${Math.max(10, Math.random() * 60)}%` }}></div>
-                  </div>
-                ))}
-              </div>
+              <MockBarChart />
               <div className="flex justify-between text-[11px] text-[#6B7280] mt-2">
                 <span>15 dias atrás</span>
                 <span>Hoje</span>

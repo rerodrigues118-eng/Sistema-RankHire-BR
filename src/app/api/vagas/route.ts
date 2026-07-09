@@ -1,17 +1,23 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
+import { createSupabaseAdminClient } from "@/lib/admin";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const { userId, supabase } = await requireAuth();
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { userId } = await requireAuth();
+    const admin = createSupabaseAdminClient();
+    const { data: usuario } = await admin
+      .from("usuarios")
+      .select("empresa_id")
+      .eq("id", userId)
+      .single();
 
     if (!usuario?.empresa_id) {
       return NextResponse.json({ vagas: [] });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("vagas")
       .select("id,titulo,area,tipo_contrato,localizacao,briefing,status,created_at,updated_at")
       .eq("empresa_id", usuario.empresa_id)
@@ -29,7 +35,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId } = await requireAuth();
     const { title, area, contract, location, briefing, status } = (await req.json()) as {
       title?: string;
       area?: string;
@@ -39,9 +45,33 @@ export async function POST(req: Request) {
       status?: string;
     };
 
-    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const admin = createSupabaseAdminClient();
+
+    const { data: usuario, error: usuarioError } = await admin
+      .from("usuarios")
+      .select("empresa_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (usuarioError) {
+      return NextResponse.json({ error: usuarioError.message || "Falha ao carregar usuario" }, { status: 500 });
+    }
 
     if (!usuario?.empresa_id) {
+      return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
+    }
+
+    const { data: empresa, error: empresaError } = await admin
+      .from("empresas")
+      .select("id")
+      .eq("id", usuario.empresa_id)
+      .maybeSingle();
+
+    if (empresaError) {
+      return NextResponse.json({ error: empresaError.message || "Falha ao carregar empresa" }, { status: 500 });
+    }
+
+    if (!empresa) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
 
@@ -49,12 +79,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Titulo e obrigatorio" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("vagas")
       .insert({
         empresa_id: usuario.empresa_id,
         criado_por: userId,
         titulo: title.trim(),
+        title: title.trim(),
         area: area || "Geral",
         tipo_contrato: contract || "CLT",
         localizacao: location || "",

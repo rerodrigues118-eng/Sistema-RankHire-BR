@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/require-admin";
 
-function toCsv(rows: any[]) {
+function toCsv(rows: Array<Record<string, unknown>>) {
   if (rows.length === 0) return "";
   const headers = Object.keys(rows[0]);
   const csv = [headers.join(";")];
@@ -16,6 +17,9 @@ function toCsv(rows: any[]) {
 }
 
 export async function GET(request: Request) {
+  const auth = await requireAdmin("financeiro");
+  if (auth.error) return auth.error;
+
   const url = new URL(request.url);
   const search = url.searchParams.get("search") || undefined;
   const status = url.searchParams.get("status") || undefined;

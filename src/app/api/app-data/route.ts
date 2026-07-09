@@ -2,6 +2,7 @@ import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/admin";
+import { logger } from "@/lib/logger";
 
 type JobRow = {
   id: string;
@@ -11,37 +12,14 @@ type JobRow = {
   created_at: string | null;
 };
 
-type CandidateRow = {
-  id: string;
-  vaga_id: string | null;
-  nome_candidato: string | null;
-  cargo_atual: string | null;
-  empresa_atual: string | null;
-  cidade: string | null;
-  score_final: number | null;
-  linkedin_url: string | null;
-  status: string | null;
-  parsed_text: string | null;
-  email_contato: string | null;
-  telefone: string | null;
-  observacoes: string | null;
-  shortlist: boolean | null;
-  pretensao_salarial: string | null;
-  disponibilidade: string | null;
-  regime_preferido: string | null;
-  resumo_ia: string | null;
-  created_at: string | null;
-};
-
 export async function GET() {
   try {
     const { userId, supabase } = await requireAuth();
-    let { data: usuario } = await supabase.from("usuarios").select("empresa_id, role").eq("id", userId).single();
-
     const admin = createSupabaseAdminClient();
+    const { data: usuario } = await admin.from("usuarios").select("empresa_id, role").eq("id", userId).single();
 
-    let empresaId = usuario?.empresa_id;
-    let userRole = usuario?.role || "member";
+    const empresaId = usuario?.empresa_id;
+    const userRole = usuario?.role || "member";
 
     if (!empresaId) {
       // If the user has no associated company, return an empty app-data payload.
@@ -92,6 +70,7 @@ export async function GET() {
             empresa_id: empresaId,
             criado_por: userId,
             titulo: "Email Designer BR — Figma",
+            title: "Email Designer BR — Figma",
             area: "Design",
             tipo_contrato: "CLT",
             localizacao: "São Paulo, SP",
@@ -108,6 +87,7 @@ export async function GET() {
             empresa_id: empresaId,
             criado_por: userId,
             titulo: "Email Designer BR — Figma",
+            title: "Email Designer BR — Figma",
             area: "Design",
             tipo_contrato: "CLT",
             localizacao: "São Paulo, SP",
@@ -147,12 +127,12 @@ export async function GET() {
     }
 
     const [jobsRes, candidatesRes, empresaRes] = await Promise.all([
-      supabase
+      admin
         .from("vagas")
         .select("id,titulo,area,status,created_at")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false }),
-      supabase
+      admin
         .from("pdf_candidates")
         .select(`
           id,
@@ -186,7 +166,7 @@ export async function GET() {
         `)
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false }),
-      supabase
+      admin
         .from("empresas")
         .select("id,nome,plano,status,trial_expires_at,subscription_status,current_period_end,limite_pdfs_mes")
         .eq("id", empresaId)
@@ -201,15 +181,7 @@ export async function GET() {
       return NextResponse.json({ error: candidatesRes.error.message }, { status: 500 });
     }
 
-    const allCandidates = (candidatesRes.data || []) as any[];
-    const scoredCandidates = allCandidates.filter((c) => c.score_final !== null && c.score_final > 0);
-    const avgScore = scoredCandidates.length > 0
-      ? scoredCandidates.reduce((sum: number, c: any) => sum + Number(c.score_final), 0) / scoredCandidates.length
-      : 0;
-    const topScore = scoredCandidates.length > 0
-      ? Math.max(...scoredCandidates.map((c: any) => Number(c.score_final)))
-      : 0;
-
+    const allCandidates = (candidatesRes.data || []) as Array<Record<string, unknown>>;
     const AVATAR_PALETTE = ["#0369A1","#D97706","#059669","#7E22CE","#BE185D","#0891B2","#4338CA","#B45309"];
 
     const normalizeJobStatus = (status: string | null) => {
@@ -220,13 +192,13 @@ export async function GET() {
     };
 
     const jobs = ((jobsRes.data || []) as JobRow[]).map((job) => {
-      const jobCandidates = allCandidates.filter((cand) => cand.vaga_id === job.id);
-      const jobScoredCandidates = jobCandidates.filter((cand) => cand.score_final !== null && cand.score_final > 0);
-      const jobAvgScore = jobScoredCandidates.length > 0
-        ? jobScoredCandidates.reduce((sum: number, cand: any) => sum + Number(cand.score_final), 0) / jobScoredCandidates.length
+      const jobCandidates = allCandidates.filter((cand) => (cand.vaga_id as string) === job.id);
+      const jobScoredCandidates = jobCandidates.filter((cand) => (cand.score_final as number | null) !== null && (cand.score_final as number) > 0);
+      const jobAvgScoreValue = jobScoredCandidates.length > 0
+        ? jobScoredCandidates.reduce((sum: number, cand: Record<string, unknown>) => sum + Number(cand.score_final), 0) / jobScoredCandidates.length
         : 0;
-      const jobTopScore = jobScoredCandidates.length > 0
-        ? Math.max(...jobScoredCandidates.map((cand: any) => Number(cand.score_final)))
+      const jobTopScoreValue = jobScoredCandidates.length > 0
+        ? Math.max(...jobScoredCandidates.map((cand: Record<string, unknown>) => Number(cand.score_final)))
         : 0;
 
       return {
@@ -234,46 +206,60 @@ export async function GET() {
         title: job.titulo || "Vaga sem titulo",
         department: job.area || "Geral",
         candidatesCount: jobCandidates.length,
-        averageScore: Math.round(jobAvgScore * 10) / 10,
-        topScore: Math.round(jobTopScore * 10) / 10,
+        averageScore: Math.round(jobAvgScoreValue * 10) / 10,
+        topScore: Math.round(jobTopScoreValue * 10) / 10,
         status: normalizeJobStatus(job.status),
         createdDate: job.created_at ? new Date(job.created_at).toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR"),
         createdAt: job.created_at || undefined,
       };
     });
 
-    const candidates = allCandidates.map((cand: any, index: number) => {
-      const formattedEvals = (cand.candidate_evaluations || []).map((e: any) => ({
-        name: e.criteria?.nome || "Critério",
-        score: e.nota,
-        manualScore: e.nota_manual,
-        justification: e.justificativa || "",
-        weight: e.criteria?.peso || 1,
-      }));
+    const candidates = allCandidates.map((cand: Record<string, unknown>, index: number) => {
+      const candEvals = (cand.candidate_evaluations as Array<Record<string, unknown>> | undefined) || [];
+      const formattedEvals = candEvals.map((e: Record<string, unknown>) => {
+        const criteria = e.criteria as Record<string, unknown> | undefined;
+        return {
+          name: (criteria?.nome as string | undefined) || "Critério",
+          score: e.nota,
+          manualScore: e.nota_manual,
+          justification: (e.justificativa as string | undefined) || "",
+          weight: (criteria?.peso as number | undefined) || 1,
+        };
+      });
 
       // Build confirmedTags from high-scoring evaluations (nota >= 4.0)
       const confirmedTags = formattedEvals
-        .filter((e: any) => (e.manualScore ?? e.score) >= 4.0 && e.name && e.name !== "Critério")
-        .map((e: any) => e.name);
+        .filter((e: Record<string, unknown>) => {
+          const manualScore = e.manualScore as number | undefined;
+          const score = e.score as number | undefined;
+          return ((manualScore ?? score) ?? 0) >= 4.0 && e.name && e.name !== "Critério";
+        })
+        .map((e: Record<string, unknown>) => e.name as string);
 
       // Build partialTags from medium-scoring evaluations (nota >= 2.5 and < 4.0)
       const partialTags = formattedEvals
-        .filter((e: any) => (e.manualScore ?? e.score) >= 2.5 && (e.manualScore ?? e.score) < 4.0 && e.name && e.name !== "Critério")
-        .map((e: any) => e.name);
+        .filter((e: Record<string, unknown>) => {
+          const manualScore = e.manualScore as number | undefined;
+          const score = e.score as number | undefined;
+          const evalScore = (manualScore ?? score) ?? 0;
+          return evalScore >= 2.5 && evalScore < 4.0 && e.name && e.name !== "Critério";
+        })
+        .map((e: Record<string, unknown>) => e.name as string);
 
       const avatarColor = AVATAR_PALETTE[index % AVATAR_PALETTE.length];
-      const candidateName = cand.nome_candidato || `Candidato ${index + 1}`;
-      const etiqueta = cand.candidate_etiquetas?.[0]?.etiquetas || null;
+      const candidateName = (cand.nome_candidato as string | null) || `Candidato ${index + 1}`;
+      const candEtiquetas = cand.candidate_etiquetas as Array<Record<string, unknown>> | undefined;
+      const etiqueta = candEtiquetas?.[0] ? (candEtiquetas[0].etiquetas as string | null) : null;
 
       return {
         id: cand.id,
         name: candidateName,
-        role: cand.cargo_atual || "Email Designer",
-        company: cand.empresa_atual || "Via upload",
-        city: cand.cidade || "Brasil",
-        vagaId: cand.vaga_id || undefined,
-        email: cand.email_contato || "",
-        phone: cand.telefone || "",
+        role: (cand.cargo_atual as string | null) || "Email Designer",
+        company: (cand.empresa_atual as string | null) || "Via upload",
+        city: (cand.cidade as string | null) || "Brasil",
+        vagaId: (cand.vaga_id as string | null) || undefined,
+        email: (cand.email_contato as string | null) || "",
+        phone: (cand.telefone as string | null) || "",
         score: Number(cand.score_final || 0),
         avatarColor,
         initials: candidateName
@@ -287,8 +273,8 @@ export async function GET() {
         otherTags: [],
         etiqueta,
         shortlist: cand.shortlist || false,
-        status: (["oferecido", "contratado", "entrevista", "shortlist"] as string[]).includes(cand.status)
-          ? cand.status
+        status: (["oferecido", "contratado", "entrevista", "shortlist"] as string[]).includes(cand.status as string)
+          ? (cand.status as string)
           : "triado",
         linkedinUrl: cand.linkedin_url || "#",
         parsedText: cand.parsed_text || undefined,
@@ -329,7 +315,7 @@ export async function GET() {
     ]
       .sort((a, b) => b.time - a.time)
       .slice(0, 6)
-      .map(({ displayTime, time, ...item }) => ({
+      .map(({ displayTime, ...item }) => ({
         ...item,
         time: displayTime,
       }));
@@ -380,20 +366,13 @@ export async function GET() {
         exportsCount = count;
       }
     } catch (e) {
-      console.error("Erro ao buscar pdf_exports em app-data:", e);
+      logger.error("Erro ao buscar pdf_exports em app-data:", e);
     }
 
-    const PLAN_LIMITS: Record<string, number | null> = {
-      trial_starter: 10,
-      profissional: 100,
-      enterprise: 500,
-      superadmin: null,
-      admin: null,
-    };
-
+    const { getPdfLimitFromPlan } = await import('@/lib/planos');
     const isAdmin = userRole === "superadmin" || userRole === "admin";
-    const plan = empresaRes.data?.plano || "trial_starter";
-    const limit = PLAN_LIMITS[plan] ?? empresaRes.data?.limite_pdfs_mes ?? 10;
+    const plan = empresaRes.data?.plano || null;
+    const limit = getPdfLimitFromPlan(plan, (empresaRes.data || undefined) as any) ?? empresaRes.data?.limite_pdfs_mes ?? 10;
     const remaining = limit === null ? null : Math.max(0, limit - exportsCount);
 
     const quota = {
@@ -401,7 +380,7 @@ export async function GET() {
       used: exportsCount,
       limit,
       remaining: isAdmin ? null : remaining,
-      plano: plan,
+      plano: plan || (empresaRes.data?.plano ?? 'sem-plano'),
       mes: new Date().toISOString().slice(0, 7),
     };
 

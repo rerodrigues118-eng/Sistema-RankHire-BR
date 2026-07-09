@@ -1,3 +1,4 @@
+import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/admin";
 import { handleApiError } from "@/lib/api";
@@ -31,6 +32,8 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function POST(req: Request) {
+  const { userId, supabase } = await requireAuth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
   try {
     // 1. Rate Limiting por IP
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "127.0.0.1";

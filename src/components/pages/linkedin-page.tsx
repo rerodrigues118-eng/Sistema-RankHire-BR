@@ -212,12 +212,12 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     try {
       const res = await fetch('/api/linkedin-search', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(filters)
+        body: JSON.stringify({ ...filters, vagaId: activeJob?.id, vaga_id: activeJob?.id })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro na busca');
 
-      let perfis: LinkedinProfile[] = (data.results || []).map((r: LinkedinProfile) => ({
+      const perfis: LinkedinProfile[] = (data.results || []).map((r: LinkedinProfile) => ({
         ...r, jaVisto: urlsVistas.has(r.linkedinUrl),
       }));
 
@@ -441,28 +441,6 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     }
 
     return null;
-  }
-
-  // ── Botão de filtros reutilizável ─────────────────────────────────────────
-  function FilterButton({ size = 'md' }: { size?: 'sm' | 'md' }) {
-    const active = hasActiveFilters(activeFilters);
-    const sm = size === 'sm';
-    return (
-      <button
-        onClick={() => setIsFiltersOpen(true)}
-        className={`flex items-center gap-2 border rounded-xl font-medium transition-all
-          ${active ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700'}
-          ${sm ? 'px-2.5 py-1.5 text-[11px]' : 'px-3 py-2 text-[12px]'}`}
-      >
-        <SlidersHorizontal className={sm ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
-        Filtros avançados
-        {active && (
-          <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
-            ✓
-          </span>
-        )}
-      </button>
-    );
   }
 
   // ── ESTADO INICIAL — Centralizado ──────────────────────────────────────────

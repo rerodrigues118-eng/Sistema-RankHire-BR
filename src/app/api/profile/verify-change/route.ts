@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
     // apply change
     const admin = createSupabaseAdminClient();
-    const update: Record<string, any> = {};
+    const update: Record<string, unknown> = {};
     if (body.type === 'email') update.email = entry.newValue;
     if (body.type === 'phone') update.telefone = entry.newValue;
 

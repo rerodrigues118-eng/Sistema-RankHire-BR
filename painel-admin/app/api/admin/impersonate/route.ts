@@ -1,6 +1,6 @@
-import { cookies, NextResponse } from "next/headers";
+import { NextResponse } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase";
-import { getAdminSessionByToken, getSessionCookieName } from "@/lib/session";
+import { requireAdmin } from "@/lib/require-admin";
 import { logAdminAction } from "@/lib/log";
 
 const COOKIE_NAME = "rankhire_admin_impersonation";
@@ -12,33 +12,18 @@ export async function GET(request: Request) {
   const redirect = url.searchParams.get("redirect") || "/admin/clientes";
   const ipAddress = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? request.headers.get("x-real-ip") ?? null;
 
-  const token = cookies().get(getSessionCookieName())?.value;
-  if (!token) {
-    return NextResponse.json({ error: "Sessão inválida." }, { status: 401 });
-  }
+  const auth = await requireAdmin("administrador");
+  if (auth.error) return auth.error;
 
-  const session = await getAdminSessionByToken(token);
-  if (!session) {
-    return NextResponse.json({ error: "Sessão inválida." }, { status: 401 });
-  }
-
+  const adminUser = auth.admin;
   const adminClient = createSupabaseAdminClient();
-  const { data: adminUser, error: adminError } = await adminClient
-    .from("admin_usuarios")
-    .select("id,nome,email,role,ativo")
-    .eq("id", session.admin_id)
-    .single();
-
-  if (adminError || !adminUser || !adminUser.ativo) {
-    return NextResponse.json({ error: "Administrador inválido ou inativo." }, { status: 403 });
-  }
 
   const response = NextResponse.redirect(new URL(redirect, request.url));
 
   if (stop || !empresaId) {
     response.cookies.delete(COOKIE_NAME, { path: "/" });
     await logAdminAction({
-      adminId: session.admin_id,
+      adminId: adminUser.id,
       acao: "impersonacao_terminada",
       nivel: "INFO",
       empresaId: empresaId || null,
@@ -65,7 +50,7 @@ export async function GET(request: Request) {
   });
 
   await logAdminAction({
-    adminId: session.admin_id,
+    adminId: adminUser.id,
     acao: "impersonacao_iniciada",
     nivel: "INFO",
     empresaId,

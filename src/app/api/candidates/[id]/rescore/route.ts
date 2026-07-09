@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth-guard";
 import { callAI } from "@/lib/ai-client";
 import { buildScoringPrompt } from "@/lib/scoring-prompt";
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Redis from "ioredis";
 
 // Reuse Redis client instance to avoid connection leaks
@@ -26,11 +27,12 @@ type ScoringResult = {
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, supabase } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
     const { id } = await params;
+    const admin = createSupabaseAdminClient();
 
     // 1. Fetch user's company ID
-    const { data: usuario } = await supabase
+    const { data: usuario } = await admin
       .from("usuarios")
       .select("empresa_id")
       .eq("id", userId)
@@ -43,7 +45,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const empresaId = usuario.empresa_id;
 
     // 2. Fetch candidate and ensure company isolation (security constraint 1)
-    const { data: candidate } = await supabase
+    const { data: candidate } = await admin
       .from("pdf_candidates")
       .select("id, empresa_id, parsed_text, vaga_id")
       .eq("id", id)
@@ -83,7 +85,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .trim();
 
     // 6. Fetch vacancy criteria
-    const { data: criteria } = await supabase
+    const { data: criteria } = await admin
       .from("criteria")
       .select("id, nome, peso")
       .eq("vaga_id", candidate.vaga_id)
@@ -137,7 +139,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     // 9. Synchronize candidate evaluations in DB
     // First, clear old ones
-    await supabase
+    await admin
       .from("candidate_evaluations")
       .delete()
       .eq("candidate_id", candidate.id);
@@ -156,7 +158,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .filter((ev) => ev.criteria_id);
 
     if (evaluationsToInsert.length > 0) {
-      const { error: insertError } = await supabase
+      const { error: insertError } = await admin
         .from("candidate_evaluations")
         .insert(evaluationsToInsert);
       
@@ -184,7 +186,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     // Update candidate final score and name in pdf_candidates
     const candidatoNome = result.nome || "Candidato sem nome";
-    const { error: updateError } = await supabase
+    const { error: updateError } = await admin
       .from("pdf_candidates")
       .update({
         score_final: finalScore,

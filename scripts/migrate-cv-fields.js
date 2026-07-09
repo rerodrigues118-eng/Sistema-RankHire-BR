@@ -1,5 +1,5 @@
-require("dotenv").config();
-const { createClient } = require("@supabase/supabase-js");
+import 'dotenv/config';
+import { createClient } from "@supabase/supabase-js";
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -10,7 +10,7 @@ async function migrate() {
   console.log("Verificando colunas existentes...");
 
   // Check if columns already exist
-  const { data: testCol, error: testErr } = await admin
+  const { error: testErr } = await admin
     .from("pdf_candidates")
     .select("pretensao_salarial")
     .limit(1);
@@ -30,7 +30,7 @@ ALTER TABLE pdf_candidates
   }
 
   // Check if pdf_exports exists
-  const { data: testExports, error: exportsErr } = await admin
+  const { error: exportsErr } = await admin
     .from("pdf_exports")
     .select("id")
     .limit(1);

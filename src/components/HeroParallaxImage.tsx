@@ -26,12 +26,8 @@ const HeroParallaxImage = ({
   isVisible,
   isPinned = false,
 }: HeroParallaxImageProps) => {
-  const [imageSrc, setImageSrc] = useState<string>('');
   const [imageError, setImageError] = useState(false);
   const [loadedFrames, setLoadedFrames] = useState<Set<number>>(new Set());
-
-  // Derive current image path from frame index to avoid synchronous setState in effects
-  const imageSrc = imageError ? '/inicio.jpg' : getFramePath(currentFrameIndex);
 
   /**
    * Gera caminho da imagem para um frame específico
@@ -42,6 +38,9 @@ const HeroParallaxImage = ({
     const paddedIndex = String(frameIndex + 2).padStart(3, '0');
     return `/fotos-site/ezgif-frame-${paddedIndex}.jpg`;
   };
+
+  // Derive current image path from frame index to avoid synchronous setState in effects
+  const imageSrc = imageError ? '/inicio.jpg' : getFramePath(currentFrameIndex);
 
   /**
    * Calcula quais frames devem estar pré-carregados

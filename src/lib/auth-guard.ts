@@ -11,6 +11,7 @@ function normalizeRole(role: string | null | undefined) {
 
 export async function requireAuth(): Promise<{
   userId: string;
+  user: typeof user;
   supabase: Awaited<ReturnType<typeof createClient>>;
 }> {
   const supabase = await createClient();
@@ -23,7 +24,7 @@ export async function requireAuth(): Promise<{
     throw new ApiError("Nao autorizado.", 401);
   }
 
-  return { userId: user.id, supabase };
+  return { userId: user.id, user, supabase };
 }
 
 export async function requireSuperAdmin(): Promise<{
