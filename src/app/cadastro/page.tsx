@@ -51,12 +51,16 @@ export default function CadastroPage() {
   }, [timer]);
 
   function validateBasicData() {
-    if (!nome.trim() || !email.trim() || !password.trim() || !cargo.trim() || !nomeEmpresa.trim()) {
-      return "Preencha nome, e-mail, senha, cargo e empresa.";
+    if (!nome.trim() || !email.trim() || !password.trim() || !cargo.trim() || !nomeEmpresa.trim() || !telefone.trim()) {
+      return "Preencha todos os campos e o telefone.";
     }
 
     if (password.length < 8) {
       return "A senha precisa ter pelo menos 8 caracteres.";
+    }
+
+    if (!isPhoneValid) {
+      return "Informe um celular brasileiro valido no formato +55DDDnumero.";
     }
 
     if (!termosAceitos) {
@@ -66,7 +70,7 @@ export default function CadastroPage() {
     return null;
   }
 
-  function goToPhoneStep(e: React.FormEvent) {
+  async function goToVerifyStep(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
@@ -76,45 +80,46 @@ export default function CadastroPage() {
       return;
     }
 
-    setStep(2);
-  }
-
-  async function handleSendCode() {
-    setError(null);
-
-    if (!isPhoneValid) {
-      setError("Informe um celular brasileiro valido no formato +55DDDnumero.");
-      return;
-    }
-
-    setIsSendingCode(true);
-    const supabase = createClient();
+    setIsLoading(true);
 
     try {
-      const check = await fetch("/api/auth/phone/check", {
+      const res = await fetch("/api/auth/email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ telefone: normalizedPhone }),
+        body: JSON.stringify({ email, telefone: normalizedPhone }),
       });
-      const checkData = await check.json();
+      const data = await res.json();
 
-      if (!check.ok) {
-        throw new Error(checkData.error || "Nao foi possivel validar o telefone.");
+      if (!res.ok) {
+        throw new Error(data.error || "Nao foi possivel iniciar a verificacao.");
       }
 
-      if (!checkData.available) {
-        throw new Error("Este numero ja esta vinculado a uma conta.");
-      }
-
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        phone: normalizedPhone,
-      });
-
-      if (otpError) {
-        throw otpError;
-      }
-
+      setStep(2);
       setIsCodeSent(true);
+      setTimer(60);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar codigo.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleResendCode() {
+    setError(null);
+    setIsSendingCode(true);
+
+    try {
+      const res = await fetch("/api/auth/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, telefone: normalizedPhone }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Nao foi possivel reenviar o codigo.");
+      }
+
       setTimer(60);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Nao foi possivel enviar o codigo.");
@@ -127,42 +132,46 @@ export default function CadastroPage() {
     e.preventDefault();
     setError(null);
 
-    if (!isPhoneValid) {
-      setError("Informe um celular brasileiro valido no formato +55DDDnumero.");
-      return;
-    }
-
     if (!/^\d{6}$/.test(codigo)) {
-      setError("Digite o codigo de 6 digitos enviado por SMS.");
+      setError("Digite o codigo de 6 digitos enviado para o seu e-mail.");
       return;
     }
 
     setIsLoading(true);
-    const supabase = createClient();
 
     try {
-      const { error: otpError } = await supabase.auth.verifyOtp({
-        phone: normalizedPhone,
-        token: codigo,
-        type: "sms",
+      const verifyRes = await fetch("/api/auth/email/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, token: codigo }),
       });
+      const verifyData = await verifyRes.json();
 
-      if (otpError) {
-        throw otpError;
+      if (!verifyRes.ok) {
+        throw new Error(verifyData.error || "Codigo invalido.");
       }
 
-      const { error: updateError } = await supabase.auth.updateUser({
-        email: email.trim(),
+      // Cria a conta no Supabase confirmada e com metadados
+      const registerRes = await fetch("/api/auth/register-verified", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, nome, cargo, empresa: nomeEmpresa }),
+      });
+      const registerData = await registerRes.json();
+
+      if (!registerRes.ok) {
+        throw new Error(registerData.error || "Erro ao criar conta.");
+      }
+
+      // Faz login com as credenciais cadastradas
+      const supabase = createClient();
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
         password,
-        data: {
-          nome: nome.trim(),
-          cargo: cargo.trim(),
-          empresa: nomeEmpresa.trim(),
-        },
       });
 
-      if (updateError) {
-        throw updateError;
+      if (loginError) {
+        throw loginError;
       }
 
       setStep(3);
@@ -245,7 +254,7 @@ export default function CadastroPage() {
         )}
 
         {step === 1 && (
-          <form onSubmit={goToPhoneStep} className="space-y-4">
+          <form onSubmit={goToVerifyStep} className="space-y-4">
             <div className="flex items-center gap-2 text-zinc-300 font-bold text-xs mb-2 uppercase tracking-wider">
               <User className="w-4 h-4 text-[#D4AF37]" />
               Dados basicos
@@ -272,6 +281,17 @@ export default function CadastroPage() {
               </Field>
             </div>
 
+            <Field label="Celular (Apenas para evitar duplicatas)">
+              <input
+                value={telefone}
+                onChange={(e) => setTelefone(e.target.value)}
+                className="auth-input"
+                placeholder="+5511999999999"
+                inputMode="tel"
+                required
+              />
+            </Field>
+
             <ConsentChecks
               termosAceitos={termosAceitos}
               setTermosAceitos={setTermosAceitos}
@@ -292,50 +312,38 @@ export default function CadastroPage() {
         {step === 2 && (
           <form onSubmit={handleVerifyCode} className="space-y-4">
             <div className="flex items-center gap-2 text-zinc-300 font-bold text-xs mb-2 uppercase tracking-wider">
-              <Phone className="w-4 h-4 text-[#D4AF37]" />
-              Verificacao de telefone
+              <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
+              Verificacao de E-mail
             </div>
 
-            <Field label="Celular com DDD">
+            <div className="text-sm text-zinc-400 mb-4 text-center">
+              Enviamos um codigo de 6 digitos para <br/> 
+              <strong className="text-white">{email}</strong>
+            </div>
+
+            <Field label="Codigo de Verificacao">
               <input
-                value={telefone}
-                onChange={(e) => {
-                  setTelefone(e.target.value);
-                  setIsCodeSent(false);
-                  setCodigo("");
-                }}
-                className="auth-input"
-                placeholder="+5511999999999"
-                inputMode="tel"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="auth-input text-center tracking-[0.4em]"
+                placeholder="000000"
+                inputMode="numeric"
                 required
               />
             </Field>
 
+            <SubmitButton disabled={!isCodeSent || codigo.length !== 6} loading={isLoading}>
+              Confirmar E-mail <CheckCircle2 className="w-4 h-4" />
+            </SubmitButton>
+
             <button
               type="button"
-              onClick={handleSendCode}
+              onClick={handleResendCode}
               disabled={isSendingCode || timer > 0}
-              className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full text-xs font-bold flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full text-center text-xs text-zinc-500 hover:text-white py-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSendingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : timer > 0 ? `Reenviar em ${timer}s` : "Enviar codigo"}
+              {isSendingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : timer > 0 ? `Reenviar em ${timer}s` : "Reenviar codigo"}
             </button>
-
-            {isCodeSent && (
-              <Field label="Codigo SMS">
-                <input
-                  value={codigo}
-                  onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className="auth-input text-center tracking-[0.4em]"
-                  placeholder="000000"
-                  inputMode="numeric"
-                  required
-                />
-              </Field>
-            )}
-
-            <SubmitButton disabled={!isCodeSent || codigo.length !== 6} loading={isLoading}>
-              Confirmar telefone <ShieldCheck className="w-4 h-4" />
-            </SubmitButton>
 
             <BackButton onClick={() => setStep(1)} />
           </form>
