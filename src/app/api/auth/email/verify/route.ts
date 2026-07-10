@@ -20,18 +20,20 @@ export async function POST(req: Request) {
 
     const redis = new Redis(redisUrl);
     const savedOtp = await redis.get(`otp:${emailTrimmed}`);
-    redis.disconnect();
 
     if (!savedOtp) {
+      redis.disconnect();
       return NextResponse.json({ error: 'Código expirado ou inválido.' }, { status: 400 });
     }
 
     if (savedOtp !== token) {
+      redis.disconnect();
       return NextResponse.json({ error: 'Código incorreto.' }, { status: 400 });
     }
 
     // Código válido! Apaga do Redis para não ser reusado.
     await redis.del(`otp:${emailTrimmed}`);
+    redis.disconnect();
 
     return NextResponse.json({ success: true, message: 'E-mail verificado com sucesso' });
 
