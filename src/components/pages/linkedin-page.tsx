@@ -113,9 +113,25 @@ function FilterButton({ size = 'md', activeFilters, onOpen }: { size?: 'sm' | 'm
 }
 
 export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinPageProps) {
+  const CHAT_STORAGE_KEY = `rh_chat_${activeJob?.id || 'default'}`;
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [hasStarted, setHasStarted] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem(`rh_chat_${activeJob?.id || 'default'}`);
+      if (saved) return JSON.parse(saved) as ChatMessage[];
+    } catch { /* ignore */ }
+    return [];
+  });
+  const [hasStarted, setHasStarted] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`rh_chat_${activeJob?.id || 'default'}`);
+      if (saved) {
+        const parsed = JSON.parse(saved) as ChatMessage[];
+        return parsed.length > 0;
+      }
+    } catch { /* ignore */ }
+    return false;
+  });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
@@ -129,6 +145,21 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Persiste mensagens no localStorage (max 10 pesquisas do usuário)
+  useEffect(() => {
+    try {
+      const MAX_USER = 10;
+      const userMsgs = messages.filter(m => m.type === 'user');
+      let toSave = messages;
+      if (userMsgs.length > MAX_USER) {
+        const oldest = userMsgs[userMsgs.length - MAX_USER];
+        const cutIdx = messages.indexOf(oldest);
+        toSave = cutIdx > 0 ? messages.slice(cutIdx) : messages;
+      }
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(toSave));
+    } catch { /* ignore */ }
+  }, [messages, CHAT_STORAGE_KEY]);
 
   useEffect(() => {
     fetch('/api/perfis-vistos').then(r => r.json())
@@ -252,16 +283,43 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     }
   }
 
-  function handleImport(r: LinkedinProfile) {
+  async function handleImport(r: LinkedinProfile) {
     const color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
-    onImportCandidate({
+    const candidateScore = r.score_final ? Math.round(r.score_final * 10) / 10 : 0;
+    const candidateObj: Candidate = {
       id: `linkedin-${r.id}-${Date.now()}`,
       name: r.name, role: r.headline, company: r.company, city: r.location,
-      score: r.score_final ? Math.round(r.score_final * 10) / 10 : 0,
+      score: candidateScore,
       avatarColor: color, initials: getInitials(r.name),
       confirmedTags: r.skills?.slice(0, 3) || [], partialTags: [], otherTags: [],
       shortlist: false, status: "triado", linkedinUrl: r.linkedinUrl,
-    });
+    };
+
+    // Salva no CRM (banco de dados) imediatamente
+    try {
+      const res = await fetch('/api/candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: r.name,
+          role: r.headline,
+          company: r.company,
+          city: r.location,
+          linkedinUrl: r.linkedinUrl,
+          score: candidateScore,
+          status: 'triado',
+          vagaId: activeJob?.id,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.candidate?.id) candidateObj.id = data.candidate.id;
+      }
+    } catch (e) {
+      console.warn('[Importar] Erro ao salvar no CRM:', e);
+    }
+
+    onImportCandidate(candidateObj);
     setImportedIds(prev => new Set(prev).add(r.id));
   }
 

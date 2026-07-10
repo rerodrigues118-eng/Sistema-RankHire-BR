@@ -17,8 +17,12 @@ import CandidateDrawer from "@/components/CandidateDrawer";
 import { createClient } from "@/lib/supabase/client";
 
 export default function Home() {
-  const [activePage, setActivePage] = useState<PageId>("dashboard");
-  const [selectedJobId, setSelectedJobId] = useState("");
+  const [activePage, setActivePage] = useState<PageId>(() => {
+    try { return (sessionStorage.getItem('rh_activePage') as PageId) || 'dashboard'; } catch { return 'dashboard'; }
+  });
+  const [selectedJobId, setSelectedJobId] = useState(() => {
+    try { return sessionStorage.getItem('rh_selectedJobId') || ''; } catch { return ''; }
+  });
   const [drawerCandidate, setDrawerCandidate] = useState<Candidate | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -38,6 +42,18 @@ export default function Home() {
 
   const activeJob = jobs.find((job) => job.id === selectedJobId) || jobs[0] || null;
 
+  // Persiste a página ativa no sessionStorage
+  const handleSetActivePage = useCallback((page: PageId) => {
+    setActivePage(page);
+    try { sessionStorage.setItem('rh_activePage', page); } catch { /* ignore */ }
+  }, []);
+
+  // Persiste a vaga selecionada no sessionStorage
+  const handleSetSelectedJobId = useCallback((id: string) => {
+    setSelectedJobId(id);
+    try { sessionStorage.setItem('rh_selectedJobId', id); } catch { /* ignore */ }
+  }, []);
+
   const handleOpenDrawer = useCallback((candidate: Candidate) => setDrawerCandidate(candidate), []);
   const handleCloseDrawer = useCallback(() => setDrawerCandidate(null), []);
   const handleUpdateCandidate = useCallback((updated: Candidate) => {
@@ -55,7 +71,13 @@ export default function Home() {
 
       if (Array.isArray(data.jobs)) {
         setJobs(data.jobs);
-        setSelectedJobId((prev) => prev || data.jobs[0]?.id || "");
+        setSelectedJobId((prev) => {
+          const restored = sessionStorage.getItem('rh_selectedJobId');
+          const valid = data.jobs.find((j: Job) => j.id === (restored || prev));
+          const chosen = valid?.id || data.jobs[0]?.id || '';
+          try { sessionStorage.setItem('rh_selectedJobId', chosen); } catch { /* ignore */ }
+          return chosen;
+        });
       } else {
         setJobs([]);
         setSelectedJobId("");
@@ -444,7 +466,7 @@ export default function Home() {
   if (isBootstrapping) {
     return (
       <div className="flex h-screen overflow-hidden bg-white">
-        <Sidebar activePage={activePage} onNavigate={setActivePage} />
+        <Sidebar activePage={activePage} onNavigate={handleSetActivePage} />
         <div className="flex-1 flex items-center justify-center bg-[var(--bg-base)]">
           <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
             <div className="h-4 w-48 rounded bg-slate-200 animate-pulse" />
@@ -457,7 +479,7 @@ export default function Home() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-white">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} />
+      <Sidebar activePage={activePage} onNavigate={handleSetActivePage} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[var(--bg-base)]">
         <main className="flex-1 overflow-y-auto p-6 text-[var(--text-primary)]">
           {bootstrapError && (
@@ -551,8 +573,8 @@ export default function Home() {
                     createdAt: data.vaga.created_at,
                   };
                   setJobs((prev) => [createdJob, ...prev]);
-                  setSelectedJobId(createdJob.id);
-                  setActivePage("dashboard");
+                  handleSetSelectedJobId(createdJob.id);
+                  handleSetActivePage("dashboard");
                   await refreshAppData();
                 }}
                 onUpdateJob={async (updatedJob) => {
@@ -578,7 +600,7 @@ export default function Home() {
                   await refreshAppData();
                 }}
                 onOpenJob={(jobId) => {
-                  setSelectedJobId(jobId);
+                  handleSetSelectedJobId(jobId);
                 }}
               />
             </div>

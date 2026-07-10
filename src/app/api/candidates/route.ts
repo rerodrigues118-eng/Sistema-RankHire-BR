@@ -41,6 +41,7 @@ export async function POST(req: Request) {
       linkedinUrl?: string;
       score?: number;
       status?: string;
+      vagaId?: string;
     };
 
     const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
       .from("pdf_candidates")
       .insert({
         empresa_id: usuario.empresa_id,
+        vaga_id: body.vagaId || null,
         nome_candidato: body.name || "Candidato",
         cargo_atual: body.role || "",
         empresa_atual: body.company || "",
