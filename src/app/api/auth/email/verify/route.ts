@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
+import Redis from 'ioredis';
 
 export async function POST(req: Request) {
   try {
@@ -12,15 +12,15 @@ export async function POST(req: Request) {
 
     const emailTrimmed = email.trim().toLowerCase();
     
-    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+    const redisUrl = process.env.REDIS_URL;
     
-    if (!redisUrl || !redisToken) {
+    if (!redisUrl) {
       return NextResponse.json({ error: 'Serviço temporariamente indisponível' }, { status: 503 });
     }
 
-    const redis = new Redis({ url: redisUrl, token: redisToken });
+    const redis = new Redis(redisUrl);
     const savedOtp = await redis.get(`otp:${emailTrimmed}`);
+    redis.disconnect();
 
     if (!savedOtp) {
       return NextResponse.json({ error: 'Código expirado ou inválido.' }, { status: 400 });

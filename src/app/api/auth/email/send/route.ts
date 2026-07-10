@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendVerificationEmail } from '@/lib/email';
-import { Redis } from '@upstash/redis';
+import Redis from 'ioredis';
 
 export async function POST(req: Request) {
   try {
@@ -40,14 +40,14 @@ export async function POST(req: Request) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     // 3. Salvar no Redis (validade de 10 minutos)
-    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+    const redisUrl = process.env.REDIS_URL;
     
-    if (redisUrl && redisToken) {
-      const redis = new Redis({ url: redisUrl, token: redisToken });
-      await redis.set(`otp:${emailTrimmed}`, otp, { ex: 600 });
+    if (redisUrl) {
+      const redis = new Redis(redisUrl);
+      await redis.set(`otp:${emailTrimmed}`, otp, 'EX', 600);
+      redis.disconnect();
     } else {
-      console.warn('Redis indisponível, simulando OTP...');
+      console.warn('REDIS_URL indisponível, simulando OTP...');
       // Apenas fallback
     }
 
