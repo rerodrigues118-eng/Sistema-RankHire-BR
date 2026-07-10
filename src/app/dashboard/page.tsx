@@ -349,40 +349,72 @@ export default function Home() {
         )
         .subscribe();
 
-      // Polling fallback: checks for completed candidates every 3s
-      const pendingPaths = new Set(storagePaths);
-      const pollTimer = setInterval(async () => {
-        if (pendingPaths.size === 0) {
-          clearInterval(pollTimer);
-          return;
+      // Se o processamento foi inline (candidatos ja vem na resposta), adiciona direto
+      if (Array.isArray(batchData.candidates)) {
+        for (const cand of batchData.candidates) {
+          const score = cand.score_final ?? cand.score;
+          if (score != null) {
+            setUploads((prev) =>
+              prev.map((u) =>
+                u.storagePath === cand.file_url
+                  ? { ...u, status: "completed", progress: 100 }
+                  : u
+              )
+            );
+            addCandidateFromData(cand, batchData);
+          }
         }
-        try {
-          const batchRes = await fetch(`/api/batches/${batchData.batch_id}`);
-          if (!batchRes.ok) return;
-          const batchPoll = await batchRes.json();
-          if (Array.isArray(batchPoll.candidates)) {
-            for (const cand of batchPoll.candidates) {
-              const score = cand.score_final ?? cand.score;
-              if (score != null && pendingPaths.has(cand.file_url)) {
-                pendingPaths.delete(cand.file_url);
-                setUploads((prev) =>
-                  prev.map((u) =>
-                    u.storagePath === cand.file_url
-                      ? { ...u, status: "completed", progress: 100 }
-                      : u
-                  )
-                );
-                addCandidateFromData(cand, batchData);
+        setIsUploading(false);
+      } else {
+        // Polling fallback: para versoes antigas ou quando o processamento e async
+        let pollAttempts = 0;
+        const maxPollAttempts = 20; // max 60s de polling (20 * 3s)
+        const pendingPaths = new Set(storagePaths);
+        const pollTimer = setInterval(async () => {
+          pollAttempts++;
+          if (pendingPaths.size === 0 || pollAttempts >= maxPollAttempts) {
+            clearInterval(pollTimer);
+            setIsUploading(false);
+            return;
+          }
+          try {
+            const batchRes = await fetch(`/api/batches/${batchData.batch_id}`);
+            // Para o polling imediatamente se der 404 (batch nao existe)
+            if (batchRes.status === 404) {
+              clearInterval(pollTimer);
+              setIsUploading(false);
+              return;
+            }
+            if (!batchRes.ok) return;
+            const batchPoll = await batchRes.json();
+            if (Array.isArray(batchPoll.candidates)) {
+              for (const cand of batchPoll.candidates) {
+                const score = cand.score_final ?? cand.score;
+                if (score != null && pendingPaths.has(cand.file_url)) {
+                  pendingPaths.delete(cand.file_url);
+                  setUploads((prev) =>
+                    prev.map((u) =>
+                      u.storagePath === cand.file_url
+                        ? { ...u, status: "completed", progress: 100 }
+                        : u
+                    )
+                  );
+                  addCandidateFromData(cand, batchData);
+                }
               }
             }
+            if (batchPoll.status === "completed" || pendingPaths.size === 0) {
+              clearInterval(pollTimer);
+              setIsUploading(false);
+            }
+          } catch {
+            // ignore polling errors
           }
-        } catch {
-          // ignore polling errors
-        }
-      }, 3000);
+        }, 3000);
 
-      // Cleanup timer after 5 minutes
-      setTimeout(() => clearInterval(pollTimer), 300_000);
+        // Cleanup timer apos 1 minuto no maximo
+        setTimeout(() => { clearInterval(pollTimer); setIsUploading(false); }, 60_000);
+      }
 
       e.target.value = "";
     },

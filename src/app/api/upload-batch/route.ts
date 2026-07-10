@@ -1,13 +1,159 @@
-import { handleApiError } from "@/lib/api";
+import { handleApiError, fetchWithTimeout } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
-import { getPdfQueue } from "@/lib/queue";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from '@/lib/admin';
 import { getPdfLimitFromPlan } from '@/lib/planos';
+import { callAI } from "@/lib/ai-client";
+import { buildScoringPrompt } from "@/lib/scoring-prompt";
+
+// IMPORTANT: Allow up to 60s for PDF processing on Vercel
+export const maxDuration = 60;
+
+function sanitizeText(raw: string): string {
+  return raw
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
+    .replace(/\s{3,}/g, "\n\n")
+    .slice(0, 6000)
+    .trim();
+}
+
+async function downloadAndParsePdf(storagePath: string, admin: ReturnType<typeof createSupabaseAdminClient>): Promise<string> {
+  const { data, error } = await admin.storage
+    .from("curriculos")
+    .createSignedUrl(storagePath, 120);
+
+  if (error || !data?.signedUrl) {
+    throw new Error(`Falha ao gerar URL do PDF: ${error?.message}`);
+  }
+
+  const response = await fetchWithTimeout(data.signedUrl, {}, 30_000);
+  if (!response.ok) {
+    throw new Error(`Erro ao baixar PDF: HTTP ${response.status}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  // Use dynamic import to avoid issues with pdf-parse in edge runtime
+  const pdfParse = (await import('pdf-parse')).default;
+  const pdfData = await pdfParse(buffer);
+  return sanitizeText(pdfData.text);
+}
+
+async function processCandidate(
+  candidateId: string,
+  storagePath: string,
+  vagaId: string,
+  batchId: string,
+  admin: ReturnType<typeof createSupabaseAdminClient>
+) {
+  try {
+    const cvText = await downloadAndParsePdf(storagePath, admin);
+
+    const { data: criteriaData, error: critError } = await admin
+      .from("criteria")
+      .select("id,nome,peso,description,weight")
+      .eq("vaga_id", vagaId);
+
+    // If no criteria, still save the CV text with a neutral score
+    const formattedCriteria = (criteriaData || [])
+      .map((c) => ({
+        id: c.id,
+        name: (c.nome || c.description || "").trim(),
+        weight: c.peso ?? c.weight ?? 3,
+      }))
+      .filter((c) => c.name);
+
+    let scoreFinal = 3.0;
+    let candidatoNome = "Candidato sem nome";
+    let extraFields: Record<string, unknown> = {};
+    let criteriosForSave: { nome: string; nota: number; justificativa?: string }[] = [];
+
+    if (!critError && formattedCriteria.length > 0) {
+      const prompt = buildScoringPrompt(cvText, formattedCriteria);
+      const jsonString = await callAI(prompt);
+      const cleanJson = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
+      const result = JSON.parse(cleanJson);
+
+      if (typeof result.score_final === "number" && Array.isArray(result.criterios)) {
+        scoreFinal = Math.max(1.0, Math.min(5.0, Number(result.score_final)));
+        criteriosForSave = result.criterios.map((c: { nome: string; nota: number; justificativa?: string }) => ({
+          ...c,
+          nota: Math.max(1.0, Math.min(5.0, Number(c.nota))),
+        }));
+        candidatoNome = result.nome || "Candidato sem nome";
+        if (result.email) extraFields.email_contato = result.email;
+        if (result.telefone) extraFields.telefone = result.telefone;
+        if (result.linkedin) extraFields.linkedin_url = result.linkedin;
+        if (result.cidade) extraFields.cidade = result.cidade;
+        if (result.cargo_atual) extraFields.cargo_atual = result.cargo_atual;
+        if (result.empresa_atual) extraFields.empresa_atual = result.empresa_atual;
+        if (result.pretensao_salarial) extraFields.pretensao_salarial = result.pretensao_salarial;
+        if (result.disponibilidade) extraFields.disponibilidade = result.disponibilidade;
+        if (result.regime_preferido) extraFields.regime_preferido = result.regime_preferido;
+        if (result.resumo) extraFields.resumo_ia = result.resumo;
+      }
+    }
+
+    await admin
+      .from("pdf_candidates")
+      .update({
+        parsed_text: cvText,
+        score_final: scoreFinal,
+        nome_candidato: candidatoNome,
+        status: "concluido",
+        ...extraFields,
+      })
+      .eq("id", candidateId);
+
+    // Save per-criteria evaluations
+    if (criteriosForSave.length > 0 && formattedCriteria.length > 0) {
+      const evaluations = criteriosForSave
+        .map((c) => {
+          const dbCrit = formattedCriteria.find((d) => d.name === c.nome);
+          return {
+            candidate_id: candidateId,
+            criteria_id: dbCrit?.id,
+            nota: c.nota,
+            justificativa: c.justificativa,
+          };
+        })
+        .filter((e) => e.criteria_id);
+
+      if (evaluations.length > 0) {
+        await admin.from("candidate_evaluations").insert(evaluations);
+      }
+    }
+
+    // Update batch progress
+    const { data: batch } = await admin
+      .from("pdf_batches")
+      .select("processed_files,total_files")
+      .eq("id", batchId)
+      .single();
+
+    if (batch) {
+      const newProcessed = (batch.processed_files || 0) + 1;
+      await admin
+        .from("pdf_batches")
+        .update({
+          processed_files: newProcessed,
+          status: newProcessed >= batch.total_files ? "completed" : "processing",
+        })
+        .eq("id", batchId);
+    }
+
+    return { id: candidateId, score_final: scoreFinal, nome_candidato: candidatoNome, file_url: storagePath, status: "concluido", ...extraFields };
+  } catch (err) {
+    console.error(`[upload-batch] Erro ao processar candidato ${candidateId}:`, err);
+    await admin.from("pdf_candidates").update({ status: "erro" }).eq("id", candidateId);
+    return { id: candidateId, status: "erro", file_url: storagePath };
+  }
+}
 
 export async function POST(req: Request) {
   try {
-    const { userId, supabase: _supabase } = await requireAuth();
+    const { userId } = await requireAuth();
     const { storagePaths, vaga_id } = (await req.json()) as {
       storagePaths?: string[];
       vaga_id?: string;
@@ -34,15 +180,20 @@ export async function POST(req: Request) {
 
     // Check quota before creating batch
     const { data: empresa } = await admin.from('empresas').select('id,plano,limite_pdfs_mes').eq('id', vaga.empresa_id).single();
-
     const planLimit = getPdfLimitFromPlan(empresa?.plano, empresa || undefined) ?? empresa?.limite_pdfs_mes ?? 10;
 
     if (planLimit !== null) {
-      const currentMonth = new Date().toISOString().slice(0,7);
+      const currentMonth = new Date().toISOString().slice(0, 7);
       const { count } = await admin.from('pdf_exports').select('id', { count: 'exact', head: true }).eq('empresa_id', vaga.empresa_id).eq('mes_referencia', currentMonth);
       const used = count ?? 0;
       if (used >= planLimit) {
-        return NextResponse.json({ error: 'Limite de uploads/exports de PDFs atingido', limit: planLimit, used, mes: currentMonth, upgrade_message: `Você atingiu o limite de ${planLimit} PDFs neste mês. Faça upgrade para processar mais.` }, { status: 403 });
+        return NextResponse.json({
+          error: 'Limite de uploads/exports de PDFs atingido',
+          limit: planLimit,
+          used,
+          mes: currentMonth,
+          upgrade_message: `Você atingiu o limite de ${planLimit} PDFs neste mês. Faça upgrade para processar mais.`
+        }, { status: 403 });
       }
     }
 
@@ -68,30 +219,22 @@ export async function POST(req: Request) {
     }));
 
     const { error: candError } = await admin.from("pdf_candidates").insert(candidatesData);
-
     if (candError) {
       return NextResponse.json({ error: "Erro na insercao de dados" }, { status: 500 });
     }
 
-    const jobsToQueue = candidatesData.map((cand) => ({
-      name: "extract-and-score-pdf",
-      data: {
-        candidateId: cand.id,
-        storagePath: cand.file_url,
-        vagaId: vaga_id,
-        batchId,
-        userId,
-      },
-    }));
-
-    const queue = await getPdfQueue();
-    await queue.addBulk(jobsToQueue);
+    // Process all PDFs inline (no background worker needed)
+    const processedCandidates = await Promise.all(
+      candidatesData.map((cand) =>
+        processCandidate(cand.id, cand.file_url, vaga_id, batchId, admin)
+      )
+    );
 
     return NextResponse.json({
-      queued: jobsToQueue.length,
+      queued: candidatesData.length,
       batch_id: batchId,
-      candidates: candidatesData.map(c => ({ id: c.id, file_url: c.file_url })),
-      message: "Processamento iniciado no background com sucesso",
+      candidates: processedCandidates,
+      message: "Processamento concluido com sucesso",
     });
   } catch (error: unknown) {
     return handleApiError(error);
