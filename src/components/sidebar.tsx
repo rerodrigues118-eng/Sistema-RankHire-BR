@@ -181,13 +181,11 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                   <li key={item.id} className="w-full">
                     <button
                       onClick={() => onNavigate(item.id)}
-                      className={`
-                        flex items-center gap-2.5 w-full text-left transition-colors text-[13px]
-                        ${isActive 
-                          ? "bg-[var(--green-bg)] text-[#059669] font-medium border-l-2 border-[var(--green)] py-2 pr-3 pl-[10px] ml-1.5 rounded-r-[6px]" 
-                          : "text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[#374151] py-2 px-3 mx-2 rounded-[6px] w-[calc(100%-16px)]"
-                        }
-                      `}
+                      className={
+                        isActive
+                          ? "flex items-center gap-2.5 w-full text-left transition-colors text-[13px] bg-[var(--green-bg)] text-[#059669] font-medium border-l-2 border-[var(--green)] py-2 pr-3 pl-[10px] ml-1.5 rounded-r-[6px]"
+                          : "flex items-center gap-2.5 w-full text-left transition-colors text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[#374151] py-2 px-3 mx-2 rounded-[6px] w-[calc(100%-16px)]"
+                      }
                     >
                       <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
                       <span className="truncate">{item.label}</span>

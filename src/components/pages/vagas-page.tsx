@@ -1,16 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
-import { Search, Plus, MoreHorizontal, Briefcase, Users, Star, CheckCircle2, X, Loader2, ChevronLeft, MapPin, Building, FileText } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Search, Plus, MoreHorizontal, Briefcase, Users, Star, CheckCircle2, X, Loader2, ChevronLeft, MapPin, Building, FileText, Sparkles, CalendarDays, Check, Trash2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import type { Job, JobStatus } from "@/lib/types";
 
 type FilterStatus = "Todas" | "Ativas" | "Em pausa" | "Encerradas";
 
 interface VagasPageProps {
   jobs: Job[];
+  selectedJobId: string;
+  isActive: boolean;
+  isCreateModalOpen: boolean;
+  onCreateModalOpened: () => void;
   onCreateJob: (job: Job) => void | Promise<void>;
   onUpdateJob: (job: Job) => void | Promise<void>;
   onOpenJob: (jobId: string) => void;
+  onSelectJob: (jobId: string) => void;
+  onChangeJobStatus: (jobId: string, status: JobStatus) => Promise<void>;
+  onDeleteJob: (jobId: string) => Promise<void>;
 }
 
 type JobDraft = {
@@ -33,7 +41,19 @@ const DEFAULT_DRAFT: JobDraft = {
   status: "active",
 };
 
-export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }: VagasPageProps) {
+export default function VagasPage({
+  jobs,
+  selectedJobId,
+  isActive,
+  isCreateModalOpen,
+  onCreateModalOpened,
+  onCreateJob,
+  onUpdateJob,
+  onOpenJob,
+  onSelectJob,
+  onChangeJobStatus,
+  onDeleteJob,
+}: VagasPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("Todas");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,8 +62,22 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [viewingJobId, setViewingJobId] = useState<string | null>(null);
+  const [openMenuJobId, setOpenMenuJobId] = useState<string | null>(null);
+  const [confirmDeleteJobId, setConfirmDeleteJobId] = useState<string | null>(null);
+  const [modalDeleting, setModalDeleting] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [kpiLoading, setKpiLoading] = useState(false);
+  const [kpiData, setKpiData] = useState<{
+    candidatos: number;
+    score: number | null;
+    shortlist: number;
+    diasAbertos: number;
+  } | null>(null);
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const toastTimer = useRef<number | null>(null);
 
-  const viewingJob = jobs.find(j => j.id === viewingJobId);
+  const viewingJob = jobs.find((j) => j.id === viewingJobId);
 
   const filteredJobs = jobs.filter((job) => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -77,6 +111,100 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
       setNewJob(DEFAULT_DRAFT);
     }
     setIsModalOpen(true);
+  };
+
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      handleOpenModal();
+      onCreateModalOpened();
+    }
+  }, [isCreateModalOpen, onCreateModalOpened]);
+
+  useEffect(() => {
+        if (!openMenuJobId) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenMenuJobId(null);
+      }
+    };
+
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpenMenuJobId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [openMenuJobId]);
+
+  useEffect(() => {
+    if (!isActive) {
+      setOpenMenuJobId(null);
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!viewingJob) {
+      setKpiData(null);
+      return;
+    }
+
+    let alive = true;
+    setKpiLoading(true);
+    const supabase = createClient();
+
+    Promise.all([
+      supabase.from("pdf_candidates").select("id", { count: "exact" }).eq("vaga_id", viewingJob.id),
+      supabase.from("pdf_candidates").select("score_final").eq("vaga_id", viewingJob.id).not("score_final", "is", null),
+      supabase.from("pipeline_entries").select("id", { count: "exact" }).eq("vaga_id", viewingJob.id).eq("status", "shortlist"),
+    ])
+        .then(([candidatesRes, scoresRes, shortlistRes]) => {
+        if (!alive) return;
+        const scores = scoresRes.data as Array<{ score_final: number }> | null;
+        setKpiData({
+          candidatos: candidatesRes.count ?? 0,
+          score: scores && scores.length > 0 ? scores.reduce((sum, row) => sum + Number(row.score_final), 0) / scores.length : null,
+          shortlist: shortlistRes.count ?? 0,
+          diasAbertos: viewingJob.createdAt
+            ? Math.max(0, Math.floor((Date.now() - new Date(viewingJob.createdAt).getTime()) / 86400000))
+            : 0,
+        });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setKpiData({ candidatos: 0, score: null, shortlist: 0, diasAbertos: viewingJob.createdAt ? Math.max(0, Math.floor((Date.now() - new Date(viewingJob.createdAt).getTime()) / 86400000)) : 0 });
+      })
+      .finally(() => {
+        if (!alive) return;
+        setKpiLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [viewingJob]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) {
+        window.clearTimeout(toastTimer.current);
+      }
+    };
+  }, []);
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    if (toastTimer.current) {
+      window.clearTimeout(toastTimer.current);
+    }
+    toastTimer.current = window.setTimeout(() => setToastMessage(null), 4000);
   };
 
   const handleSaveJob = async (e: React.FormEvent) => {
@@ -145,6 +273,49 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
     return "Encerrada";
   };
 
+  const handleSelectJob = (job: Job) => {
+    onSelectJob(job.id);
+    showToast(`Vaga '${job.title}' selecionada`);
+  };
+
+  const handlePauseJob = async (job: Job) => {
+    try {
+      await onChangeJobStatus(job.id, "paused");
+      showToast("Vaga pausada com sucesso");
+    } catch (error: unknown) {
+      showToast(error instanceof Error ? error.message : "Erro ao pausar a vaga");
+    } finally {
+      setOpenMenuJobId(null);
+    }
+  };
+
+  const handleReactivateJob = async (job: Job) => {
+    try {
+      await onChangeJobStatus(job.id, "active");
+      showToast("Vaga reativada com sucesso");
+    } catch (error: unknown) {
+      showToast(error instanceof Error ? error.message : "Erro ao reativar a vaga");
+    } finally {
+      setOpenMenuJobId(null);
+    }
+  };
+
+  const handleDeleteJob = async (jobId: string) => {
+    const confirmed = window.confirm("Deseja realmente excluir esta vaga?");
+    if (!confirmed) return;
+
+    setDeletingJobId(jobId);
+    try {
+      await onDeleteJob(jobId);
+      showToast("Vaga excluída com sucesso");
+    } catch (error: unknown) {
+      showToast(error instanceof Error ? error.message : "Erro ao excluir a vaga");
+    } finally {
+      setDeletingJobId(null);
+      setOpenMenuJobId(null);
+    }
+  };
+
   if (viewingJob) {
     return (
       <div className="max-w-4xl mx-auto flex flex-col h-full pt-2 pb-10 w-full animate-in fade-in slide-in-from-right-4 duration-300">
@@ -167,6 +338,58 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
               {viewingJob.title}
             </h1>
             <p className="text-[15px] text-[#6B7280]">{viewingJob.department}</p>
+          </div>
+
+          <div className="p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
+              {kpiLoading || !kpiData ? (
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="h-24 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 animate-pulse" />
+                ))
+              ) : (
+                <>
+                  <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                    <div className="flex items-center gap-3 mb-3 text-[#6B7280] text-[12px] uppercase tracking-wide">
+                      <Users className="w-4 h-4" />
+                      Candidatos
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[24px] font-semibold text-[#111827]">{kpiData.candidatos}</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                    <div className="flex items-center gap-3 mb-3 text-[#6B7280] text-[12px] uppercase tracking-wide">
+                      <Star className="w-4 h-4 text-[#F59E0B]" />
+                      Score médio
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[24px] font-semibold text-[#111827]">{kpiData.score !== null ? kpiData.score.toFixed(1) : "—"}</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                    <div className="flex items-center gap-3 mb-3 text-[#6B7280] text-[12px] uppercase tracking-wide">
+                      <Check className="w-4 h-4 text-[#16A34A]" />
+                      Shortlist
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[24px] font-semibold text-[#111827]">{kpiData.shortlist}</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                    <div className="flex items-center gap-3 mb-3 text-[#6B7280] text-[12px] uppercase tracking-wide">
+                      <CalendarDays className="w-4 h-4" />
+                      Dias aberta
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[24px] font-semibold text-[#111827]">{kpiData.diasAbertos}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -272,7 +495,14 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredJobs.map((job) => (
-            <div key={job.id} className="bg-white rounded-[12px] p-5 border border-[#E5E7EB] hover:border-[#06D6A0] transition-colors flex flex-col group">
+            <div
+              key={job.id}
+              ref={job.id === openMenuJobId ? dropdownRef : null}
+              className={`bg-white rounded-[12px] p-5 border ${job.id === selectedJobId ? "border-emerald-200 ring-1 ring-emerald-200" : "border-[#E5E7EB] hover:border-[#06D6A0]"} transition-colors flex flex-col group relative`}
+            >
+              {job.id === selectedJobId && (
+                <span className="absolute top-4 right-4 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Selecionada</span>
+              )}
               <div className="flex items-center gap-2 mb-3">
                 <span className={`w-2 h-2 rounded-full ${getStatusColor(job.status)}`} />
                 <span className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider">
@@ -326,9 +556,60 @@ export default function VagasPage({ jobs, onCreateJob, onUpdateJob, onOpenJob }:
                 >
                   Editar
                 </button>
-                <button className="px-3 py-2 bg-white hover:bg-[#F9FAFB] text-[#6B7280] rounded-[6px] transition-colors border border-[#E5E7EB] flex items-center justify-center">
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setOpenMenuJobId((prev) => (prev === job.id ? null : job.id))}
+                    className="px-3 py-2 bg-white hover:bg-[#F9FAFB] text-[#6B7280] rounded-[6px] transition-colors border border-[#E5E7EB] flex items-center justify-center"
+                    aria-expanded={openMenuJobId === job.id}
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                  {openMenuJobId === job.id ? (
+                    <div className="absolute z-50 top-full right-0 mt-2 w-52 rounded-[10px] border border-[#E5E7EB] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                      <button
+                        onClick={() => {
+                          handleOpenModal(job);
+                          setOpenMenuJobId(null);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-[#111827] hover:bg-[#F9FAFB]"
+                      >
+                        ✎ Editar vaga
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleSelectJob(job);
+                          setOpenMenuJobId(null);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-[#111827] hover:bg-[#F9FAFB]"
+                      >
+                        ☆ Selecionar vaga
+                      </button>
+                      {job.status !== "paused" ? (
+                        <button
+                          onClick={() => handlePauseJob(job)}
+                          className="w-full px-4 py-3 text-left text-sm text-[#111827] hover:bg-[#F9FAFB]"
+                        >
+                          ⏸ Pausar vaga
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleReactivateJob(job)}
+                          className="w-full px-4 py-3 text-left text-sm text-[#111827] hover:bg-[#F9FAFB]"
+                        >
+                          ✓ Reativar vaga
+                        </button>
+                      )}
+                      <div className="border-t border-[#E5E7EB]" />
+                      <button
+                        onClick={() => handleDeleteJob(job.id)}
+                        disabled={deletingJobId === job.id}
+                        className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-[#FEF2F2] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {deletingJobId === job.id ? "Excluindo..." : "🗑 Excluir vaga"}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
           ))}

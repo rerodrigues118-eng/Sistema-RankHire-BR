@@ -10,6 +10,7 @@ interface DashboardPageProps {
   candidates: Candidate[];
   onToggleShortlist: (id: string) => void;
   onSelectCandidate: (c: Candidate) => void;
+  onCreateProject: () => void;
 }
 
 type Activity = {
@@ -35,6 +36,7 @@ export default function DashboardPage({
   activeJob,
   jobs,
   candidates,
+  onCreateProject,
 }: DashboardPageProps) {
   const today = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
@@ -79,7 +81,12 @@ export default function DashboardPage({
         </div>
       ) : null}
     </div>
-  ) : null;
+  ) : (
+    <div className="bg-white rounded-[12px] p-6 border border-[#E5E7EB] mb-8">
+      <span className="text-[12px] text-[#6B7280] uppercase tracking-wide">Vaga selecionada</span>
+      <p className="mt-4 text-[15px] text-[#374151] font-medium">Nenhuma vaga selecionada — vá em Vagas e selecione uma</p>
+    </div>
+  );
 
   const recentActivities: ActivityWithTs[] = [
     ...jobs
@@ -204,13 +211,17 @@ export default function DashboardPage({
                 </div>
               ))}
 
-              <div className="bg-[#FAFAFA] p-5 rounded-[12px] border border-dashed border-[#D1D5DB] flex flex-col items-center justify-center text-center h-[160px]">
+              <button
+                type="button"
+                onClick={onCreateProject}
+                className="bg-[#FAFAFA] p-5 rounded-[12px] border border-dashed border-[#D1D5DB] flex flex-col items-center justify-center text-center h-[160px]"
+              >
                 <div className="w-8 h-8 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] mb-3 shadow-sm">
                   <Plus size={16} />
                 </div>
                 <h3 className="text-[14px] font-medium text-[#111827] mb-1">Criar projeto</h3>
                 <p className="text-[12px] text-[#6B7280] px-4">Inicie uma nova busca de talentos</p>
-              </div>
+              </button>
             </div>
           )}
         </div>

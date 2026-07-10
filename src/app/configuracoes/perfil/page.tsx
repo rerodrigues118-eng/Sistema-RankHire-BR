@@ -210,7 +210,7 @@ export default function PerfilConfigPage() {
 
   async function handleResetPassword() {
     setFeedback(null);
-    const res = await fetch("/api/profile/reset-password", { method: "POST" });
+    const res = await fetch("/api/auth/reset-password", { method: "POST" });
     const data = await res.json();
 
     setFeedback(

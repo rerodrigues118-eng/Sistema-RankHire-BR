@@ -69,6 +69,8 @@ export default function ProfileConfig() {
   const [previewLoadError, setPreviewLoadError] = useState(false);
   const [sessionInfo, setSessionInfo] = useState<string>("Sessao atual");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
+  const [resetPasswordMessage, setResetPasswordMessage] = useState<string | null>(null);
 
   const initials = useMemo(() => {
     const value = nome || profile?.email || "RH";
@@ -148,6 +150,7 @@ export default function ProfileConfig() {
     try {
       const res = await fetch("/api/profile", {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nome, cargo }),
       });
@@ -204,8 +207,7 @@ export default function ProfileConfig() {
       if (!publicUrl) throw new Error('Resposta do servidor nao retornou a URL publica.');
 
       const res = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',        credentials: 'include',        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ avatarUrl: publicUrl }),
       });
       const updated = await res.json();
@@ -233,6 +235,7 @@ export default function ProfileConfig() {
     try {
       const res = await fetch("/api/profile/labels", {
         method: "PUT",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ labels }),
       });
@@ -251,10 +254,24 @@ export default function ProfileConfig() {
 
   async function handleResetPassword() {
     setFeedback(null);
-    const res = await fetch("/api/profile/reset-password", { method: "POST" });
-    const data = await res.json();
+    setResetPasswordMessage(null);
+    setSendingPasswordReset(true);
 
-    setFeedback(res.ok ? { type: "success", text: "Enviamos um link de redefinicao para seu e-mail." } : { type: "error", text: data.error || "Nao foi possivel enviar o reset." });
+    try {
+const res = await fetch("/api/auth/reset-password", { method: "POST", credentials: "include" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setFeedback({ type: "error", text: data.error || "Nao foi possivel enviar o reset." });
+      } else {
+        setFeedback({ type: "success", text: "Email de redefinicao enviado." });
+        setResetPasswordMessage("Verifique sua caixa de entrada. O link expira em 1 hora.");
+      }
+    } catch (err: unknown) {
+      setFeedback({ type: "error", text: err instanceof Error ? err.message : "Erro de rede ao enviar o reset." });
+    } finally {
+      setSendingPasswordReset(false);
+    }
   }
 
   // --- Secure change flow (email/phone) via confirmation code ---
@@ -272,7 +289,7 @@ export default function ProfileConfig() {
     try {
       if (changeType === "password") {
         // reuse existing flow
-        const res = await fetch("/api/profile/reset-password", { method: "POST" });
+        const res = await fetch("/api/auth/reset-password", { method: "POST" });
         if (res.ok) {
           setFeedback({ type: "success", text: "Link de redefinicao enviado por e-mail." });
           setShowSecurityModal(false);
@@ -313,7 +330,7 @@ export default function ProfileConfig() {
       if (res.ok) {
         setFeedback({ type: "success", text: d.message || "Alteracao aplicada." });
         // refresh profile
-        const p = await (await fetch('/api/profile')).json();
+        const p = await (await fetch('/api/profile', { credentials: 'include' })).json();
         setProfile(p.profile);
         try { setCachedProfile(p.profile); } catch {}
         setShowSecurityModal(false);
@@ -515,13 +532,24 @@ export default function ProfileConfig() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <button onClick={handleResetPassword} className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-4 text-left hover:bg-slate-50">
-            <span>
-              <span className="block text-[13px] font-semibold">Redefinir senha</span>
-              <span className="mt-1 block text-xs text-slate-500">Link por e-mail</span>
-            </span>
-            <KeyRound className="h-4 w-4 text-slate-400" />
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={handleResetPassword}
+              disabled={sendingPasswordReset}
+              className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-4 text-left hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span>
+                <span className="block text-[13px] font-semibold">Redefinir senha</span>
+                <span className="mt-1 block text-xs text-slate-500">
+                  {sendingPasswordReset ? "Enviando..." : "Link por e-mail"}
+                </span>
+              </span>
+              {sendingPasswordReset ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : <KeyRound className="h-4 w-4 text-slate-400" />}
+            </button>
+            {resetPasswordMessage ? (
+              <p className="text-[13px] text-slate-500">{resetPasswordMessage}</p>
+            ) : null}
+          </div>
 
           <div className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-4">
             <span>

@@ -52,3 +52,37 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return handleApiError(error);
   }
 }
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { userId, supabase } = await requireAuth();
+    const { id } = await params;
+
+    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+
+    if (!usuario?.empresa_id) {
+      return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
+    }
+
+    const admin = await import('@/lib/admin').then(m => m.createSupabaseAdminClient());
+    const { data, error } = await admin
+      .from("vagas")
+      .delete()
+      .eq("id", id)
+      .eq("empresa_id", usuario.empresa_id)
+      .select("id")
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "Vaga nao encontrada" }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error: unknown) {
+    return handleApiError(error);
+  }
+}

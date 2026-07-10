@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { Candidate, Job, KanbanStatus, PageId, UploadFile } from "@/lib/types";
+import type { Candidate, Job, JobStatus, KanbanStatus, PageId, UploadFile } from "@/lib/types";
 import { AVATAR_COLORS } from "@/lib/mock-data";
 import Sidebar from "@/components/sidebar";
 import DashboardPage from "@/components/pages/dashboard-page";
@@ -21,7 +21,7 @@ export default function Home() {
     try { return (sessionStorage.getItem('rh_activePage') as PageId) || 'dashboard'; } catch { return 'dashboard'; }
   });
   const [selectedJobId, setSelectedJobId] = useState(() => {
-    try { return sessionStorage.getItem('rh_selectedJobId') || ''; } catch { return ''; }
+    try { return localStorage.getItem('rankhire_vaga_selecionada') || ''; } catch { return ''; }
   });
   const [drawerCandidate, setDrawerCandidate] = useState<Candidate | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -38,9 +38,10 @@ export default function Home() {
     plano: string;
     mes: string;
   } | null>(null);
+  const [pendingOpenCreateModal, setPendingOpenCreateModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const activeJob = jobs.find((job) => job.id === selectedJobId) || jobs[0] || null;
+  const activeJob = jobs.find((job) => job.id === selectedJobId) || null;
 
   // Persiste a página ativa no sessionStorage
   const handleSetActivePage = useCallback((page: PageId) => {
@@ -51,7 +52,15 @@ export default function Home() {
   // Persiste a vaga selecionada no sessionStorage
   const handleSetSelectedJobId = useCallback((id: string) => {
     setSelectedJobId(id);
-    try { sessionStorage.setItem('rh_selectedJobId', id); } catch { /* ignore */ }
+    try {
+      if (id) {
+        localStorage.setItem('rankhire_vaga_selecionada', id);
+      } else {
+        localStorage.removeItem('rankhire_vaga_selecionada');
+      }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const handleOpenDrawer = useCallback((candidate: Candidate) => setDrawerCandidate(candidate), []);
@@ -62,7 +71,7 @@ export default function Home() {
 
   const refreshAppData = useCallback(async () => {
     try {
-      const res = await fetch("/api/app-data");
+      const res = await fetch("/api/app-data", { credentials: "include" });
       const data = await res.json();
 
       if (!res.ok) {
@@ -71,13 +80,16 @@ export default function Home() {
 
       if (Array.isArray(data.jobs)) {
         setJobs(data.jobs);
-        setSelectedJobId((prev) => {
-          const restored = sessionStorage.getItem('rh_selectedJobId');
-          const valid = data.jobs.find((j: Job) => j.id === (restored || prev));
-          const chosen = valid?.id || data.jobs[0]?.id || '';
-          try { sessionStorage.setItem('rh_selectedJobId', chosen); } catch { /* ignore */ }
-          return chosen;
-        });
+        const restored = (() => {
+          try { return localStorage.getItem('rankhire_vaga_selecionada') || ''; } catch { return ''; }
+        })();
+        const valid = data.jobs.find((j: Job) => j.id === restored);
+        if (valid) {
+          setSelectedJobId(restored);
+        } else {
+          setSelectedJobId("");
+          try { localStorage.removeItem('rankhire_vaga_selecionada'); } catch { /* ignore */ }
+        }
       } else {
         setJobs([]);
         setSelectedJobId("");
@@ -161,6 +173,7 @@ export default function Home() {
   const handleToggleShortlist = useCallback((id: string) => {
     fetch(`/api/candidates/${id}`, {
       method: "PATCH",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         shortlist: !candidates.find((candidate) => candidate.id === id)?.shortlist,
@@ -172,6 +185,7 @@ export default function Home() {
   const handleMoveCandidateStatus = useCallback((id: string, newStatus: KanbanStatus) => {
     fetch(`/api/candidates/${id}`, {
       method: "PATCH",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     }).catch(() => {});
@@ -182,12 +196,61 @@ export default function Home() {
     setCandidates((prev) => prev.map((candidate) => ({ ...candidate, status: "triado" })));
   }, []);
 
+  const handleDeleteJob = useCallback(async (jobId: string) => {
+    const res = await fetch(`/api/vagas/${jobId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Falha ao excluir a vaga.");
+    }
+
+    setJobs((prev) => {
+      const next = prev.filter((job) => job.id !== jobId);
+      setSelectedJobId((current) => {
+        if (current !== jobId) return current;
+        if (next[0]) {
+          try { localStorage.setItem('rankhire_vaga_selecionada', next[0].id); } catch { /* ignore */ }
+          return next[0].id;
+        }
+        try { localStorage.removeItem('rankhire_vaga_selecionada'); } catch { /* ignore */ }
+        return "";
+      });
+      return next;
+    });
+  }, []);
+
+  const handleChangeJobStatus = useCallback(async (jobId: string, status: JobStatus) => {
+    const res = await fetch(`/api/vagas/${jobId}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Falha ao atualizar o status da vaga.");
+    }
+
+    setJobs((prev) => prev.map((job) => (job.id === jobId ? { ...job, status } : job)));
+  }, []);
+
+  const handleCreateProjectClick = useCallback(() => {
+    setActivePage("vagas");
+    setPendingOpenCreateModal(true);
+  }, []);
+
   const handleImportCandidate = useCallback(
     async (candidate: Candidate) => {
       if (!activeJob) return;
 
-      await fetch("/api/apify-enrich", {
+      // Call import endpoint which deduplicates by linkedin_url and returns the persisted candidate
+      const importRes = await fetch("/api/candidates/import", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           linkedinUrl: candidate.linkedinUrl,
@@ -196,22 +259,13 @@ export default function Home() {
         }),
       });
 
-      const res = await fetch("/api/candidates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: candidate.name,
-          role: candidate.role,
-          company: candidate.company,
-          city: candidate.city,
-          linkedinUrl: candidate.linkedinUrl,
-          score: candidate.score,
-          status: candidate.status,
-        }),
-      });
-
-      const data = await res.json();
-      const persistedId = res.ok && data.candidate?.id ? data.candidate.id : `cand-imp-${Date.now()}`;
+      let persistedId: string;
+      if (importRes.ok) {
+        const importData = await importRes.json();
+        persistedId = importData.candidate?.id || `cand-imp-${Date.now()}-${Math.floor(Math.random()*1000000)}`;
+      } else {
+        persistedId = `cand-imp-${Date.now()}-${Math.floor(Math.random()*1000000)}`;
+      }
 
       const imported: Candidate = {
         ...candidate,
@@ -495,6 +549,7 @@ export default function Home() {
                 candidates={candidates}
                 onToggleShortlist={handleToggleShortlist}
                 onSelectCandidate={handleOpenDrawer}
+                onCreateProject={handleCreateProjectClick}
               />
             </div>
             <div className={activePage === "pdf-ranker" ? "block h-full" : "hidden"}>
@@ -547,9 +602,14 @@ export default function Home() {
             <div className={activePage === "vagas" ? "block h-full" : "hidden"}>
               <VagasPage
                 jobs={jobs}
+                selectedJobId={selectedJobId}
+                isActive={activePage === "vagas"}
+                isCreateModalOpen={pendingOpenCreateModal}
+                onCreateModalOpened={() => setPendingOpenCreateModal(false)}
                 onCreateJob={async (newJob) => {
                   const res = await fetch("/api/vagas", {
                     method: "POST",
+                    credentials: "include",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       title: newJob.title,
@@ -574,12 +634,12 @@ export default function Home() {
                   };
                   setJobs((prev) => [createdJob, ...prev]);
                   handleSetSelectedJobId(createdJob.id);
-                  handleSetActivePage("dashboard");
-                  await refreshAppData();
+                  setActivePage("vagas");
                 }}
                 onUpdateJob={async (updatedJob) => {
                   const res = await fetch(`/api/vagas/${updatedJob.id}`, {
                     method: "PATCH",
+                    credentials: "include",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       title: updatedJob.title,
@@ -597,11 +657,11 @@ export default function Home() {
                   }
 
                   setJobs((prev) => prev.map((job) => (job.id === updatedJob.id ? updatedJob : job)));
-                  await refreshAppData();
                 }}
-                onOpenJob={(jobId) => {
-                  handleSetSelectedJobId(jobId);
-                }}
+                onOpenJob={handleSetSelectedJobId}
+                onSelectJob={handleSetSelectedJobId}
+                onChangeJobStatus={handleChangeJobStatus}
+                onDeleteJob={handleDeleteJob}
               />
             </div>
           </div>
