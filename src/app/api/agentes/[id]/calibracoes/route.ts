@@ -13,10 +13,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const { userId, supabase: _supabase } = await requireAuth();
     const admin = createSupabaseAdminClient();
+    // admin-client: justified — inserting calibrations and updating agent counters across company
     const { id } = await params;
     const body = (await req.json()) as { calibracoes?: CalibrationInput[] };
 
-    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }

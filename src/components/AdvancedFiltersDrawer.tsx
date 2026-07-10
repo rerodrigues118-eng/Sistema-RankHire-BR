@@ -156,6 +156,7 @@ export default function AdvancedFiltersDrawer({ isOpen, onClose, onSearch, initi
     try {
       const res = await fetch('/api/nl-to-filters', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: expr, mode: 'bool' })
       });

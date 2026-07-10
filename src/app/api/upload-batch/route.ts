@@ -2,9 +2,11 @@ import { handleApiError, fetchWithTimeout } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from '@/lib/admin';
+import { logger } from '@/lib/logger';
 import { getPdfLimitFromPlan } from '@/lib/planos';
 import { callAI } from "@/lib/ai-client";
 import { buildScoringPrompt } from "@/lib/scoring-prompt";
+import { getPdfQueue, getRedisConnection } from '@/lib/queue';
 
 // IMPORTANT: Allow up to 60s for PDF processing on Vercel
 export const maxDuration = 60;
@@ -18,6 +20,7 @@ function sanitizeText(raw: string): string {
 }
 
 async function downloadAndParsePdf(storagePath: string, admin: ReturnType<typeof createSupabaseAdminClient>): Promise<string> {
+  const start = Date.now();
   const { data, error } = await admin.storage
     .from("curriculos")
     .createSignedUrl(storagePath, 120);
@@ -37,7 +40,9 @@ async function downloadAndParsePdf(storagePath: string, admin: ReturnType<typeof
   // Use dynamic import to avoid issues with pdf-parse in edge runtime
   const pdfParse = (await import('pdf-parse')).default;
   const pdfData = await pdfParse(buffer);
-  return sanitizeText(pdfData.text);
+  const text = sanitizeText(pdfData.text);
+  logger.info('downloadAndParsePdf completed', { storagePath, durationMs: Date.now() - start, length: text.length });
+  return text;
 }
 
 async function processCandidate(
@@ -47,6 +52,8 @@ async function processCandidate(
   batchId: string,
   admin: ReturnType<typeof createSupabaseAdminClient>
 ) {
+  const procStart = Date.now();
+  logger.info('processCandidate start', { candidateId, storagePath, vagaId, batchId });
   try {
     const cvText = await downloadAndParsePdf(storagePath, admin);
 
@@ -143,6 +150,7 @@ async function processCandidate(
         .eq("id", batchId);
     }
 
+    logger.info('processCandidate completed', { candidateId, durationMs: Date.now() - procStart, scoreFinal });
     return { id: candidateId, score_final: scoreFinal, nome_candidato: candidatoNome, file_url: storagePath, status: "concluido", ...extraFields };
   } catch (err) {
     console.error(`[upload-batch] Erro ao processar candidato ${candidateId}:`, err);
@@ -183,15 +191,22 @@ export async function POST(req: Request) {
     const planLimit = getPdfLimitFromPlan(empresa?.plano, empresa || undefined) ?? empresa?.limite_pdfs_mes ?? 10;
 
     if (planLimit !== null) {
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      const { count } = await admin.from('pdf_exports').select('id', { count: 'exact', head: true }).eq('empresa_id', vaga.empresa_id).eq('mes_referencia', currentMonth);
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+      const { count } = await admin
+        .from('pdf_candidates')
+        .select('id', { count: 'exact', head: true })
+        .eq('empresa_id', vaga.empresa_id)
+        .gte('created_at', monthStart)
+        .lt('created_at', nextMonthStart);
       const used = count ?? 0;
       if (used >= planLimit) {
         return NextResponse.json({
-          error: 'Limite de uploads/exports de PDFs atingido',
+          error: 'Limite de uploads/processing de PDFs atingido',
           limit: planLimit,
           used,
-          mes: currentMonth,
+          mes: now.toISOString().slice(0, 7),
           upgrade_message: `Você atingiu o limite de ${planLimit} PDFs neste mês. Faça upgrade para processar mais.`
         }, { status: 403 });
       }
@@ -223,7 +238,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Erro na insercao de dados" }, { status: 500 });
     }
 
-    // Process all PDFs inline (no background worker needed)
+    const redisConn = getRedisConnection();
+    if (redisConn) {
+      try {
+        const pdfQueue = await getPdfQueue();
+        await Promise.all(
+          candidatesData.map((cand) =>
+            pdfQueue.add("pdf-process", {
+              candidateId: cand.id,
+              storagePath: cand.file_url,
+              vaga_id,
+              batchId,
+            })
+          )
+        );
+      } catch (queueError) {
+        console.error("[upload-batch] Falha ao enfileirar jobs de PDF:", queueError);
+      }
+
+      return NextResponse.json({
+        queued: candidatesData.length,
+        batch_id: batchId,
+        message: "Processamento iniciado em segundo plano.",
+      });
+    }
+
+    // Process all PDFs inline (fallback when background queue is unavailable)
     const processedCandidates = await Promise.all(
       candidatesData.map((cand) =>
         processCandidate(cand.id, cand.file_url, vaga_id, batchId, admin)

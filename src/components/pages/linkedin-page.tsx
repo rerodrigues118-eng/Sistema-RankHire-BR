@@ -63,7 +63,7 @@ async function scoreCandidatesInBatches(profiles: LinkedinProfile[], criterios: 
     const scored = await Promise.all(batch.map(async (p) => {
       try {
         const res = await fetch('/api/candidate-scoring', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ criterios, perfil: p })
         });
         if (!res.ok) return p;
@@ -162,7 +162,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   }, [messages, CHAT_STORAGE_KEY]);
 
   useEffect(() => {
-    fetch('/api/perfis-vistos').then(r => r.json())
+    fetch('/api/perfis-vistos', { credentials: 'include' }).then(r => r.json())
       .then(d => { if (d.vistos) setUrlsVistas(new Set(d.vistos)); }).catch(() => {});
   }, []);
 
@@ -197,7 +197,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
     try {
       const res = await fetch('/api/nl-to-filters', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: userText, mode: 'nl' })
       });
       const data = await res.json();
@@ -242,7 +242,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
     try {
       const res = await fetch('/api/linkedin-search', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...filters, vagaId: activeJob?.id, vaga_id: activeJob?.id })
       });
       const data = await res.json();
@@ -299,6 +299,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     try {
       const res = await fetch('/api/candidates', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: r.name,

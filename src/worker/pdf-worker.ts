@@ -69,20 +69,18 @@ async function downloadPdf(storagePath: string): Promise<Buffer> {
 }
 
 const processor = async (job: Job) => {
-  const { candidateId, storagePath, vagaId, batchId } = job.data as {
-    candidateId: string;
-    storagePath: string;
-    vagaId: string;
-    batchId: string;
-  };
+  const rawData = job.data as Record<string, unknown>;
+  const candidateId = rawData.candidateId as string || rawData.candidate_id as string;
+  const storagePath = rawData.storagePath as string || rawData.storage_path as string;
+  const vagaId = (rawData.vagaId as string) || (rawData.vaga_id as string) || (rawData.vaga as string);
+  const batchId = (rawData.batchId as string) || (rawData.batch_id as string);
 
+  const jobStart = Date.now();
+  console.info(`[Worker] start job ${job.id}`, { candidateId, vagaId, batchId });
   try {
-
     const pdfBuffer = await downloadPdf(storagePath);
-    
     const pdfData = await pdfParse(pdfBuffer);
     const cvText = sanitizeText(pdfData.text);
-    
 
     const { data: criteriaData, error: critError } = await supabaseAdmin
       .from("criteria")
@@ -104,9 +102,10 @@ const processor = async (job: Job) => {
 
     
     const prompt = buildScoringPrompt(cvText, formattedCriteria);
+    const aiStart = Date.now();
     const jsonString = await callAI(prompt);
-    
-    
+    const aiDuration = Date.now() - aiStart;
+    console.info(`[Worker] AI call duration ms: ${aiDuration}`, { jobId: job.id, candidateId });
     const cleanJsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
     const result = JSON.parse(cleanJsonString) as ScoringResult;
 
@@ -180,6 +179,7 @@ const processor = async (job: Job) => {
         .eq("id", batchId);
     }
 
+    console.info(`[Worker] job completed ${job.id}`, { candidateId, durationMs: Date.now() - jobStart, score: safeScoreFinal });
     return { success: true, score: safeScoreFinal };
   } catch (error) {
     console.error(`[Worker] Failed job ${job.id} for ${candidateId}:`, error);
@@ -194,8 +194,10 @@ const processor = async (job: Job) => {
 // PDF processing worker initialized
 const conn = getRedisConnection();
 if (conn) {
+  const concurrency = Number(process.env.PDF_WORKER_CONCURRENCY || '3');
+  console.info(`[Worker] starting pdf-processing worker concurrency=${concurrency}`);
   new Worker("pdf-processing", processor, {
     connection: conn as any,
-    concurrency: 3, // process up to 3 PDFs in parallel
+    concurrency,
   });
 }

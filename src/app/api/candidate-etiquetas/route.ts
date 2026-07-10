@@ -9,6 +9,7 @@ export async function POST(req: Request) {
   try {
     const { supabase: _supabase, userId } = await requireAuth();
     const admin = createSupabaseAdminClient();
+    // admin-client: justified — writes to candidate_etiquetas and etiqueta validation require elevated permissions
     const body = await req.json();
     const schema = z.object({ candidateId: z.string().uuid(), etiquetaId: z.string().uuid().nullable().optional() });
     const parsed = schema.safeParse(body);
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
     if (!candidateId) return NextResponse.json({ error: "candidateId é obrigatório" }, { status: 400 });
 
     // verificar empresa do usuário
-    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
     const empresaId = usuario?.empresa_id;
 
     // rate limit: 30 req/min por empresa para operações em candidatos

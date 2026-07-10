@@ -30,7 +30,7 @@ export default function CompanySection() {
     async function load() {
       setLoading(true);
       try {
-        const res = await fetch("/api/empresas");
+        const res = await fetch("/api/empresas", { credentials: "include" });
         if (!active) return;
 
         if (res.ok) {
@@ -79,6 +79,7 @@ export default function CompanySection() {
     try {
       const res = await fetch("/api/empresas", {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome: nomeEmpresa,

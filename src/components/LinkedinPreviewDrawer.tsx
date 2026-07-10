@@ -118,6 +118,7 @@ export default function LinkedinPreviewDrawer({ profile, onClose, onShortlist, o
     if (!profile) return;
     fetch('/api/perfis-vistos', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         linkedin_url: profile.linkedinUrl,

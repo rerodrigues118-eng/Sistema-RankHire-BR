@@ -408,6 +408,7 @@ export default function Home() {
 
       const res = await fetch("/api/upload-batch", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ storagePaths, vaga_id: activeJob.id }),
       });
@@ -472,7 +473,7 @@ export default function Home() {
             return;
           }
           try {
-            const batchRes = await fetch(`/api/batches/${batchData.batch_id}`);
+            const batchRes = await fetch(`/api/batches/${batchData.batch_id}`, { credentials: "include" });
             // Para o polling imediatamente se der 404 (batch nao existe)
             if (batchRes.status === 404) {
               clearInterval(pollTimer);

@@ -6,7 +6,7 @@ import { ArrowRight, Bell, Bot, Calendar, CheckCircle2, Clock3, Mail, PlayCircle
 import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import ScoreGauge from "@/components/score-gauge";
 import type { Agent, AgentCandidate, AgentCriterion, AgentFrequency, AgentProfile, Job } from "@/lib/types";
-import { AVATAR_COLORS, INITIAL_JOBS } from "@/lib/mock-data";
+import { AVATAR_COLORS } from "@/lib/mock-data";
 
 type AgentTab = "criar" | "dashboard" | "candidatos" | "performance";
 type CalibrationDecision = "aprovado" | "rejeitado" | "pulado";
@@ -33,267 +33,7 @@ type CalibrationAnswer = {
   decisao: CalibrationDecision;
 };
 
-const seedJobs = INITIAL_JOBS.slice(0, 3);
-
-const seedAgents: Agent[] = [
-  {
-    id: "agent-1",
-    empresaId: "empresa-1",
-    vagaId: seedJobs[0].id,
-    nome: "Agente Designer Email",
-    briefing:
-      "Procuro um perfil forte em Figma, HTML/CSS para email, CRM e automacao. Precisa entender campanhas e colaborar com marketing.",
-    status: "ativo",
-    frequencia: "diaria",
-    scoreMinimoNotificacao: 4.0,
-    calibracoesRealizadas: 2,
-    ultimaBusca: "2026-06-18T11:00:00.000Z",
-    proximaBusca: "2026-06-19T08:00:00.000Z",
-    createdAt: "2026-06-14T10:00:00.000Z",
-    vagaTitulo: seedJobs[0].title,
-    criteriosIa: [
-      { nome: "Design visual e Figma", peso: 5, descricao: "Profundidade em layout e prototipacao." },
-      { nome: "HTML/CSS para email", peso: 5, descricao: "Capacidade de codificar templates e campanhas." },
-      { nome: "CRM e automacao", peso: 4, descricao: "Vivencia com funis e automacoes." },
-      { nome: "Senioridade", peso: 3, descricao: "Maturidade para atuar de forma autonoma." },
-    ],
-    filtrosIa: {
-      job_titles: ["Email Designer", "CRM Designer", "Product Designer"],
-      localizacao: "Brasil",
-      experiencia_minima: 3,
-      experiencia_maxima: 9,
-      keywords: ["Figma", "HTML", "CRM", "Email Marketing"],
-    },
-    metrics: {
-      analisados: 312,
-      encontrados: 89,
-      scoreAlto: 23,
-      pipeline: 11,
-    },
-    latestRun: {
-      id: "run-1",
-      agenteId: "agent-1",
-      perfisAnalisados: 54,
-      candidatosEncontrados: 12,
-      candidatosScoreAlto: 4,
-      status: "concluido",
-      executadoEm: "2026-06-18T11:00:00.000Z",
-    },
-  },
-  {
-    id: "agent-2",
-    empresaId: "empresa-1",
-    vagaId: seedJobs[1].id,
-    nome: "Agente Frontend",
-    briefing: "Buscar senioridade tecnica em React, TypeScript, performance e produto.",
-    status: "pausado",
-    frequencia: "semanal",
-    scoreMinimoNotificacao: 4.3,
-    calibracoesRealizadas: 1,
-    ultimaBusca: "2026-06-17T08:00:00.000Z",
-    proximaBusca: "2026-06-24T08:00:00.000Z",
-    createdAt: "2026-06-11T10:00:00.000Z",
-    vagaTitulo: seedJobs[1].title,
-    criteriosIa: [
-      { nome: "React e TypeScript", peso: 5 },
-      { nome: "Performance", peso: 4 },
-      { nome: "Arquitetura", peso: 4 },
-    ],
-    filtrosIa: {
-      job_titles: ["Frontend Engineer", "React Developer"],
-      localizacao: "Remoto",
-      experiencia_minima: 4,
-      experiencia_maxima: 12,
-      keywords: ["React", "TypeScript", "Next.js"],
-    },
-    metrics: {
-      analisados: 188,
-      encontrados: 41,
-      scoreAlto: 13,
-      pipeline: 6,
-    },
-    latestRun: {
-      id: "run-2",
-      agenteId: "agent-2",
-      perfisAnalisados: 40,
-      candidatosEncontrados: 7,
-      candidatosScoreAlto: 2,
-      status: "concluido",
-      executadoEm: "2026-06-17T08:00:00.000Z",
-    },
-  },
-];
-
-const seedProfiles: AgentProfile[] = [
-  {
-    nome: "Juliana Mendes",
-    cargo: "Senior Email Designer",
-    empresa: "TechCorp",
-    cidade: "Sao Paulo, SP",
-    resumo: "Especialista em campanhas de lifecycle, Figma e HTML email. Trabalha com CRM e automacao.",
-    skills: ["Figma", "HTML Email", "CRM", "Klaviyo"],
-    linkedinUrl: "https://linkedin.com/in/juliana-mendes",
-    avatarColor: "#1B4FD8",
-  },
-  {
-    nome: "Ricardo Gomes",
-    cargo: "UX/UI Designer",
-    empresa: "Agencia Digital",
-    cidade: "Remoto",
-    resumo: "Perfil visual forte, mas sem experiencia profunda em email marketing ou automacao.",
-    skills: ["Figma", "UX Research", "Prototipacao"],
-    linkedinUrl: "https://linkedin.com/in/ricardo-gomes",
-    avatarColor: "#0F766E",
-  },
-  {
-    nome: "Fernanda Lima",
-    cargo: "Email Marketing Analyst",
-    empresa: "E-commerce XP",
-    cidade: "Curitiba, PR",
-    resumo: "Atua na operacao de CRM, segmentacao e performance de campanhas.",
-    skills: ["CRM", "Copywriting", "Analytics"],
-    linkedinUrl: "https://linkedin.com/in/fernanda-lima",
-    avatarColor: "#B45309",
-  },
-  {
-    nome: "Carlos Eduardo",
-    cargo: "Frontend Designer",
-    empresa: "SaaS Brasil",
-    cidade: "Belo Horizonte, MG",
-    resumo: "Mistura design e codigo, com boa leitura de produto e interfaces responsivas.",
-    skills: ["React", "Design System", "Figma"],
-    linkedinUrl: "https://linkedin.com/in/carlos-eduardo",
-    avatarColor: "#7C3AED",
-  },
-  {
-    nome: "Mariana Souza",
-    cargo: "Product Designer",
-    empresa: "Fintech",
-    cidade: "Remote",
-    resumo: "Perfil de produto com olhar estrategico, mas menos foco em email marketing.",
-    skills: ["Product Thinking", "Figma", "Research"],
-    linkedinUrl: "https://linkedin.com/in/mariana-souza",
-    avatarColor: "#DB2777",
-  },
-  {
-    nome: "Lucas Pereira",
-    cargo: "Growth Designer",
-    empresa: "Marketplace",
-    cidade: "Rio de Janeiro, RJ",
-    resumo: "Boa leitura de funil e conversao, com experiencia em testes e campanhas.",
-    skills: ["Growth", "A/B Testing", "CRM"],
-    linkedinUrl: "https://linkedin.com/in/lucas-pereira",
-    avatarColor: "#0369A1",
-  },
-  {
-    nome: "Aline Costa",
-    cargo: "Content Designer",
-    empresa: "Marketplace",
-    cidade: "Sao Paulo, SP",
-    resumo: "Excelente copy e ajuste de mensagem, com repertorio visual moderado.",
-    skills: ["Copywriting", "Figma", "Brand Voice"],
-    linkedinUrl: "https://linkedin.com/in/aline-costa",
-    avatarColor: "#059669",
-  },
-  {
-    nome: "Paulo Henrique",
-    cargo: "CRM Specialist",
-    empresa: "Retail Pro",
-    cidade: "Brasilia, DF",
-    resumo: "Forte em automacao, journeys e mensuracao de campanha.",
-    skills: ["CRM", "Lifecycle", "Analytics"],
-    linkedinUrl: "https://linkedin.com/in/paulo-henrique",
-    avatarColor: "#D97706",
-  },
-];
-
-const seedCandidates: AgentCandidate[] = [
-  {
-    id: "cand-agent-1",
-    agenteId: "agent-1",
-    linkedinUrl: "https://linkedin.com/in/juliana-mendes",
-    scoreFinal: 4.8,
-    visto: false,
-    status: "novo",
-    descobertoEm: "2026-06-18T08:12:00.000Z",
-    nome: "Juliana Mendes",
-    cargo: "Senior Email Designer",
-    empresa: "TechCorp",
-    cidade: "Sao Paulo, SP",
-    skills: ["Figma", "HTML Email", "CRM", "Klaviyo"],
-    chips: ["Figma", "HTML/CSS", "CRM"],
-    avatarColor: "#1B4FD8",
-    initials: "JM",
-    criteriosAvaliacao: [
-      { nome: "Design visual e Figma", peso: 5, nota: 5, justificativa: "Usa Figma como ferramenta principal." },
-      { nome: "HTML/CSS para email", peso: 5, nota: 4.7, justificativa: "Entrega templates codificados." },
-      { nome: "CRM e automacao", peso: 4, nota: 4.5, justificativa: "Atua com lifecycle e automacoes." },
-    ],
-  },
-  {
-    id: "cand-agent-2",
-    agenteId: "agent-1",
-    linkedinUrl: "https://linkedin.com/in/fernanda-lima",
-    scoreFinal: 4.3,
-    visto: false,
-    status: "novo",
-    descobertoEm: "2026-06-18T09:02:00.000Z",
-    nome: "Fernanda Lima",
-    cargo: "Email Marketing Analyst",
-    empresa: "E-commerce XP",
-    cidade: "Curitiba, PR",
-    skills: ["CRM", "Copywriting", "Analytics"],
-    chips: ["CRM", "Copy", "Analytics"],
-    avatarColor: "#B45309",
-    initials: "FL",
-    criteriosAvaliacao: [
-      { nome: "Design visual e Figma", peso: 5, nota: 3.0, justificativa: "Menos foco em design." },
-      { nome: "HTML/CSS para email", peso: 5, nota: 4.1, justificativa: "Boa operacao de campanha." },
-      { nome: "CRM e automacao", peso: 4, nota: 4.8, justificativa: "Muito forte em lifecycle." },
-    ],
-  },
-  {
-    id: "cand-agent-3",
-    agenteId: "agent-2",
-    linkedinUrl: "https://linkedin.com/in/carlos-eduardo",
-    scoreFinal: 4.0,
-    visto: true,
-    status: "shortlist",
-    descobertoEm: "2026-06-17T09:00:00.000Z",
-    nome: "Carlos Eduardo",
-    cargo: "Frontend Designer",
-    empresa: "SaaS Brasil",
-    cidade: "Belo Horizonte, MG",
-    skills: ["React", "Design System", "Figma"],
-    chips: ["React", "Design System"],
-    avatarColor: "#7C3AED",
-    initials: "CE",
-    criteriosAvaliacao: [
-      { nome: "React e TypeScript", peso: 5, nota: 4.2, justificativa: "Boa base tecnica." },
-      { nome: "Performance", peso: 4, nota: 4.0, justificativa: "Conhece otimização de interfaces." },
-      { nome: "Arquitetura", peso: 4, nota: 3.9, justificativa: "Bom raciocinio de produto." },
-    ],
-  },
-];
-
-const seedNotifications: AgentNotification[] = [
-  {
-    id: "notif-1",
-    title: "Juliana Mendes passou do score minimo",
-    description: "O agente encontrou um candidato 4.8 e disparou notificacao no sino e via Brevo.",
-    channel: "email",
-    createdAt: "2026-06-18T08:12:00.000Z",
-    unread: true,
-  },
-  {
-    id: "notif-2",
-    title: "Agente Designer Email executado",
-    description: "54 perfis analisados, 12 candidatos encontrados e 4 acima de 4.0.",
-    channel: "sino",
-    createdAt: "2026-06-18T11:00:00.000Z",
-    unread: false,
-  },
-];
+// Removed static mocked profiles; calibration will use real candidates when available
 
 const scoreSeries = [12, 18, 14, 20, 16, 22, 19, 25, 28, 21, 24, 32, 29, 30, 34, 38, 33, 40, 36, 42, 39, 45, 41, 47, 46, 49, 44, 50, 48, 52];
 
@@ -424,10 +164,10 @@ function AgentCandidateCard({
 
 export default function AgenteIAPage() {
   const [activeTab, setActiveTab] = useState<AgentTab>("criar");
-  const [jobs, setJobs] = useState<Job[]>(seedJobs);
-  const [agents, setAgents] = useState<Agent[]>(seedAgents);
-  const [candidates, setCandidates] = useState<AgentCandidate[]>(seedCandidates);
-  const [notifications, setNotifications] = useState<AgentNotification[]>(seedNotifications);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [candidates, setCandidates] = useState<AgentCandidate[]>([]);
+  const [notifications, setNotifications] = useState<AgentNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -447,10 +187,18 @@ export default function AgenteIAPage() {
     scoreMinimoNotificacao: 4,
   });
 
-  const calibrationProfiles = useMemo(
-    () => seedProfiles.slice(0, 8),
-    [],
-  );
+  const calibrationProfiles = useMemo(() => {
+    return candidates.slice(0, 8).map((c) => ({
+      nome: c.nome,
+      cargo: c.cargo,
+      empresa: c.empresa,
+      cidade: c.cidade,
+      resumo: "",
+      skills: c.skills || [],
+      linkedinUrl: c.linkedinUrl || "",
+      avatarColor: c.avatarColor || AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+    } as AgentProfile));
+  }, [candidates]);
 
   const activeAgent = useMemo(() => {
     return agents.find((agent) => agent.id === selectedAgentId) || agents[0] || null;
@@ -470,7 +218,7 @@ export default function AgenteIAPage() {
 
     async function loadAgents() {
       try {
-        const res = await fetch("/api/agentes");
+        const res = await fetch("/api/agentes", { credentials: "include" });
         const data = await res.json();
 
         if (!alive) return;
@@ -479,9 +227,8 @@ export default function AgenteIAPage() {
           if (Array.isArray(data.vagas) && data.vagas.length > 0) {
             setJobs(
               data.vagas.map((vaga: { id: string; titulo: string }) => ({
-                ...seedJobs[0],
                 id: vaga.id,
-                title: vaga.titulo,
+                title: vaga.titulo || "Vaga sem título",
                 department: "Geral",
                 candidatesCount: 0,
                 averageScore: 0,
@@ -490,6 +237,8 @@ export default function AgenteIAPage() {
                 createdDate: new Date().toLocaleDateString("pt-BR"),
               })),
             );
+          } else {
+            setJobs([]);
           }
 
           if (Array.isArray(data.agentes) && data.agentes.length > 0) {
@@ -572,6 +321,7 @@ export default function AgenteIAPage() {
     try {
       const res = await fetch("/api/agentes", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome: draft.nome,
@@ -634,12 +384,14 @@ export default function AgenteIAPage() {
     try {
       await fetch(`/api/agentes/${createdAgent.id}/calibracoes`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ calibracoes: decisionsPayload }),
       });
 
       await fetch(`/api/agentes/${createdAgent.id}`, {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "ativo",
@@ -727,6 +479,7 @@ export default function AgenteIAPage() {
 
     await fetch(`/api/agentes/${agentId}`, {
       method: "PATCH",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: action === "ativar" ? "ativo" : "pausado" }),
     }).catch(() => {});

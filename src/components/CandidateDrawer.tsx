@@ -157,6 +157,7 @@ export default function CandidateDrawer({
     try {
       const res = await fetch("/api/export-pdf", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ candidateId: localCandidate.id }),
       });
@@ -224,7 +225,7 @@ export default function CandidateDrawer({
     let mounted = true;
     async function loadEtiquetas() {
       try {
-        const res = await fetch('/api/etiquetas');
+        const res = await fetch('/api/etiquetas', { credentials: 'include' });
         const data = await res.json();
         if (res.ok && mounted) {
           setEtiquetas(data.etiquetas || []);

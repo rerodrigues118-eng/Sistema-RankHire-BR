@@ -24,10 +24,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const { userId, supabase: _supabase } = await requireAuth();
     const admin = createSupabaseAdminClient();
+    // admin-client: justified — candidate updates and evaluation writes require admin privileges server-side
     const { id } = await params;
     const body = (await req.json()) as CandidatePatchBody;
 
-    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }

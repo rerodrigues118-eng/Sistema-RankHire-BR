@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await requireAuth();
+    const { userId, supabase: _supabase } = await requireAuth();
     const body = (await req.json()) as {
       linkedinUrl?: string;
       vagaId?: string;
@@ -13,7 +13,8 @@ export async function POST(req: Request) {
     };
 
     const admin = createSupabaseAdminClient();
-    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
+    // admin-client: justified — importing candidates writes to pdf_candidates with elevated permissions
+    const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
 
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });

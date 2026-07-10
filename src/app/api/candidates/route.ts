@@ -7,7 +7,8 @@ export async function GET() {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
     const admin = createSupabaseAdminClient();
-    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
+    // admin-client: justified — listing/creating candidates requires server-side writes
+    const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
 
     if (!usuario?.empresa_id) {
       return NextResponse.json({ candidates: [] });
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
     const admin = createSupabaseAdminClient();
+    // admin-client: justified — creating candidates is a server-side action requiring admin rights
     const body = (await req.json()) as {
       name?: string;
       role?: string;
@@ -44,7 +46,7 @@ export async function POST(req: Request) {
       vagaId?: string;
     };
 
-    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }

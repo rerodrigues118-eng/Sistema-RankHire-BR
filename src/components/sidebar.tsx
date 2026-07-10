@@ -81,7 +81,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
           if (metaName) setDisplayName(metaName as string);
         }
 
-        const res = await fetch('/api/me/role');
+        const res = await fetch('/api/me/role', { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           setUserEmail(data.email || "Usuário");
@@ -92,7 +92,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
               setAvatarUrl(cached.avatar_url || null);
               setDisplayName(cached.nome || cached.email || null);
             } else {
-              const p = await fetch('/api/profile');
+              const p = await fetch('/api/profile', { credentials: 'include' });
               if (p.ok) {
                 const pd = await p.json();
                 setAvatarUrl(pd.profile?.avatar_url || null);

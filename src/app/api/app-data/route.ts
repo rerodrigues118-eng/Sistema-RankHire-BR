@@ -353,31 +353,34 @@ export async function GET() {
       scoreHigh: highScoreCandidates,
     };
 
-    // PDF exports limit check
-    let exportsCount = 0;
+    // Monthly PDF processing count for quota
+    let processedPdfCount = 0;
     try {
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      const { count, error: exportsErr } = await admin
-        .from("pdf_exports")
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+      const { count, error: countErr } = await admin
+        .from("pdf_candidates")
         .select("id", { count: "exact", head: true })
         .eq("empresa_id", empresaId)
-        .eq("mes_referencia", currentMonth);
-      if (!exportsErr && count !== null) {
-        exportsCount = count;
+        .gte("created_at", monthStart)
+        .lt("created_at", nextMonthStart);
+      if (!countErr && count !== null) {
+        processedPdfCount = count;
       }
     } catch (e) {
-      logger.error("Erro ao buscar pdf_exports em app-data:", e);
+      logger.error("Erro ao buscar pdf_candidates em app-data:", e);
     }
 
     const { getPdfLimitFromPlan } = await import('@/lib/planos');
     const isAdmin = userRole === "superadmin" || userRole === "admin";
     const plan = empresaRes.data?.plano || null;
     const limit = getPdfLimitFromPlan(plan, (empresaRes.data || undefined) as any) ?? empresaRes.data?.limite_pdfs_mes ?? 10;
-    const remaining = limit === null ? null : Math.max(0, limit - exportsCount);
+    const remaining = limit === null ? null : Math.max(0, limit - processedPdfCount);
 
     const quota = {
       isAdmin,
-      used: exportsCount,
+      used: processedPdfCount,
       limit,
       remaining: isAdmin ? null : remaining,
       plano: plan || (empresaRes.data?.plano ?? 'sem-plano'),

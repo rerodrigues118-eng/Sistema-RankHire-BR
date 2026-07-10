@@ -45,24 +45,28 @@ export async function POST(req: Request) {
       const planLimit = getPdfLimitFromPlan(empresa.plano, empresa) ?? empresa.limite_pdfs_mes ?? 10;
 
       if (planLimit !== null) {
-        // Count exports this month
-        const currentMonth = new Date().toISOString().slice(0, 7); // "2026-06"
-        const { count } = await admin
-          .from("pdf_exports")
+        // Count processed PDFs this month as the canonical usage metric
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+        const nextMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString();
+
+        const { count: processedCount } = await admin
+          .from("pdf_candidates")
           .select("id", { count: "exact", head: true })
           .eq("empresa_id", usuario.empresa_id)
-          .eq("mes_referencia", currentMonth);
+          .gte("created_at", monthStart)
+          .lt("created_at", nextMonthStart);
 
-        const usedThisMonth = count ?? 0;
+        const usedThisMonth = processedCount ?? 0;
 
         if (usedThisMonth >= planLimit) {
           return NextResponse.json(
             {
-              error: "Limite de exportações atingido",
+              error: "Limite de uso de PDF atingido",
               limit: planLimit,
               used: usedThisMonth,
               mes: currentMonth,
-              upgrade_message: `Você atingiu o limite de ${planLimit} exportações do plano ${empresa.plano}. Faça upgrade para exportar mais.`,
+              upgrade_message: `Você atingiu o limite de ${planLimit} PDFs processados do plano ${empresa.plano}. Faça upgrade para processar mais.`,
             },
             { status: 403 }
           );
@@ -125,13 +129,17 @@ export async function GET() {
     const planLimit = getPdfLimitFromPlan(empresa?.plano || "trial_starter", empresa ?? undefined);
     const currentMonth = new Date().toISOString().slice(0, 7);
 
-    const { count } = await admin
-      .from("pdf_exports")
+    // Use processed PDFs as the canonical used count
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const nextMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString();
+    const { count: processedCount } = await admin
+      .from("pdf_candidates")
       .select("id", { count: "exact", head: true })
       .eq("empresa_id", usuario.empresa_id)
-      .eq("mes_referencia", currentMonth);
+      .gte("created_at", monthStart)
+      .lt("created_at", nextMonthStart);
 
-    const used = count ?? 0;
+    const used = processedCount ?? 0;
 
     return NextResponse.json({
       quota: {

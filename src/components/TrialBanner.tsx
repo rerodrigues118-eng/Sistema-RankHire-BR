@@ -11,7 +11,7 @@ export default function TrialBanner() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/empresas');
+        const res = await fetch('/api/empresas', { credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
         if (data.empresa) setEmpresa(data.empresa as EmpresaSimples);

@@ -190,8 +190,8 @@ export async function GET() {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
     const admin = createSupabaseAdminClient();
-    
-    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
+    // admin-client: justified — listing agents and related cross-table data
+    const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
 
     if (!usuario?.empresa_id) {
       return NextResponse.json({ agentes: [], vagas: [], candidatos: [], runs: [], notificacoes: [] });
@@ -322,7 +322,7 @@ export async function POST(req: Request) {
       scoreMinimoNotificacao?: number;
     };
 
-    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
@@ -416,8 +416,8 @@ Retorne exatamente este JSON:
       vagaId: (agente as AgentRow).vaga_id,
       nome: (agente as AgentRow).nome,
       briefing: (agente as AgentRow).briefing || "",
-      status: (agente as AgentRow).status,
-      frequencia: (agente as AgentRow).frequencia,
+      status: (agente as AgentRow).status || "ativo",
+      frequencia: (agente as AgentRow).frequencia || "diaria",
       scoreMinimoNotificacao: Number((agente as AgentRow).score_minimo_notificacao ?? body.scoreMinimoNotificacao ?? 4),
       calibracoesRealizadas: Number((agente as AgentRow).calibracoes_realizadas ?? 0),
       ultimaBusca: (agente as AgentRow).ultima_busca,

@@ -8,9 +8,10 @@ export async function GET() {
   try {
     const { supabase: _supabase, userId } = await requireAuth();
     const admin = createSupabaseAdminClient();
+    // admin-client: justified — etiquetas are company resources managed server-side
 
     // get user's empresa_id
-    const { data: usuario } = await admin.from("usuarios").select("empresa_id").eq("id", userId).single();
+    const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
     const empresaId = usuario?.empresa_id;
 
     if (!empresaId) {

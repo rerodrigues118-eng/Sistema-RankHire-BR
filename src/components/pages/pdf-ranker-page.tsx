@@ -98,6 +98,7 @@ export default function PdfRankerPage({
   const [isSavingCriteria, setIsSavingCriteria] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastIdRef = useRef(0);
+  const [localQuota, setLocalQuota] = useState<typeof quota | null>(quota ?? null);
 
   const topCandidates = [...candidates].sort((a, b) => b.score - a.score);
 
@@ -114,7 +115,7 @@ export default function PdfRankerPage({
   async function fetchCriteria() {
     setIsLoadingCriteria(true);
     try {
-      const res = await fetch(`/api/vagas/${activeJob.id}/criteria`);
+      const res = await fetch(`/api/vagas/${activeJob.id}/criteria`, { credentials: "include" });
       const data = await res.json();
       if (res.ok && Array.isArray(data.criteria)) {
         setCriteria(
@@ -142,6 +143,23 @@ export default function PdfRankerPage({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, activeJob?.id]);
+
+  // Refresh quota from server (canonical processed PDFs)
+  useEffect(() => {
+    let mounted = true;
+    async function loadQuota() {
+      try {
+        const res = await fetch('/api/export-pdf', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.quota && mounted) setLocalQuota(data.quota);
+      } catch (e) {
+        // ignore
+      }
+    }
+    loadQuota();
+    return () => { mounted = false; };
+  }, [uploads.length]);
   
 
   const handleAddCriteria = (nome: string = "", peso: number = 3) => {
@@ -174,6 +192,7 @@ export default function PdfRankerPage({
     try {
       const res = await fetch(`/api/vagas/${activeJob.id}/criteria`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           criteria: valid.map((c) => ({
@@ -243,17 +262,17 @@ export default function PdfRankerPage({
             <strong>{activeJob.title}</strong>.
           </p>
         </div>
-        {quota && (
+        {(localQuota || quota) && (
           <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-sm flex items-center gap-4 text-sm max-w-sm">
             <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold">
-              {quota.isAdmin ? "∞" : (quota.remaining ?? "∞")}
+              {(localQuota || quota)?.isAdmin ? "∞" : ((localQuota || quota)?.remaining ?? "∞")}
             </div>
             <div>
               <p className="font-semibold text-gray-900 leading-tight">
-                {quota.isAdmin ? "Exportações Ilimitadas" : `${quota.used} de ${quota.limit} exportadas`}
+                {(localQuota || quota)?.isAdmin ? "Processamento de PDFs ilimitado" : `${(localQuota || quota)?.used} de ${(localQuota || quota)?.limit} processados`}
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
-                {quota.isAdmin ? `Acesso Admin · Plano ${quota.plano}` : `Plano ${quota.plano} · Mês de ${quota.mes}`}
+                {(localQuota || quota)?.isAdmin ? `Acesso Admin · Plano ${(localQuota || quota)?.plano}` : `Plano ${(localQuota || quota)?.plano} · Mês de ${(localQuota || quota)?.mes}`}
               </p>
             </div>
           </div>
