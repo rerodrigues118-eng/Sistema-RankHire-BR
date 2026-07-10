@@ -206,11 +206,7 @@ export default function Home() {
     const actualScore = (candData.score_final as number | null) ?? (candData.score as number | null);
     if (actualScore == null) return;
 
-    const batchCandidates = batchData.candidates as Array<Record<string, unknown>> | undefined;
-    const candMeta = batchCandidates?.find((c: Record<string, unknown>) => c.id === candData.id);
-    if (!candMeta) return;
-
-    const file_url = candMeta.file_url as string;
+    const file_url = (candData.file_url as string) || "";
     const fallbackBasename =
       file_url.split("/").pop()?.replace(/\.pdf$/i, "").replace(/[-_]/g, " ") || "Candidato";
     const parts = fallbackBasename.split(" ").filter(Boolean);
@@ -222,12 +218,19 @@ export default function Home() {
     const finalName = (candData.nome_candidato as string | null) || fallbackName;
     const color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
+    // Se file_url não está direto no candData, busca em batchData.candidates (polling antigo)
+    const effectiveFileUrl = file_url || (() => {
+      const batchCandidates = batchData.candidates as Array<Record<string, unknown>> | undefined;
+      const candMeta = batchCandidates?.find((c) => c.id === candData.id);
+      return (candMeta?.file_url as string) || "";
+    })();
+
     const newCand: Candidate = {
       id: candData.id as string,
       name: finalName,
       role: activeJob?.title || "Vaga selecionada",
-      company: "Via upload",
-      city: "São Paulo, SP",
+      company: (candData.empresa_atual as string | null) || "Via upload",
+      city: (candData.cidade as string | null) || "Não informado",
       score: actualScore as number,
       avatarColor: color,
       initials: finalName
@@ -241,9 +244,24 @@ export default function Home() {
       otherTags: [],
       shortlist: false,
       status: "triado" as KanbanStatus,
-      linkedinUrl: "#",
+      linkedinUrl: (candData.linkedin_url as string | null) || "#",
       createdAt: new Date().toISOString(),
+      // Mapeando campos extras extraídos pela IA para os campos da interface Candidate
+      email: (candData.email_contato as string | null) || undefined,
+      phone: (candData.telefone as string | null) || undefined,
+      pretensaoSalarial: (candData.pretensao_salarial as string | null) || undefined,
+      disponibilidade: (candData.disponibilidade as string | null) || undefined,
+      regime: (candData.regime_preferido as string | null) || undefined,
+      aiSummary: (candData.resumo_ia as string | null) || undefined,
+      // Campos extras novos
+      emailContato: candData.email_contato as string | null | undefined,
+      telefone: candData.telefone as string | null | undefined,
+      cargoAtual: candData.cargo_atual as string | null | undefined,
+      regimePreferido: candData.regime_preferido as string | null | undefined,
+      resumoIa: candData.resumo_ia as string | null | undefined,
     };
+
+    void effectiveFileUrl; // usado apenas para referência de fallback
 
     setCandidates((prev) => {
       if (prev.some((c) => c.id === newCand.id)) return prev;

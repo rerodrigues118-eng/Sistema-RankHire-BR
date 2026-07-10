@@ -124,6 +124,12 @@ export interface Candidate {
   disponibilidade?: string;
   regime?: string;
   aiSummary?: string;
+  // Campos extraídos pela IA via PDF
+  emailContato?: string | null;
+  telefone?: string | null;
+  cargoAtual?: string | null;
+  regimePreferido?: string | null;
+  resumoIa?: string | null;
 }
 
 export interface Job {
