@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Briefcase, UploadCloud, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
+import { Briefcase, UploadCloud, CheckCircle2, ArrowRight, Loader2, Sparkles, Building2, User } from "lucide-react";
+import Link from "next/link";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -16,146 +17,187 @@ export default function OnboardingPage() {
     setError(null);
 
     if (step === 1) {
-      if (!jobTitle.trim()) {
-        setError("Informe o título da vaga para continuar.");
-        return;
-      }
       setStep(2);
       return;
     }
 
-    setIsLoading(true);
-    const res = await fetch("/api/onboarding", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        step: "job",
-        jobTitle,
-        area: "Tecnologia",
-        contract: "CLT",
-        location: "Remoto",
-        briefing: `Vaga criada no onboarding para ${jobTitle}`,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || "Não foi possível criar a vaga inicial.");
-      setIsLoading(false);
+    if (step === 2) {
+      if (!jobTitle.trim()) {
+        setError("Informe o titulo da vaga para continuar.");
+        return;
+      }
+      setIsLoading(true);
+      
+      try {
+        const res = await fetch("/api/onboarding", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            step: "job",
+            jobTitle,
+            area: "Tecnologia",
+            contract: "CLT",
+            location: "Remoto",
+            briefing: `Vaga criada no onboarding para ${jobTitle}`,
+          }),
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+          throw new Error(data.error || "Nao foi possivel criar a vaga inicial.");
+        }
+        
+        setStep(3);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Erro ao salvar.");
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
-    router.push("/dashboard");
+    if (step === 3) {
+      router.push("/dashboard");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-rh-bg)] flex flex-col relative overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-[var(--color-rh-cyan)] opacity-10 blur-[150px] pointer-events-none" />
+    <div className="landing-dark min-h-screen flex items-center justify-center bg-[#030307] relative overflow-hidden px-4 select-none">
+      <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/10 blur-[150px] pointer-events-none" />
 
-      {/* Header simples */}
-      <header className="h-16 flex items-center px-8 border-b border-[var(--color-rh-bg-border)] relative z-10">
-        <div className="w-8 h-8 rounded-[6px] bg-logo-gradient flex items-center justify-center mr-3">
-          <span className="text-[var(--color-rh-bg)] font-bold text-sm">R</span>
-        </div>
-        <span className="text-white font-bold tracking-tight">RankHire BR</span>
-      </header>
-
-      <main className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
-        <div className="w-full max-w-2xl">
-          
-          <div className="text-center mb-10">
-            <h1 className="text-3xl font-bold text-white mb-3">
-              Bem-vindo ao futuro do recrutamento! 🚀
-            </h1>
-            <p className="text-[var(--color-rh-gray)] text-[15px]">
-              Vamos configurar sua primeira vaga em menos de 1 minuto para testar nossa IA.
-            </p>
+      <div className="bg-zinc-900/60 border border-white/10 backdrop-blur-md p-8 md:p-10 w-full max-w-lg rounded-3xl shadow-2xl relative z-10">
+        
+        <div className="flex flex-col items-center mb-8">
+          <Link href="/" className="flex flex-col items-center mb-4">
+            <div className="w-12 h-12 bg-gradient-to-tr from-[#2563EB] to-[#D4AF37] flex items-center justify-center rounded-full mb-3 shadow-lg">
+              <span className="text-white font-extrabold text-xl">R</span>
+            </div>
+          </Link>
+          <div className="flex items-center justify-center gap-2 mb-2 w-full max-w-[200px]">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className={`h-1.5 flex-1 rounded-full ${step >= item ? "bg-[#2563EB]" : "bg-white/5"}`}
+              />
+            ))}
           </div>
+        </div>
 
-          <div className="card-rh p-8 md:p-10 shadow-2xl relative">
-            <form onSubmit={handleNext}>
+        {error && (
+          <div className="p-3 mb-6 bg-red-500/10 text-xs font-semibold text-red-400 rounded-lg border border-red-500/20 text-center">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleNext}>
+          
+          {step === 1 && (
+            <div className="space-y-6 text-center animate-in fade-in zoom-in-95 duration-300">
+              <div className="mx-auto w-20 h-20 bg-[#2563EB]/10 rounded-full flex items-center justify-center mb-6">
+                <Sparkles className="w-10 h-10 text-[#D4AF37]" />
+              </div>
               
-              {step === 1 && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                  <div className="flex items-center gap-4 border-b border-[var(--color-rh-bg-border)] pb-6">
-                    <div className="w-12 h-12 rounded-full bg-[var(--color-rh-cyan)]/10 text-[var(--color-rh-cyan)] flex items-center justify-center">
-                      <Briefcase className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-white">Qual vaga você quer preencher?</h2>
-                      <p className="text-[13px] text-[var(--color-rh-gray)] mt-1">Nossa IA criará os critérios automaticamente.</p>
-                    </div>
-                  </div>
+              <h1 className="text-3xl font-bold text-white tracking-tight">
+                Bem-vindo ao RankHire!
+              </h1>
+              
+              <p className="text-[15px] text-zinc-400 leading-relaxed max-w-sm mx-auto">
+                Sua conta foi criada com sucesso. Estamos muito felizes em ter voce a bordo para transformar seu processo de recrutamento.
+              </p>
 
-                  <div className="space-y-2">
-                    <label className="text-[14px] font-medium text-[var(--color-rh-gray)]">Título da Vaga</label>
-                    <input
-                      type="text"
-                      required
-                      value={jobTitle}
-                      onChange={(e) => setJobTitle(e.target.value)}
-                      className="w-full px-4 py-3 bg-[var(--color-rh-bg)] border border-[var(--color-rh-bg-border)] rounded-lg text-white focus:outline-none focus:border-[var(--color-rh-cyan)] focus:ring-1 focus:ring-[var(--color-rh-cyan)] transition-all text-[15px]"
-                      placeholder="Ex: Desenvolvedor React Sênior, Gerente de Vendas..."
-                      autoFocus
-                    />
-                  </div>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-left mt-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  <span className="text-sm font-semibold text-zinc-200">E-mail verificado</span>
                 </div>
-              )}
-
-              {step === 2 && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                  <div className="flex items-center gap-4 border-b border-[var(--color-rh-bg-border)] pb-6">
-                    <div className="w-12 h-12 rounded-full bg-[var(--color-rh-secondary)]/10 text-[var(--color-rh-secondary)] flex items-center justify-center">
-                      <UploadCloud className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-white">Faça o upload do seu primeiro CV</h2>
-                      <p className="text-[13px] text-[var(--color-rh-gray)] mt-1">
-                        Suba um currículo para a vaga de <strong className="text-white">{jobTitle}</strong>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="border-2 border-dashed border-[var(--color-rh-bg-border)] rounded-xl p-10 text-center hover:border-[var(--color-rh-cyan)] transition-colors cursor-pointer bg-[rgba(255,255,255,0.01)] group">
-                    <div className="w-16 h-16 rounded-full bg-[var(--color-rh-bg)] mx-auto flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <UploadCloud className="w-8 h-8 text-[var(--color-rh-gray)] group-hover:text-[var(--color-rh-cyan)] transition-colors" />
-                    </div>
-                    <h3 className="text-[16px] font-bold text-white mb-2">Arraste um PDF ou clique aqui</h3>
-                    <p className="text-[13px] text-[var(--color-rh-gray)]">A IA extrairá as habilidades e pontuará o candidato imediatamente.</p>
-                  </div>
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  <span className="text-sm font-semibold text-zinc-200">Conta configurada</span>
                 </div>
-              )}
+              </div>
 
-              <div className="pt-8 flex items-center justify-between">
-                <div className="flex gap-2">
-                  <div className={`w-2.5 h-2.5 rounded-full transition-colors ${step === 1 ? 'bg-[var(--color-rh-cyan)]' : 'bg-[var(--color-rh-bg-border)]'}`} />
-                  <div className={`w-2.5 h-2.5 rounded-full transition-colors ${step === 2 ? 'bg-[var(--color-rh-cyan)]' : 'bg-[var(--color-rh-bg-border)]'}`} />
+              <div className="pt-6">
+                <button
+                  type="submit"
+                  className="w-full py-3.5 bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 shadow-lg shadow-blue-600/20 transition-all"
+                >
+                  Vamos começar <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="flex items-center gap-4 border-b border-white/10 pb-6">
+                <div className="w-12 h-12 rounded-full bg-blue-500/10 text-[#2563EB] flex items-center justify-center">
+                  <Briefcase className="w-6 h-6" />
                 </div>
-                
-                {error && (
-                  <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                    {error}
-                  </div>
-                )}
+                <div>
+                  <h2 className="text-xl font-bold text-white">Primeira Vaga</h2>
+                  <p className="text-[13px] text-zinc-400 mt-1">Crie sua primeira vaga para testar a IA.</p>
+                </div>
+              </div>
 
+              <div className="space-y-2">
+                <label className="text-[13px] font-bold text-zinc-400">Qual cargo voce quer preencher?</label>
+                <input
+                  type="text"
+                  required
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  className="w-full px-4 py-3 bg-zinc-950 border border-white/10 rounded-xl text-white focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all text-[15px]"
+                  placeholder="Ex: Desenvolvedor Senior, Vendedor..."
+                  autoFocus
+                />
+              </div>
+
+              <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-xl p-4 flex gap-3">
+                <Sparkles className="w-5 h-5 text-[#D4AF37] shrink-0 mt-0.5" />
+                <p className="text-xs text-zinc-300 leading-relaxed">
+                  A nossa inteligencia artificial vai usar esse titulo para sugerir criterios de avaliacao e montar o ranking dos candidatos automaticamente.
+                </p>
+              </div>
+
+              <div className="pt-4">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-6 py-3 bg-logo-gradient hover:brightness-110 disabled:opacity-60 text-[var(--color-rh-bg)] rounded-lg text-[15px] font-bold transition-all flex items-center gap-2 shadow-lg shadow-[var(--color-rh-cyan)]/20"
+                  className="w-full py-3.5 bg-[#2563EB] hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 shadow-lg shadow-blue-600/20 transition-all"
                 >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : step === 1 ? (
-                    <>Continuar <ArrowRight className="w-4 h-4" /></>
-                  ) : (
-                    <>Ir para o Dashboard <CheckCircle2 className="w-4 h-4" /></>
-                  )}
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Criar Vaga <ArrowRight className="w-4 h-4" /></>}
                 </button>
               </div>
+            </div>
+          )}
 
-            </form>
-          </div>
-        </div>
-      </main>
+          {step === 3 && (
+            <div className="space-y-6 text-center animate-in fade-in zoom-in-95 duration-300">
+              <div className="mx-auto w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mb-6">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-white tracking-tight">
+                Tudo pronto!
+              </h2>
+              
+              <p className="text-[15px] text-zinc-400 leading-relaxed max-w-sm mx-auto">
+                A vaga <strong className="text-white">{jobTitle}</strong> foi criada. Agora voce ja pode fazer o upload dos curriculos em PDF para ver a magica acontecer.
+              </p>
+
+              <div className="pt-6">
+                <button
+                  type="submit"
+                  className="w-full py-3.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition-all border border-white/5"
+                >
+                  Ir para o Dashboard <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+        </form>
+      </div>
     </div>
   );
 }
