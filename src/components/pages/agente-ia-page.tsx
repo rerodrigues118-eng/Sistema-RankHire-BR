@@ -934,35 +934,6 @@ export default function AgenteIAPage() {
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-[18px] font-semibold text-slate-900">Criterios gerados pela IA</h3>
-                  <p className="mt-1 text-[13px] text-slate-500">
-                    A calibracao ajusta os pesos com base nos perfis aprovados e rejeitados.
-                  </p>
-                </div>
-                <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
-                {activeCriteria.length} criterios
-                </span>
-              </div>
-
-              <div className="mt-5 grid gap-3">
-                {activeCriteria.map((criterion) => (
-                  <div key={criterion.nome} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-[14px] font-semibold text-slate-900">{criterion.nome}</div>
-                        <div className="mt-1 text-[12px] text-slate-500">{criterion.descricao}</div>
-                      </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-[#1B4FD8]">
-                        peso {criterion.peso}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="space-y-6">
@@ -1122,6 +1093,36 @@ export default function AgenteIAPage() {
                 </div>
               </div>
             )}
+
+            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-[18px] font-semibold text-slate-900">Criterios gerados pela IA</h3>
+                  <p className="mt-1 text-[13px] text-slate-500">
+                    A calibracao ajusta os pesos com base nos perfis aprovados e rejeitados.
+                  </p>
+                </div>
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
+                {activeCriteria.length} criterios
+                </span>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                {activeCriteria.map((criterion) => (
+                  <div key={criterion.nome} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[14px] font-semibold text-slate-900">{criterion.nome}</div>
+                        <div className="mt-1 text-[12px] text-slate-500">{criterion.descricao}</div>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-[#1B4FD8]">
+                        peso {criterion.peso}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
