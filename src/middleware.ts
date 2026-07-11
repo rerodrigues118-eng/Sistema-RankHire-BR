@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Rotas acessíveis sem login
 const PUBLIC_ROUTES = [
   '/',
+  '/landing',
   '/login',
   '/cadastro',
   '/onboarding',
