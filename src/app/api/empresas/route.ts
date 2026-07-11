@@ -20,6 +20,9 @@ type EmpresaRow = {
   tamanho: string | null;
   segmento: string | null;
   plano: string | null;
+  subscription_status: string | null;
+  trial_expires_at: string | null;
+  limite_pdfs_mes: number | null;
 };
 
 export async function GET() {
@@ -45,7 +48,7 @@ export async function GET() {
 
     const { data: empresa, error } = await supabase
       .from("empresas")
-      .select("id,nome,cnpj,tamanho,segmento,plano")
+      .select("id,nome,cnpj,tamanho,segmento,plano,subscription_status,trial_expires_at,limite_pdfs_mes")
       .eq("id", usuario.empresa_id)
       .maybeSingle();
 
