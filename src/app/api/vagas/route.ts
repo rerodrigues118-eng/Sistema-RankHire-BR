@@ -80,7 +80,6 @@ export async function POST(req: Request) {
         empresa_id: usuario.empresa_id,
         criado_por: userId,
         titulo: title.trim(),
-        title: title.trim(),
         area: area || "Geral",
         tipo_contrato: contract || "CLT",
         localizacao: location || "",
