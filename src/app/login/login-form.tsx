@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-export default function LoginForm() {
+export default function LoginForm({ plan, source }: { plan?: string; source?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +125,12 @@ export default function LoginForm() {
             <span className="text-xs text-zinc-500 font-medium">Não tem uma conta? </span>
             <button
               type="button"
-              onClick={() => router.push('/cadastro')}
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (plan) params.set("plan", plan);
+                if (source) params.set("source", source);
+                router.push(`/cadastro${params.toString() ? `?${params.toString()}` : ""}`);
+              }}
               className="text-xs font-bold text-white hover:text-blue-400 transition-colors"
             >
               Crie agora

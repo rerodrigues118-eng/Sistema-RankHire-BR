@@ -9,10 +9,21 @@ export const metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ reset?: string }>;
+  searchParams?: Promise<{ reset?: string; plan?: string; source?: string }>;
 }) {
   const resolvedParams = await searchParams;
   const showResetSuccess = resolvedParams?.reset === "1";
+  const plan = resolvedParams?.plan;
+  const source = resolvedParams?.source;
+  const planLabel = plan === "starter"
+    ? "Starter"
+    : plan === "pro"
+      ? "Pro"
+      : plan === "agencia"
+        ? "Agência"
+        : plan === "trial"
+          ? "Trial"
+          : null;
 
   return (
     <div className="landing-dark min-h-screen flex bg-[#030307] font-sans text-white relative overflow-hidden select-none">
@@ -32,7 +43,7 @@ export default async function LoginPage({
           <p className="text-sm text-zinc-400 leading-relaxed mb-6">
             Nossa inteligência artificial analisa currículos em segundos, encontra os melhores perfis no LinkedIn e acelera o fechamento de vagas de ponta a ponta.
           </p>
-          <SignupInlineCta />
+          <SignupInlineCta plan={plan} source={source} />
         </div>
       </div>
 
@@ -58,7 +69,13 @@ export default async function LoginPage({
             </div>
           ) : null}
 
-          <LoginForm />
+          {planLabel ? (
+            <div className="mb-6 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-100">
+              Você chegou aqui via landing page para o plano {planLabel}. Faça login ou crie sua conta para continuar.
+            </div>
+          ) : null}
+
+          <LoginForm plan={plan} source={source} />
         </div>
       </div>
     </div>

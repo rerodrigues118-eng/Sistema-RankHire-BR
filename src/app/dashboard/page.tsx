@@ -14,6 +14,7 @@ import VagasPage from "@/components/pages/vagas-page";
 import AgenteIAPage from "@/components/pages/agente-ia-page";
 import CandidatosPage from "@/components/pages/candidatos-page";
 import CandidateDrawer from "@/components/CandidateDrawer";
+import TrialBanner from "@/components/TrialBanner";
 import { createClient } from "@/lib/supabase/client";
 
 export default function Home() {
@@ -545,6 +546,7 @@ export default function Home() {
       <Sidebar activePage={activePage} onNavigate={handleSetActivePage} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[var(--bg-base)]">
         <main className="flex-1 overflow-y-auto p-6 text-[var(--text-primary)]">
+          <TrialBanner />
           {bootstrapError && (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {bootstrapError}

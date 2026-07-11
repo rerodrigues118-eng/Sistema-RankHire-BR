@@ -70,10 +70,10 @@ export default function PlanosConfigPage() {
       if (usuario?.empresa_id) {
         const { data: emp } = await supabase
           .from('empresas')
-          .select('id, nome, plano, status_assinatura, trial_expira_em, pagarme_subscription_id, pagarme_customer_id')
+          .select('id, nome, plano, subscription_status, trial_expires_at, current_period_end, pagarme_subscription_id, pagarme_customer_id')
           .eq('id', usuario.empresa_id)
           .single();
-        if (emp) setEmpresa({ ...emp, subscription_status: emp.status_assinatura ?? '', trial_expires_at: emp.trial_expira_em ?? '' } as EmpresaPlano);
+        if (emp) setEmpresa(emp as EmpresaPlano);
         
         fetch('/api/pagarme/faturas?empresaId=' + usuario.empresa_id, { credentials: 'include' })
           .then(res => res.json())

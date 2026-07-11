@@ -246,7 +246,10 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         body: JSON.stringify({ ...filters, vagaId: activeJob?.id, vaga_id: activeJob?.id })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro na busca');
+      if (!res.ok) {
+        const detail = data?.upgrade_message || data?.error || 'Erro na busca';
+        throw new Error(detail);
+      }
 
       const perfis: LinkedinProfile[] = (data.results || []).map((r: LinkedinProfile) => ({
         ...r, jaVisto: urlsVistas.has(r.linkedinUrl),

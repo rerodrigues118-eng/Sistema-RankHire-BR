@@ -47,23 +47,44 @@ Retorne EXATAMENTE neste formato JSON:
 }`;
 
     const model = process.env.GROQ_MODEL_CRITERIA || "llama-3.3-70b-versatile";
-    const rawContent = await callAI(userPrompt, systemPrompt, model);
-
-    let jsonStr = rawContent.trim();
-    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-    if (jsonMatch) jsonStr = jsonMatch[0];
-
-    let parsed: ParsedFilters;
     try {
-      parsed = JSON.parse(jsonStr) as ParsedFilters;
-    } catch {
-      return NextResponse.json({ error: "IA retornou formato invalido" }, { status: 500 });
-    }
+      const rawContent = await callAI(userPrompt, systemPrompt, model);
 
-    return NextResponse.json({
-      criterios: parsed.criterios || [],
-      filtros_sugeridos: parsed.filtros_sugeridos || {},
-    });
+      let jsonStr = rawContent.trim();
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (jsonMatch) jsonStr = jsonMatch[0];
+
+      let parsed: ParsedFilters;
+      try {
+        parsed = JSON.parse(jsonStr) as ParsedFilters;
+      } catch {
+        return NextResponse.json({ error: "IA retornou formato invalido" }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        criterios: parsed.criterios || [],
+        filtros_sugeridos: parsed.filtros_sugeridos || {},
+      });
+    } catch {
+      const fallbackCriterios = [
+        { nome: "Experiência relevante", descricao: "Avalie se o candidato possui experiência compatível com a vaga", peso: 4 },
+        { nome: "Domínio técnico", descricao: "Avalie o nível técnico e as competências principais", peso: 4 },
+      ];
+      const fallbackFiltros = {
+        job_titles: text.split(/,| e | ou /).map((item) => item.trim()).filter(Boolean).slice(0, 3),
+        localizacao: "Brasil",
+        experiencia_minima: 2,
+        experiencia_maxima: 8,
+        idiomas: [],
+        keywords: text.split(/\s+/).filter(Boolean).slice(0, 5),
+        boolean_expression: "",
+      };
+
+      return NextResponse.json({
+        criterios: fallbackCriterios,
+        filtros_sugeridos: fallbackFiltros,
+      });
+    }
   } catch (error: unknown) {
     return handleApiError(error);
   }

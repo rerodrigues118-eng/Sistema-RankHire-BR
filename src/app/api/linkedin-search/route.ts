@@ -4,6 +4,7 @@ import { fetchWithTimeout, handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { logger } from "@/lib/logger";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { getPlanAccessState } from "@/lib/planos";
 
 export const maxDuration = 120;
 
@@ -151,6 +152,20 @@ export async function POST(req: Request) {
 
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada para este usuario" }, { status: 404 });
+    }
+
+    const { data: empresa } = await admin
+      .from("empresas")
+      .select("id, plano, subscription_status, trial_expires_at")
+      .eq("id", usuario.empresa_id)
+      .single();
+
+    const access = getPlanAccessState(empresa || undefined, 0);
+    if (!access.canUseLinkedIn) {
+      return NextResponse.json({
+        error: "Busca no LinkedIn indisponível no seu plano atual.",
+        upgrade_message: "Seu trial não inclui buscas no LinkedIn. Faça upgrade para desbloquear essa funcionalidade.",
+      }, { status: 403 });
     }
 
     const {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 
-export default function SignupInlineCta() {
+export default function SignupInlineCta({ plan, source }: { plan?: string; source?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
 
@@ -14,7 +14,10 @@ export default function SignupInlineCta() {
         e.preventDefault();
         const trimmed = email.trim();
         if (!trimmed) return;
-        router.push(`/cadastro?email=${encodeURIComponent(trimmed)}`);
+        const params = new URLSearchParams({ email: trimmed });
+        if (plan) params.set("plan", plan);
+        if (source) params.set("source", source);
+        router.push(`/cadastro?${params.toString()}`);
       }}
       className="mt-8 w-full max-w-md"
     >

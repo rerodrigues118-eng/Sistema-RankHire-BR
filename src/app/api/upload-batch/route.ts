@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from '@/lib/admin';
 import { logger } from '@/lib/logger';
-import { getPdfLimitFromPlan } from '@/lib/planos';
+import { getPdfLimitFromPlan, getPlanAccessState } from '@/lib/planos';
 import { callAI } from "@/lib/ai-client";
 import { buildScoringPrompt } from "@/lib/scoring-prompt";
 import { getPdfQueue, getRedisConnection } from '@/lib/queue';
@@ -188,29 +188,30 @@ export async function POST(req: Request) {
     }
 
     // Check quota before creating batch
-    const { data: empresa } = await admin.from('empresas').select('id,plano,limite_pdfs_mes').eq('id', vaga.empresa_id).single();
-    const planLimit = getPdfLimitFromPlan(empresa?.plano, empresa || undefined) ?? empresa?.limite_pdfs_mes ?? 10;
+    const { data: empresa } = await admin.from('empresas').select('id,plano,limite_pdfs_mes,subscription_status').eq('id', vaga.empresa_id).single();
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+    const { count } = await admin
+      .from('pdf_candidates')
+      .select('id', { count: 'exact', head: true })
+      .eq('empresa_id', vaga.empresa_id)
+      .gte('created_at', monthStart)
+      .lt('created_at', nextMonthStart);
+    const used = count ?? 0;
+    const access = getPlanAccessState(empresa || undefined, used);
+    const planLimit = access.pdfLimit;
 
-    if (planLimit !== null) {
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
-      const { count } = await admin
-        .from('pdf_candidates')
-        .select('id', { count: 'exact', head: true })
-        .eq('empresa_id', vaga.empresa_id)
-        .gte('created_at', monthStart)
-        .lt('created_at', nextMonthStart);
-      const used = count ?? 0;
-      if (used >= planLimit) {
-        return NextResponse.json({
-          error: 'Limite de uploads/processing de PDFs atingido',
-          limit: planLimit,
-          used,
-          mes: now.toISOString().slice(0, 7),
-          upgrade_message: `Você atingiu o limite de ${planLimit} PDFs neste mês. Faça upgrade para processar mais.`
-        }, { status: 403 });
-      }
+    if (!access.canUploadPdf) {
+      return NextResponse.json({
+        error: 'Limite de uploads/processing de PDFs atingido',
+        limit: planLimit,
+        used,
+        mes: now.toISOString().slice(0, 7),
+        upgrade_message: access.isTrial
+          ? 'Seu trial inclui até 10 PDFs por mês. Faça upgrade para continuar processando mais currículos.'
+          : 'Você atingiu o limite de PDFs deste plano. Faça upgrade para processar mais.'
+      }, { status: 403 });
     }
 
     const batchId = crypto.randomUUID();

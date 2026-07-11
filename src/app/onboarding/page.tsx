@@ -45,7 +45,7 @@ export default function OnboardingPage() {
         const data = await res.json();
         
         if (!res.ok) {
-          throw new Error(data.error || "Nao foi possivel criar a vaga inicial.");
+          throw new Error(data.error || "Nao foi possivel criar a vaga inicial. Tente novamente em instantes.");
         }
         
         setStep(3);
