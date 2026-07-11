@@ -186,14 +186,14 @@ export async function POST(req: Request) {
       .insert({
         empresa_id: usuario.empresa_id,
         criado_por: user.id,
-        titulo: jobTitle,
+        title: jobTitle,
         area: body.area || "Geral",
         tipo_contrato: body.contract || "CLT",
         localizacao: body.location || "",
         briefing: body.briefing || "",
         status: "ativa",
       })
-      .select("id,titulo,area,tipo_contrato,localizacao,briefing,status,created_at")
+      .select("id,title,area,tipo_contrato,localizacao,briefing,status,created_at")
       .single();
 
     if (vagaError || !vaga) {

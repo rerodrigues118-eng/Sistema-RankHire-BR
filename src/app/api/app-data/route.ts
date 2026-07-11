@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 
 type JobRow = {
   id: string;
-  titulo: string | null;
+  title: string | null;
   area: string | null;
   status: string | null;
   created_at: string | null;
@@ -130,7 +130,7 @@ export async function GET() {
     const [jobsRes, candidatesRes, empresaRes] = await Promise.all([
       supabase
         .from("vagas")
-        .select("id,titulo,area,status,created_at")
+        .select("id,title,area,status,created_at")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false }),
       supabase
@@ -204,7 +204,7 @@ export async function GET() {
 
       return {
         id: job.id,
-        title: job.titulo || "Vaga sem titulo",
+        title: job.title || "Vaga sem titulo",
         department: job.area || "Geral",
         candidatesCount: jobCandidates.length,
         averageScore: Math.round(jobAvgScoreValue * 10) / 10,

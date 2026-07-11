@@ -7,7 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type VagaRow = {
   id: string;
-  titulo: string | null;
+  title: string | null;
 };
 
 type AgentRow = {
@@ -199,7 +199,7 @@ export async function GET() {
     }
 
     const [vagasRes, agentesRes] = await Promise.all([
-      admin.from("vagas").select("id,titulo").eq("empresa_id", usuario.empresa_id).order("created_at", { ascending: false }),
+      admin.from("vagas").select("id,title").eq("empresa_id", usuario.empresa_id).order("created_at", { ascending: false }),
       admin
         .from("agentes_ia")
         .select("id,empresa_id,vaga_id,nome,briefing,status,frequencia,score_minimo_notificacao,calibracoes_realizadas,ultima_busca,proxima_busca,created_at,criterios_ia,filtros_ia")
@@ -247,7 +247,7 @@ export async function GET() {
     const vagas = (vagasRes.data || []) as VagaRow[];
     const runs = (runsRes.data || []) as RunRow[];
     const candidates = (candidatesRes.data || []) as CandidateRow[];
-    const vagasMap = new Map(vagas.map((vaga) => [vaga.id, vaga.titulo || "Vaga vinculada"]));
+    const vagasMap = new Map(vagas.map((vaga) => [vaga.id, vaga.title || "Vaga vinculada"]));
 
     const formattedAgents = agentes.map((agent) => formatAgent(agent, vagasMap.get(agent.vaga_id) || null, runs, candidates));
     const formattedCandidates = candidates.map((candidate, index) => {
@@ -335,7 +335,7 @@ export async function POST(req: Request) {
 
     const { data: vaga } = await admin
       .from("vagas")
-      .select("id,titulo")
+      .select("id,title")
       .eq("id", body.vagaId)
       .eq("empresa_id", usuario.empresa_id)
       .single();
@@ -345,14 +345,14 @@ export async function POST(req: Request) {
     }
 
     let criterios: AgentCriterion[] = fallbackCriteria(body.briefing);
-    let filtros: AgentFilterSet = fallbackFilters(body.briefing, vaga.titulo);
+    let filtros: AgentFilterSet = fallbackFilters(body.briefing, vaga.title);
 
     try {
       const systemPrompt =
         "Voce e um estrategista de recrutamento. Gere criterios e filtros em JSON valido, sem markdown e sem texto extra.";
       const userPrompt = `Crie criterios e filtros para este agente virtual:
 Nome do agente: ${body.nome}
-Vaga: ${vaga.titulo || "Vaga"}
+Vaga: ${vaga.title || "Vaga"}
 Briefing: ${body.briefing}
 
 Retorne exatamente este JSON:
@@ -425,7 +425,7 @@ Retorne exatamente este JSON:
       ultimaBusca: (agente as AgentRow).ultima_busca,
       proximaBusca: (agente as AgentRow).proxima_busca,
       createdAt: (agente as AgentRow).created_at || new Date().toISOString(),
-      vagaTitulo: vaga.titulo || "Vaga vinculada",
+      vagaTitulo: vaga.title || "Vaga vinculada",
       criteriosIa: criterios,
       filtrosIa: filtros,
     };

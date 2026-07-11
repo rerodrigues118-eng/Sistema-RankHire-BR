@@ -13,7 +13,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("vagas")
-      .select("id,titulo,area,tipo_contrato,localizacao,briefing,status,created_at,updated_at")
+      .select("id,title,area,tipo_contrato,localizacao,briefing,status,created_at,updated_at")
       .eq("empresa_id", usuario.empresa_id)
       .order("created_at", { ascending: false });
 
@@ -79,14 +79,14 @@ export async function POST(req: Request) {
       .insert({
         empresa_id: usuario.empresa_id,
         criado_por: userId,
-        titulo: title.trim(),
+        title: title.trim(),
         area: area || "Geral",
         tipo_contrato: contract || "CLT",
         localizacao: location || "",
         briefing: briefing || "",
         status: status === "completed" ? "completed" : "ativa",
       })
-      .select("id,titulo,area,tipo_contrato,localizacao,briefing,status,created_at")
+      .select("id,title,area,tipo_contrato,localizacao,briefing,status,created_at")
       .single();
 
     if (error) {
