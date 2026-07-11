@@ -17,6 +17,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // admin-client: justificado — verificação que pode requerer privilégios de leitura ampliada
     const admin = createSupabaseAdminClient();
     const { data, error } = await admin
       .from("usuarios")

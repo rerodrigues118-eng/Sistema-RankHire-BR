@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     if (entry.code !== body.code) return NextResponse.json({ error: 'Codigo invalido' }, { status: 400 });
 
     // apply change
+    // admin-client: justificado — verificação de mudança sensível exige service-role
     const admin = createSupabaseAdminClient();
     const update: Record<string, unknown> = {};
     if (body.type === 'email') update.email = entry.newValue;

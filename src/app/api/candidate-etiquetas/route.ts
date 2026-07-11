@@ -8,8 +8,6 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 export async function POST(req: Request) {
   try {
     const { supabase: _supabase, userId } = await requireAuth();
-    const admin = createSupabaseAdminClient();
-    // admin-client: justified — writes to candidate_etiquetas and etiqueta validation require elevated permissions
     const body = await req.json();
     const schema = z.object({ candidateId: z.string().uuid(), etiquetaId: z.string().uuid().nullable().optional() });
     const parsed = schema.safeParse(body);
@@ -29,22 +27,22 @@ export async function POST(req: Request) {
     }
 
     // validar candidate pertence à mesma empresa
-    const { data: candidate } = await admin.from("pdf_candidates").select("id,empresa_id").eq('empresa_id', empresaId).eq("id", candidateId).single();
+    const { data: candidate } = await _supabase.from("pdf_candidates").select("id,empresa_id").eq('empresa_id', empresaId).eq("id", candidateId).single();
     if (!candidate) return NextResponse.json({ error: "Candidato não encontrado" }, { status: 404 });
     if (candidate.empresa_id !== empresaId) return NextResponse.json({ error: "Acesso negado ao candidato" }, { status: 403 });
 
     // se etiquetaId informado, validar pertence à mesma empresa
     if (etiquetaId) {
-      const { data: etiqueta } = await admin.from("etiquetas").select("id,empresa_id").eq("id", etiquetaId).single();
+      const { data: etiqueta } = await _supabase.from("etiquetas").select("id,empresa_id").eq("id", etiquetaId).single();
       if (!etiqueta) return NextResponse.json({ error: "Etiqueta não encontrada" }, { status: 404 });
       if (etiqueta.empresa_id !== empresaId) return NextResponse.json({ error: "Acesso negado à etiqueta" }, { status: 403 });
     }
 
     // Regra: apenas 1 etiqueta por candidate. Remove anteriores.
-    await admin.from("candidate_etiquetas").delete().eq("candidate_id", candidateId);
+    await _supabase.from("candidate_etiquetas").delete().eq("candidate_id", candidateId);
 
     if (etiquetaId) {
-      const { data: inserted, error: insertErr } = await admin.from("candidate_etiquetas").insert({ candidate_id: candidateId, etiqueta_id: etiquetaId, aplicado_por: userId }).select("id").single();
+      const { data: inserted, error: insertErr } = await _supabase.from("candidate_etiquetas").insert({ candidate_id: candidateId, etiqueta_id: etiquetaId, aplicado_por: userId }).select("id").single();
       if (insertErr) throw insertErr;
       return NextResponse.json({ ok: true, id: inserted?.id });
     }
@@ -60,6 +58,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   try {
     const { supabase: _supabase } = await requireAuth();
+    // admin-client: justificado — operação administrativa de etiquetas
     const admin = createSupabaseAdminClient();
     const url = new URL(req.url);
     const candidateId = url.searchParams.get("candidateId");
@@ -68,7 +67,7 @@ export async function GET(req: Request) {
     // rate limit per candidate read (company-neutral small limit)
     // attempt to infer empresa via candidate
     try {
-      const { data: candidateData } = await admin.from('pdf_candidates').select('empresa_id').eq('id', candidateId).single();
+      const { data: candidateData } = await _supabase.from('pdf_candidates').select('empresa_id').eq('id', candidateId).single();
       const localEmpresaId = candidateData?.empresa_id;
       if (localEmpresaId) {
         const rl = await checkRateLimit(`empresa:${localEmpresaId}:candidates_read`, 120, 60_000);
@@ -76,7 +75,7 @@ export async function GET(req: Request) {
       }
     } catch {}
 
-    const { data, error } = await admin
+    const { data, error } = await _supabase
       .from("candidate_etiquetas")
       .select("id,etiqueta_id,etiquetas(id,nome,cor,posicao)")
       .eq("candidate_id", candidateId)

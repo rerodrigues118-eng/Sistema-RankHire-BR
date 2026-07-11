@@ -281,6 +281,7 @@ export default function CandidateDrawer({
     try {
       const res = await fetch(`/api/candidates/${localCandidate.id}`, {
         method: "PATCH",
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [apiField]: editValue }),
       });
@@ -314,6 +315,7 @@ export default function CandidateDrawer({
     try {
       const res = await fetch(`/api/candidates/${localCandidate.id}`, {
         method: "PATCH",
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           evaluations: newEvals.map((ev) => ({
@@ -362,6 +364,7 @@ export default function CandidateDrawer({
     try {
       const res = await fetch(`/api/candidates/${localCandidate.id}/rescore`, {
         method: "POST",
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
       });
 
@@ -473,6 +476,7 @@ export default function CandidateDrawer({
                       try {
                         const res = await fetch('/api/candidate-etiquetas', {
                           method: 'POST',
+                          credentials: 'include',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ candidateId: localCandidate.id, etiquetaId: val }),
                         });

@@ -57,6 +57,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: parseResult.error.flatten().formErrors[0] || parseResult.error.issues[0]?.message || "Entrada inválida" }, { status: 400 });
     }
     const body = parseResult.data;
+    // admin-client: justificado — onboarding que pode ajustar dados administrativos
     const admin = createSupabaseAdminClient();
 
     const { data: usuarioAtual, error: usuarioAtualError } = await admin

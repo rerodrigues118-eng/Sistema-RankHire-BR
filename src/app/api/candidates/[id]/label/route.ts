@@ -1,5 +1,4 @@
 import { handleApiError } from "@/lib/api";
-import { createSupabaseAdminClient } from "@/lib/admin";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
 
@@ -13,8 +12,7 @@ export async function PUT(req: Request, { params }: Params) {
     const { id: candidateId } = await params;
     const { etiquetaId } = (await req.json()) as { etiquetaId?: string | null };
 
-    const admin = createSupabaseAdminClient();
-    const { data: usuario } = await admin
+    const { data: usuario } = await _supabase
       .from("usuarios")
       .select("empresa_id")
       .eq("id", userId)
@@ -24,7 +22,7 @@ export async function PUT(req: Request, { params }: Params) {
       return NextResponse.json({ error: "Empresa nao encontrada." }, { status: 404 });
     }
 
-    const { data: candidate } = await admin
+    const { data: candidate } = await _supabase
       .from("pdf_candidates")
       .select("id,empresa_id")
       .eq("id", candidateId)
@@ -36,7 +34,7 @@ export async function PUT(req: Request, { params }: Params) {
     }
 
     if (!etiquetaId) {
-      const { error } = await admin
+      const { error } = await _supabase
         .from("candidate_etiquetas")
         .delete()
         .eq("candidate_id", candidateId);
@@ -48,7 +46,7 @@ export async function PUT(req: Request, { params }: Params) {
       return NextResponse.json({ etiqueta: null });
     }
 
-    const { data: etiqueta, error: etiquetaError } = await admin
+    const { data: etiqueta, error: etiquetaError } = await _supabase
       .from("etiquetas")
       .select("id,nome,cor,posicao,empresa_id")
       .eq("id", etiquetaId)
@@ -59,7 +57,7 @@ export async function PUT(req: Request, { params }: Params) {
       return NextResponse.json({ error: "Etiqueta nao encontrada." }, { status: 404 });
     }
 
-    const { error } = await admin
+    const { error } = await _supabase
       .from("candidate_etiquetas")
       .upsert(
         {

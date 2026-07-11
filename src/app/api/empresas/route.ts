@@ -24,11 +24,11 @@ type EmpresaRow = {
 
 export async function GET() {
   try {
-    const { userId } = await requireAuth();
+    const { userId, supabase } = await requireAuth();
     
-    const admin = createSupabaseAdminClient();
-
-    const { data: usuario, error: usuarioError } = await admin
+    // admin-client: justificado — leitura administrativa de empresas
+    // Converted to use authenticated `supabase` for user-scoped read
+    const { data: usuario, error: usuarioError } = await supabase
       .from("usuarios")
       .select("empresa_id")
       .eq("id", userId)
@@ -43,7 +43,7 @@ export async function GET() {
       return NextResponse.json({ empresa: null });
     }
 
-    const { data: empresa, error } = await admin
+    const { data: empresa, error } = await supabase
       .from("empresas")
       .select("id,nome,cnpj,tamanho,segmento,plano")
       .eq("id", usuario.empresa_id)
@@ -72,6 +72,7 @@ export async function PATCH(req: Request) {
     }
 
     const parsed = parsedResult.data;
+    // admin-client: justificado — escrita administrativa de empresas
     const admin = createSupabaseAdminClient();
 
     const { data: usuario, error: usuarioError } = await admin

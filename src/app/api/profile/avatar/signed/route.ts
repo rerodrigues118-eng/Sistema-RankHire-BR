@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Arquivo maior que 2MB' }, { status: 400 });
     }
 
+    // admin-client: justificado — geração de URLs assinadas requer service-role
     const admin = createSupabaseAdminClient();
     const ext = String(body.filename).split('.').pop() || 'jpg';
     // path inside bucket: use userId as filename to avoid collisions

@@ -190,6 +190,7 @@ export default function CadastroPage() {
     try {
       const bootstrap = await fetch("/api/onboarding", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           step: "company",

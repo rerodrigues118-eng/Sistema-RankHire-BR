@@ -5,19 +5,13 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const { userId } = await requireAuth();
-    const admin = createSupabaseAdminClient();
-    const { data: usuario } = await admin
-      .from("usuarios")
-      .select("empresa_id")
-      .eq("id", userId)
-      .single();
+    const { userId, supabase } = await requireAuth();
 
-    if (!usuario?.empresa_id) {
-      return NextResponse.json({ vagas: [] });
-    }
+    const { data: usuario } = await supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
 
-    const { data, error } = await admin
+    if (!usuario?.empresa_id) return NextResponse.json({ vagas: [] });
+
+    const { data, error } = await supabase
       .from("vagas")
       .select("id,titulo,area,tipo_contrato,localizacao,briefing,status,created_at,updated_at")
       .eq("empresa_id", usuario.empresa_id)
@@ -45,6 +39,7 @@ export async function POST(req: Request) {
       status?: string;
     };
 
+    // admin-client: justificado — criação/atualização de vagas com privilégios
     const admin = createSupabaseAdminClient();
 
     const { data: usuario, error: usuarioError } = await admin

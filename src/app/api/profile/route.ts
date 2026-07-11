@@ -12,10 +12,9 @@ const ProfilePatchSchema = z.object({
 
 export async function GET() {
   try {
-    const { userId, user } = await requireAuth();
-    const admin = createSupabaseAdminClient();
+    const { userId, user, supabase } = await requireAuth();
 
-    const { data: profile, error } = await admin
+    const { data: profile, error } = await supabase
       .from("usuarios")
       .select("id,empresa_id,nome,email,cargo,telefone,avatar_url,role")
       .eq("id", userId)
@@ -47,7 +46,7 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   try {
-    const { userId } = await requireAuth();
+    const { userId, supabase } = await requireAuth();
     const raw = await req.json();
     const parsed = ProfilePatchSchema.parse(raw);
 
@@ -76,11 +75,9 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Nenhuma alteracao enviada." }, { status: 400 });
     }
 
-    const admin = createSupabaseAdminClient();
-
-    // Use upsert so the usuarios row is created if missing
+    // Use authenticated supabase client to upsert user's profile (user-scoped)
     const upsertPayload: Record<string, unknown> = { id: userId, ...update };
-    const { data, error } = await admin
+    const { data, error } = await supabase
       .from("usuarios")
       .upsert(upsertPayload, { onConflict: "id" })
       .select("id,empresa_id,nome,email,cargo,telefone,avatar_url,role")
@@ -91,29 +88,8 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // try to keep auth user metadata in sync for client sessions (non-fatal)
-    try {
-      const adminAuth = admin as unknown as Record<string, unknown>;
-      const authObj = adminAuth.auth as Record<string, unknown>;
-      if (authObj?.admin && typeof (authObj.admin as Record<string, unknown>).updateUserById === 'function') {
-        const meta: Record<string, unknown> = {};
-        if (data?.nome) meta.nome = data.nome;
-        if (data?.cargo) meta.cargo = data.cargo;
-        if (data?.avatar_url) meta.avatar_url = data.avatar_url;
-        if (Object.keys(meta).length > 0) {
-          try {
-            const adminUpdateFn = (authObj.admin as Record<string, unknown>).updateUserById as (id: string, opts: Record<string, unknown>) => Promise<unknown>;
-            await adminUpdateFn(userId, { user_metadata: meta });
-          } catch (e) {
-            console.warn('[profile PATCH] failed to update auth metadata', e);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[profile PATCH] auth update skipped', e);
-    }
+    // NOTE: updating Auth user metadata requires service-role (admin client). Skipping here.
 
-    
     return NextResponse.json({ profile: data });
   } catch (error: unknown) {
     return handleApiError(error);

@@ -29,6 +29,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const { userId, supabase: _supabase } = await requireAuth();
     const { id } = await params;
+    // admin-client: justificado — reavaliação que grava resultados processados
     const admin = createSupabaseAdminClient();
 
     // 1. Fetch user's company ID

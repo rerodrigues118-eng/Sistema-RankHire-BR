@@ -24,6 +24,7 @@ type AgentRow = {
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
+    // admin-client: justificado — operação server-side que requer service-role
     const admin = createSupabaseAdminClient();
     // admin-client: justified — agent data and related runs/candidates/calibrations need cross-table access
     const { id } = await params;
@@ -112,6 +113,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
+    // admin-client: justificado — operação server-side que requer service-role
     const admin = createSupabaseAdminClient();
     const { id } = await params;
     const body = (await req.json()) as Partial<{

@@ -2,13 +2,11 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-guard";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function GET() {
   try {
     const { supabase: _supabase, userId } = await requireAuth();
-    const admin = createSupabaseAdminClient();
-    // admin-client: justified — etiquetas are company resources managed server-side
+    // Use authenticated supabase for company-scoped etiquetas
 
     // get user's empresa_id
     const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
@@ -24,7 +22,7 @@ export async function GET() {
       if (!rl.ok) return NextResponse.json({ error: 'Rate limit atingido' }, { status: 429 });
     }
 
-    const { data, error } = await admin
+    const { data, error } = await _supabase
       .from("etiquetas")
       .select("id,nome,cor,posicao")
       .eq("empresa_id", empresaId)

@@ -75,7 +75,7 @@ export default function PlanosConfigPage() {
           .single();
         if (emp) setEmpresa({ ...emp, subscription_status: emp.status_assinatura ?? '', trial_expires_at: emp.trial_expira_em ?? '' } as EmpresaPlano);
         
-        fetch('/api/pagarme/faturas?empresaId=' + usuario.empresa_id)
+        fetch('/api/pagarme/faturas?empresaId=' + usuario.empresa_id, { credentials: 'include' })
           .then(res => res.json())
           .then(data => {
             if (data.faturas) setFaturas(data.faturas);
@@ -97,6 +97,7 @@ export default function PlanosConfigPage() {
         // Envio do token (aqui apenas simulado)
         const res = await fetch('/api/pagarme/assinar', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             empresaId: empresa.id,
@@ -115,6 +116,7 @@ export default function PlanosConfigPage() {
       try {
         const res = await fetch('/api/pagarme/assinar-pix', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ empresaId: empresa.id, planId: selectedPlan })
         });
@@ -132,6 +134,7 @@ export default function PlanosConfigPage() {
       try {
         const res = await fetch('/api/pagarme/assinar-boleto', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ empresaId: empresa.id, planId: selectedPlan })
         });
@@ -153,6 +156,7 @@ export default function PlanosConfigPage() {
     try {
       const res = await fetch('/api/pagarme/cancelar', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ empresaId: empresa.id })
       });

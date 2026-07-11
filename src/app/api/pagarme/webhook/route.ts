@@ -45,6 +45,7 @@ export async function POST(req: Request) {
     }
 
     const event = JSON.parse(rawBody) as PagarmeEvent;
+    // admin-client: justificado — webhook Pagar.me precisa de privilégios admin para validar/gravar
     const supabase = createSupabaseAdminClient();
 
     const getEmpresaDetails = async (pagarmeSubId: string) => {

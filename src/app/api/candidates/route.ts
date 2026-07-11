@@ -6,15 +6,13 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 export async function GET() {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
-    const admin = createSupabaseAdminClient();
-    // admin-client: justified — listing/creating candidates requires server-side writes
     const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
 
     if (!usuario?.empresa_id) {
       return NextResponse.json({ candidates: [] });
     }
 
-    const { data, error } = await admin
+    const { data, error } = await _supabase
       .from("pdf_candidates")
       .select("id,nome_candidato,cargo_atual,empresa_atual,cidade,score_final,linkedin_url,status,parsed_text")
       .eq("empresa_id", usuario.empresa_id)
@@ -33,6 +31,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
+    // admin-client: justificado — ações administrativas que requerem service-role
     const admin = createSupabaseAdminClient();
     // admin-client: justified — creating candidates is a server-side action requiring admin rights
     const body = (await req.json()) as {

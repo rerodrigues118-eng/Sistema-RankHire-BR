@@ -59,6 +59,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Atualizar consentimento de marketing no banco de dados (Supabase Admin)
+    // admin-client: justificado — webhook/unsubscribe handler com privilégios necessários
     const admin = createSupabaseAdminClient();
     
     // Verificamos se o usuário existe

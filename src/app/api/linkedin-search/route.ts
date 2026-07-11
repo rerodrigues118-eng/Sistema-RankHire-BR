@@ -141,6 +141,7 @@ export async function POST(req: Request) {
     const body = (await req.json()) as LinkedInSearchBody;
     const apiKey = process.env.APIFY_TOKEN;
     const actorId = process.env.APIFY_ACTOR_ID || "hpvQmM3KODjMJLvYk";
+    // admin-client: justificado — persistência de buscas e sessões que exige service-role
     const admin = createSupabaseAdminClient();
     const { data: usuario } = await admin
       .from("usuarios")
@@ -189,8 +190,7 @@ export async function POST(req: Request) {
         const idiomaTermos = idiomas.map((i) => i.idioma).filter((idioma): idioma is string => Boolean(idioma));
         if (idiomaTermos.length) queryParts.push(idiomaTermos.join(' OR '));
       }
-      if (minYears) queryParts.push(`${minYears}+ anos`);
-      if (location) locationStr = location;
+        if (minYears) queryParts.push(`${minYears}+ anos`);
     }
 
     const locationMap: Record<string, string> = {
@@ -204,78 +204,14 @@ export async function POST(req: Request) {
 
     const searchQuery = queryParts.filter(Boolean).join(" ");
     let results: LinkedinProfile[] = [];
-    let isMock = false;
 
-    const generateMockResults = async () => {
-      isMock = true;
-      await new Promise((r) => setTimeout(r, 1400));
-      return [
-        {
-          id: 'mock-1',
-          name: 'Ana Lima (Demo)',
-          headline: job_titles[0] || title || 'Designer',
-          company: 'Nubank',
-          location: locationStr,
-          linkedinUrl: 'https://linkedin.com/in/ana-lima-demo',
-          avatarUrl: null,
-          fit: 0,
-          resumo: 'Profissional com forte experiência em design e ferramentas digitais.',
-          experiencia_anos: 5,
-          skills: ['Figma', 'Email Marketing', 'CRM'],
-          experiencias: [
-            { cargo: 'Designer Sr.', empresa: 'Nubank', inicio: '2022-01-01', fim: null },
-            { cargo: 'Designer', empresa: 'iFood', inicio: '2020-01-01', fim: '2021-12-01' }
-          ],
-          formacao: 'Design Gráfico — USP (2019)',
-          idiomas: ['Inglês (Fluente)', 'Espanhol (Intermediário)'],
-          sobre: 'Profissional apaixonada por design e inovação.',
-        },
-        {
-          id: 'mock-2',
-          name: 'Carlos Menezes (Demo)',
-          headline: job_titles[0] || title || 'Product Designer',
-          company: 'Itaú',
-          location: 'São Paulo, SP',
-          linkedinUrl: 'https://linkedin.com/in/carlos-menezes-demo',
-          avatarUrl: null,
-          fit: 0,
-          resumo: 'Designer com foco em produtos digitais e UI/UX.',
-          experiencia_anos: 3,
-          skills: ['Figma', 'UX Research', 'Prototyping'],
-          experiencias: [
-            { cargo: 'Product Designer', empresa: 'Itaú', inicio: '2023-01-01', fim: null },
-          ],
-          formacao: 'Design — ESPM (2022)',
-          idiomas: ['Inglês (Avançado)'],
-          sobre: 'Designer focado em UX para serviços financeiros.',
-        },
-        {
-          id: 'mock-3',
-          name: 'Fernanda Souza (Demo)',
-          headline: 'Email Designer & CRM Specialist',
-          company: 'Magazine Luiza',
-          location: 'São Paulo, SP',
-          linkedinUrl: 'https://linkedin.com/in/fernanda-souza-demo',
-          avatarUrl: null,
-          fit: 0,
-          resumo: 'Especialista em email marketing com foco em conversão.',
-          experiencia_anos: 7,
-          skills: ['Email Marketing', 'CRM', 'Figma', 'HubSpot', 'Mailchimp'],
-          experiencias: [
-            { cargo: 'Email Designer Sr.', empresa: 'Magazine Luiza', inicio: '2021-06-01', fim: null },
-            { cargo: 'Designer de CRM', empresa: 'Submarino', inicio: '2018-01-01', fim: '2021-05-01' }
-          ],
-          formacao: 'Publicidade & Propaganda — ESPM (2017)',
-          idiomas: ['Inglês (Fluente)', 'Espanhol (Básico)'],
-          sobre: 'Apaixonada por estratégia de email e automação de marketing.',
-        }
-      ] as LinkedinProfile[];
-    };
+    // No server-side mock fallback: require APIFY_TOKEN and fail on external scraping errors.
 
     if (!apiKey) {
-      results = await generateMockResults();
-    } else {
-      try {
+      return NextResponse.json({ error: 'APIFY_TOKEN não configurado. Habilite a integração para buscas reais.' }, { status: 503 });
+    }
+
+    try {
       // ── PASSO 1: Dispara o scraper no Apify ──────────────────────
       const runRes = await fetchWithTimeout(`https://api.apify.com/v2/acts/${actorId}/runs?token=${apiKey}`, {
         method: "POST",
@@ -290,8 +226,8 @@ export async function POST(req: Request) {
 
       if (!runRes.ok) {
         const errText = await runRes.text();
-        logger.warn("Apify scraper start failed, falling back to mock", { status: runRes.status, detail: errText });
-        results = await generateMockResults();
+        logger.warn("Apify scraper start failed", { status: runRes.status, detail: errText });
+        return NextResponse.json({ error: 'Falha ao iniciar extração externa' }, { status: 502 });
       } else {
 
       const runData = await runRes.json();
@@ -324,8 +260,8 @@ export async function POST(req: Request) {
         // ── PASSO 3: Busca os resultados ─────────────────────────────
         const datasetRes = await fetchWithTimeout(`https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${apiKey}`, {}, 30_000);
         if (!datasetRes.ok) {
-          logger.warn("Falha ao buscar dataset do Apify, falling back to mock");
-          results = await generateMockResults();
+          logger.warn("Falha ao buscar dataset do Apify");
+          return NextResponse.json({ error: 'Falha ao obter resultados externos' }, { status: 502 });
         } else {
           const dataset = await datasetRes.json();
 
@@ -389,14 +325,15 @@ export async function POST(req: Request) {
         }).filter((profile): profile is LinkedinProfile => Boolean(profile));
         }
       } else {
-        results = await generateMockResults();
+        logger.warn('Apify run did not succeed, status ' + status);
+        return NextResponse.json({ error: 'Extração externa não finalizada' }, { status: 502 });
       }
       } // End of runRes.ok
-      } catch (err: unknown) {
-        logger.warn("Exceção ao executar o Apify scraper, caindo para mock", err);
-        results = await generateMockResults();
-      }
+    } catch (err: unknown) {
+      logger.warn("Exceção ao executar o Apify scraper", err);
+      return NextResponse.json({ error: 'Falha ao executar busca externa' }, { status: 502 });
     }
+    
 
     // ── PASSO 5: Ordena — recentes/atualizados primeiro ──────────
     results.sort((a, b) => {
@@ -421,7 +358,7 @@ export async function POST(req: Request) {
       results,
     });
 
-    return NextResponse.json({ success: true, results, isMock, warnings, vagaId: vagaId || vaga_id || null });
+    return NextResponse.json({ success: true, results, warnings, vagaId: vagaId || vaga_id || null });
   } catch (error: unknown) {
     return handleApiError(error);
   }

@@ -359,9 +359,17 @@ export default function Home() {
       const supabase = createClient();
       setIsUploading(true);
 
+      function formatFileSize(bytes: number) {
+        if (bytes < 1024) return `${bytes} B`;
+        const kb = bytes / 1024;
+        if (kb < 1024) return `${kb.toFixed(1)} KB`;
+        const mb = kb / 1024;
+        return `${mb.toFixed(1)} MB`;
+      }
+
       const newUploads: UploadFile[] = Array.from(files).map((file) => ({
         name: file.name,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        size: formatFileSize(file.size),
         progress: 10,
         status: "uploading",
       }));

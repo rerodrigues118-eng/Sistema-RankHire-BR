@@ -12,6 +12,7 @@ export async function POST(req: Request) {
     const body = (await req.json()) as Body;
     if (!body?.filename || !body?.data) return NextResponse.json({ error: 'filename and data required' }, { status: 400 });
 
+    // admin-client: justificado — manipulação de avatar com acesso a storage/admin
     const admin = createSupabaseAdminClient();
     const extension = body.filename.split('.').pop() || 'jpg';
     const path = `${userId}/avatar-${Date.now()}.${extension}`;

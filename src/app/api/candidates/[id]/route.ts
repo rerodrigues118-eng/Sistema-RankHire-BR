@@ -23,6 +23,7 @@ type CandidatePatchBody = {
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
+    // admin-client: justificado — operações sensíveis no candidato
     const admin = createSupabaseAdminClient();
     // admin-client: justified — candidate updates and evaluation writes require admin privileges server-side
     const { id } = await params;

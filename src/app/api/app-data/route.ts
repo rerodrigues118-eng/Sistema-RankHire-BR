@@ -15,8 +15,9 @@ type JobRow = {
 export async function GET() {
   try {
     const { userId, supabase } = await requireAuth();
+    // Use authenticated supabase for initial user lookup; admin retained for privileged ops
     const admin = createSupabaseAdminClient();
-    const { data: usuario } = await admin.from("usuarios").select("empresa_id, role").eq("id", userId).single();
+    const { data: usuario } = await supabase.from("usuarios").select("empresa_id, role").eq("id", userId).single();
 
     const empresaId = usuario?.empresa_id;
     const userRole = usuario?.role || "member";
@@ -127,12 +128,12 @@ export async function GET() {
     }
 
     const [jobsRes, candidatesRes, empresaRes] = await Promise.all([
-      admin
+      supabase
         .from("vagas")
         .select("id,titulo,area,status,created_at")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false }),
-      admin
+      supabase
         .from("pdf_candidates")
         .select(`
           id,
@@ -166,7 +167,7 @@ export async function GET() {
         `)
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false }),
-      admin
+      supabase
         .from("empresas")
         .select("id,nome,plano,status,trial_expires_at,subscription_status,current_period_end,limite_pdfs_mes")
         .eq("id", empresaId)

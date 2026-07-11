@@ -1,5 +1,4 @@
 import { handleApiError } from "@/lib/api";
-import { createSupabaseAdminClient } from "@/lib/admin";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
 
@@ -12,9 +11,8 @@ type LabelInput = {
 
 const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
-async function getEmpresaId(userId: string) {
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
+async function getEmpresaId(userId: string, supabase: any) {
+  const { data, error } = await supabase
     .from("usuarios")
     .select("empresa_id")
     .eq("id", userId)
@@ -24,29 +22,17 @@ async function getEmpresaId(userId: string) {
     throw new Error(error?.message || "Empresa nao encontrada.");
   }
 
-  return { admin, empresaId: data.empresa_id as string };
+  return { empresaId: data.empresa_id as string };
 }
 
 export async function GET() {
   try {
-    const { userId } = await requireAuth();
+    const { userId, supabase } = await requireAuth();
 
     // Buscar empresa_id do usuário
-    const admin = createSupabaseAdminClient();
-    const { data, error } = await admin
-      .from("usuarios")
-      .select("empresa_id")
-      .eq("id", userId)
-      .single();
+    const { empresaId } = await getEmpresaId(userId, supabase);
 
-    // Se o usuário não tem empresa_id ainda, retornar lista vazia (estado válido)
-    if (error || !data?.empresa_id) {
-      return NextResponse.json({ labels: [] });
-    }
-
-    const empresaId = data.empresa_id as string;
-
-    const { data: labelData, error: labelError } = await admin
+    const { data: labelData, error: labelError } = await supabase
       .from("etiquetas")
       .select("id,nome,cor,posicao")
       .eq("empresa_id", empresaId)
@@ -64,7 +50,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    const { userId } = await requireAuth();
+    const { userId, supabase } = await requireAuth();
     const { labels } = (await req.json()) as { labels?: LabelInput[] };
 
     if (!Array.isArray(labels) || labels.length !== 4) {
@@ -81,13 +67,13 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Todas as etiquetas precisam ter nome." }, { status: 400 });
     }
 
-    const { admin, empresaId } = await getEmpresaId(userId);
+    const { empresaId } = await getEmpresaId(userId, supabase);
     const payload = normalized.map((label) => ({
       ...label,
       empresa_id: empresaId,
     }));
 
-    const { data, error } = await admin
+    const { data, error } = await supabase
       .from("etiquetas")
       .upsert(payload, { onConflict: "empresa_id,posicao" })
       .select("id,nome,cor,posicao")

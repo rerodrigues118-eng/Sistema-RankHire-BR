@@ -12,6 +12,7 @@ export async function POST(req: Request) {
       candidateName?: string;
     };
 
+    // admin-client: justificado — import em lote pode requerer privilégios administrativos
     const admin = createSupabaseAdminClient();
     // admin-client: justified — importing candidates writes to pdf_candidates with elevated permissions
     const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();

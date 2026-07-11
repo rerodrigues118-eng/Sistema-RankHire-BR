@@ -102,8 +102,8 @@ export default function ProfileConfig() {
       } catch {}
 
       const [profileRes, labelsRes] = await Promise.all([
-        fetch("/api/profile"),
-        fetch("/api/profile/labels"),
+        fetch("/api/profile", { credentials: 'include' }),
+        fetch("/api/profile/labels", { credentials: 'include' }),
       ]);
 
       if (!active) return;
@@ -195,6 +195,7 @@ export default function ProfileConfig() {
       const b64 = await toBase64(file);
       const uploadRes = await fetch('/api/profile/avatar', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: file.name, contentType: file.type || 'image/jpeg', data: b64 }),
       });
@@ -289,7 +290,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
     try {
       if (changeType === "password") {
         // reuse existing flow
-        const res = await fetch("/api/auth/reset-password", { method: "POST" });
+        const res = await fetch("/api/auth/reset-password", { method: "POST", credentials: 'include' });
         if (res.ok) {
           setFeedback({ type: "success", text: "Link de redefinicao enviado por e-mail." });
           setShowSecurityModal(false);
@@ -300,6 +301,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
       } else {
         const res = await fetch("/api/profile/request-change", {
           method: "POST",
+          credentials: 'include',
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ type: changeType, newValue }),
         });
@@ -323,6 +325,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
     try {
       const res = await fetch("/api/profile/verify-change", {
         method: "POST",
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: changeType, code, newValue }),
       });

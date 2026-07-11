@@ -260,7 +260,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
       setMessages(prev => prev.map(m =>
         m.id === searchMsgId
-          ? { id: searchMsgId, type: 'ai-results', results: perfis, isMock: data.isMock }
+          ? { id: searchMsgId, type: 'ai-results', results: perfis }
           : m
       ));
       setIsSearching(false);
@@ -415,12 +415,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div className="flex-1 max-w-[90%]">
-            {msg.isMock && (
-              <div className="flex items-center gap-1.5 mb-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[12px] text-amber-700">
-                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                Resultados de demonstração — configure APIFY_TOKEN para buscas reais.
-              </div>
-            )}
+            {/* Removed demo/mock banner — server now returns an error when Apify is not configured */}
             <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <div>

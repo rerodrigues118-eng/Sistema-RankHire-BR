@@ -87,8 +87,8 @@ export default function PerfilConfigPage() {
       setLoading(true);
 
       const [profileRes, labelsRes] = await Promise.all([
-        fetch("/api/profile"),
-        fetch("/api/profile/labels"),
+        fetch("/api/profile", { credentials: 'include' }),
+        fetch("/api/profile/labels", { credentials: 'include' }),
       ]);
 
       if (!active) return;
@@ -134,6 +134,7 @@ export default function PerfilConfigPage() {
     try {
       const res = await fetch("/api/profile", {
         method: "PATCH",
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nome, cargo }),
       });
@@ -169,6 +170,7 @@ export default function PerfilConfigPage() {
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       const res = await fetch("/api/profile", {
         method: "PATCH",
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ avatarUrl: data.publicUrl }),
       });
@@ -192,6 +194,7 @@ export default function PerfilConfigPage() {
     try {
       const res = await fetch("/api/profile/labels", {
         method: "PUT",
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ labels }),
       });
@@ -210,7 +213,7 @@ export default function PerfilConfigPage() {
 
   async function handleResetPassword() {
     setFeedback(null);
-    const res = await fetch("/api/auth/reset-password", { method: "POST" });
+    const res = await fetch("/api/auth/reset-password", { method: "POST", credentials: 'include' });
     const data = await res.json();
 
     setFeedback(

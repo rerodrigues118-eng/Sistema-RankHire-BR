@@ -34,8 +34,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const cleanUpdate = Object.fromEntries(Object.entries(update).filter(([, value]) => value !== undefined));
 
-    const admin = await import('@/lib/admin').then(m => m.createSupabaseAdminClient());
-    const { data, error } = await admin
+    const { data, error } = await supabase
       .from("vagas")
       .update(cleanUpdate)
       .eq("id", id)
@@ -64,8 +63,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
 
-    const admin = await import('@/lib/admin').then(m => m.createSupabaseAdminClient());
-    const { data, error } = await admin
+    const { data, error } = await supabase
       .from("vagas")
       .delete()
       .eq("id", id)

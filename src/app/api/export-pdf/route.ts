@@ -1,6 +1,5 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
-import { createSupabaseAdminClient } from "@/lib/admin";
 import { NextResponse } from "next/server";
 
 import { getPdfLimitFromPlan } from '@/lib/planos';
@@ -8,7 +7,7 @@ import { getPdfLimitFromPlan } from '@/lib/planos';
 export async function POST(req: Request) {
   try {
     const { userId, supabase } = await requireAuth();
-    const admin = createSupabaseAdminClient();
+    // Converted to use authenticated `supabase` from requireAuth() where possible
 
     const body = (await req.json()) as { candidateId: string };
     if (!body.candidateId) {
@@ -27,7 +26,7 @@ export async function POST(req: Request) {
     }
 
     // Get company plan
-    const { data: empresa } = await admin
+    const { data: empresa } = await supabase
       .from("empresas")
       .select("plano, limite_pdfs_mes, admin_email")
       .eq("id", usuario.empresa_id)
@@ -50,7 +49,7 @@ export async function POST(req: Request) {
         const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
         const nextMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString();
 
-        const { count: processedCount } = await admin
+        const { count: processedCount } = await supabase
           .from("pdf_candidates")
           .select("id", { count: "exact", head: true })
           .eq("empresa_id", usuario.empresa_id)
@@ -76,7 +75,7 @@ export async function POST(req: Request) {
 
     // Register the export
     const currentMonth = new Date().toISOString().slice(0, 7);
-    await admin.from("pdf_exports").insert({
+    await supabase.from("pdf_exports").insert({
       empresa_id: usuario.empresa_id,
       usuario_id: userId,
       candidate_id: body.candidateId,
@@ -92,8 +91,7 @@ export async function POST(req: Request) {
 export async function GET() {
   try {
     const { userId, supabase } = await requireAuth();
-    const admin = createSupabaseAdminClient();
-
+    // Converted to use authenticated `supabase` from requireAuth() where possible
     const { data: usuario } = await supabase
       .from("usuarios")
       .select("empresa_id, role")
@@ -104,7 +102,7 @@ export async function GET() {
       return NextResponse.json({ quota: null });
     }
 
-    const { data: empresa } = await admin
+    const { data: empresa } = await supabase
       .from("empresas")
       .select("plano, limite_pdfs_mes")
       .eq("id", usuario.empresa_id)
@@ -132,7 +130,7 @@ export async function GET() {
     // Use processed PDFs as the canonical used count
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
     const nextMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString();
-    const { count: processedCount } = await admin
+    const { count: processedCount } = await supabase
       .from("pdf_candidates")
       .select("id", { count: "exact", head: true })
       .eq("empresa_id", usuario.empresa_id)

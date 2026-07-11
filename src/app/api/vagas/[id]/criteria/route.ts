@@ -3,14 +3,15 @@ import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
+type RawCrit = { id: string; nome?: string | null; peso?: number | null; description?: string | null; weight?: number | null };
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
-    const admin = createSupabaseAdminClient();
     const { id: vagaId } = await params;
 
-    // Check if the vacancy belongs to the user's company
-    const { data: usuario } = await admin
+    // Use authenticated supabase for company-scoped criteria operations
+    const { data: usuario } = await _supabase
       .from("usuarios")
       .select("empresa_id")
       .eq("id", userId)
@@ -20,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Empresa não encontrada" }, { status: 404 });
     }
 
-    const { data: vaga } = await admin
+    const { data: vaga } = await _supabase
       .from("vagas")
       .select("id")
       .eq("id", vagaId)
@@ -31,7 +32,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Vaga não encontrada" }, { status: 404 });
     }
 
-    const { data: rawCriteria, error } = await admin
+    const { data: rawCriteria, error } = await _supabase
       .from("criteria")
       .select("id, nome, peso, description, weight")
       .eq("vaga_id", vagaId)
@@ -42,7 +43,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // Normalize: support legacy rows that use description/weight instead of nome/peso
-    const criteria = (rawCriteria || []).map((c) => ({
+    type RawCrit = { id: string; nome?: string | null; peso?: number | null; description?: string | null; weight?: number | null };
+    const criteria = ((rawCriteria || []) as RawCrit[]).map((c: RawCrit) => ({
       id: c.id,
       nome: c.nome || c.description || "",
       peso: c.peso ?? c.weight ?? 3,
@@ -57,7 +59,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
-    const admin = createSupabaseAdminClient();
     const { id: vagaId } = await params;
     const body = (await req.json()) as {
       criteria: { id?: string; nome: string; peso: number }[];
@@ -67,8 +68,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Critérios inválidos" }, { status: 400 });
     }
 
-    // Check if the vacancy belongs to the user's company
-    const { data: usuario } = await admin
+    // Check ownership with authenticated supabase
+    const { data: usuario } = await _supabase
       .from("usuarios")
       .select("empresa_id")
       .eq("id", userId)
@@ -78,7 +79,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Empresa não encontrada" }, { status: 404 });
     }
 
-    const { data: vaga } = await admin
+    const { data: vaga } = await _supabase
       .from("vagas")
       .select("id")
       .eq("id", vagaId)
@@ -90,12 +91,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     // Fetch existing criteria
-    const { data: existingCriteria } = await admin
+    const { data: existingCriteria } = await _supabase
       .from("criteria")
       .select("id")
       .eq("vaga_id", vagaId);
 
-    const existingIds = (existingCriteria || []).map((c) => c.id);
+    const existingIds = ((existingCriteria || []) as { id: string }[]).map((c) => c.id);
     const newIds = body.criteria.map((c) => c.id).filter(Boolean) as string[];
 
     // Identify criteria to delete
@@ -104,13 +105,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // Delete removed criteria
     if (idsToDelete.length > 0) {
       // 1. Delete evaluations for removed criteria
-      await admin
+      await _supabase
         .from("candidate_evaluations")
         .delete()
         .in("criteria_id", idsToDelete);
 
       // 2. Delete criteria
-      const { error: deleteError } = await admin
+      const { error: deleteError } = await _supabase
         .from("criteria")
         .delete()
         .in("id", idsToDelete);
@@ -127,14 +128,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       if (crit.id) {
         // Update
-        await admin
+        await _supabase
           .from("criteria")
           .update({ nome: crit.nome.trim(), peso })
           .eq("id", crit.id)
           .eq("vaga_id", vagaId);
       } else {
         // Insert
-        await admin
+        await _supabase
           .from("criteria")
           .insert({
             vaga_id: vagaId,
@@ -146,14 +147,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     // Fetch updated criteria to return
-    const { data: rawUpdated } = await admin
+    const { data: rawUpdated } = await _supabase
       .from("criteria")
       .select("id, nome, peso, description, weight")
       .eq("vaga_id", vagaId)
       .order("created_at", { ascending: true });
 
     // Normalize: support legacy rows that use description/weight instead of nome/peso
-    const updatedCriteria = (rawUpdated || []).map((c) => ({
+    const updatedCriteria = ((rawUpdated || []) as RawCrit[]).map((c: RawCrit) => ({
       id: c.id,
       nome: c.nome || c.description || "",
       peso: c.peso ?? c.weight ?? 3,

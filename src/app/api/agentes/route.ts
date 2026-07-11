@@ -189,6 +189,7 @@ function formatAgent(
 export async function GET() {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
+    // admin-client: justificado — operação server-side que requer service-role
     const admin = createSupabaseAdminClient();
     // admin-client: justified — listing agents and related cross-table data
     const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
@@ -313,6 +314,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
+    // admin-client: justificado — operação server-side que requer service-role
     const admin = createSupabaseAdminClient();
     const body = (await req.json()) as {
       nome?: string;

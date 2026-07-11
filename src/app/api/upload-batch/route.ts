@@ -175,6 +175,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "vaga_id obrigatorio" }, { status: 400 });
     }
 
+    // admin-client: justificado — upload em lote e parsing usam privilégios administrativos
     const admin = createSupabaseAdminClient();
     const { data: vaga, error: vagaError } = await admin
       .from("vagas")

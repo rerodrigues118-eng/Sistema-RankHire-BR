@@ -12,6 +12,7 @@ type CalibrationInput = {
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId, supabase: _supabase } = await requireAuth();
+    // admin-client: justificado — operação server-side que requer service-role
     const admin = createSupabaseAdminClient();
     // admin-client: justified — inserting calibrations and updating agent counters across company
     const { id } = await params;
