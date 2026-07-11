@@ -218,42 +218,41 @@ export default function VagasPage({
       return;
     }
 
-    try {
-      if (editingJobId) {
-        const existingJob = jobs.find((job) => job.id === editingJobId);
-        if (!existingJob) return;
+      try {
+        if (editingJobId) {
+          const existingJob = jobs.find((job) => job.id === editingJobId);
+          if (!existingJob) return;
 
-        await onUpdateJob({
-          ...existingJob,
-          title: newJob.title.trim(),
-          department: newJob.area,
-          contract: newJob.contract,
-          location: newJob.location,
-          briefing: newJob.briefing,
-          autoAi: newJob.autoAi,
-          status: newJob.status,
-        });
-      } else {
-        const createdJob: Job = {
-          id: `job-${Date.now()}`,
-          title: newJob.title.trim(),
-          department: newJob.area,
-          contract: newJob.contract,
-          location: newJob.location,
-          briefing: newJob.briefing,
-          autoAi: newJob.autoAi,
-          candidatesCount: 0,
-          averageScore: 0,
-          topScore: 0,
-          status: newJob.status,
-          createdDate: new Date().toLocaleDateString("pt-BR"),
-        };
+          await onUpdateJob({
+            ...existingJob,
+            title: newJob.title.trim(),
+            department: newJob.area,
+            contract: newJob.contract,
+            location: newJob.location,
+            briefing: newJob.briefing,
+            autoAi: newJob.autoAi,
+            status: newJob.status,
+          });
+        } else {
+          const createdJob: Job = {
+            id: `job-${Date.now()}`,
+            title: newJob.title.trim(),
+            department: newJob.area,
+            contract: newJob.contract,
+            location: newJob.location,
+            briefing: newJob.briefing,
+            autoAi: newJob.autoAi,
+            candidatesCount: 0,
+            averageScore: 0,
+            topScore: 0,
+            status: newJob.status,
+            createdDate: new Date().toLocaleDateString("pt-BR"),
+          };
 
-        await onCreateJob(createdJob);
-        onOpenJob(createdJob.id);
-      }
+          await onCreateJob(createdJob);
+        }
 
-      setIsModalOpen(false);
+        setIsModalOpen(false);
     } catch (error: unknown) {
       setFormError(error instanceof Error ? error.message : "Erro ao salvar a vaga. Tente novamente.");
     } finally {

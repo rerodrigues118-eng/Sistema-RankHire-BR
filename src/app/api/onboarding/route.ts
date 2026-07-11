@@ -1,7 +1,6 @@
 import { requireAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/api";
 import { createSupabaseAdminClient } from "@/lib/admin";
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 import { z } from "zod";
@@ -38,14 +37,13 @@ const OnboardingSchema = z.discriminatedUnion("step", [
 type OnboardingBody = z.infer<typeof OnboardingSchema>;
 
 export async function POST(req: Request) {
-  const { userId, supabase } = await requireAuth();
+  const { userId, supabase: authSupabase } = await requireAuth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
   try {
-    const supabase = await createClient();
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await authSupabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -53,79 +53,7 @@ export async function GET() {
       });
     }
 
-    // 3. Garantir que a vaga padrão e seus critérios existam associados a essa empresa
-    if (empresaId) {
-      const defaultJobId = "e5d53686-b8b6-4ec6-b8c2-71cd534641fb";
-      
-      const { data: defaultJobExists } = await admin
-        .from("vagas")
-        .select("id")
-        .eq("id", defaultJobId)
-        .single();
 
-      if (defaultJobExists) {
-        // Atualiza a vaga para pertencer a essa empresa e usuário
-        await admin
-          .from("vagas")
-          .update({
-            empresa_id: empresaId,
-            criado_por: userId,
-            titulo: "Email Designer BR — Figma",
-            title: "Email Designer BR — Figma",
-            area: "Design",
-            tipo_contrato: "CLT",
-            localizacao: "São Paulo, SP",
-            briefing: "Buscamos um designer focado em email marketing e Figma.",
-            status: "ativa"
-          })
-          .eq("id", defaultJobId);
-      } else {
-        // Insere a vaga associada à empresa
-        await admin
-          .from("vagas")
-          .insert({
-            id: defaultJobId,
-            empresa_id: empresaId,
-            criado_por: userId,
-            titulo: "Email Designer BR — Figma",
-            title: "Email Designer BR — Figma",
-            area: "Design",
-            tipo_contrato: "CLT",
-            localizacao: "São Paulo, SP",
-            briefing: "Buscamos um designer focado em email marketing e Figma.",
-            status: "ativa"
-          });
-      }
-
-      // 4. Garantir critérios básicos da vaga padrão
-      const { data: defaultCriteria } = await admin
-        .from("criteria")
-        .select("id")
-        .eq("vaga_id", defaultJobId);
-
-      if (!defaultCriteria || defaultCriteria.length === 0) {
-        const criteriaToInsert = [
-          { vaga_id: defaultJobId, nome: "Experiência com Design de Email Marketing", peso: 5, gerado_por_ia: false },
-          { vaga_id: defaultJobId, nome: "Domínio de Figma", peso: 4, gerado_por_ia: false },
-          { vaga_id: defaultJobId, nome: "HTML/CSS básico", peso: 3, gerado_por_ia: false },
-        ];
-        await admin.from("criteria").insert(criteriaToInsert);
-      }
-
-      // 5. Atualiza todos os pdf_candidates órfãos para a empresa dele, se houver
-      await admin
-        .from("pdf_candidates")
-        .update({ empresa_id: empresaId })
-        .eq("vaga_id", defaultJobId)
-        .is("empresa_id", null);
-
-      // 6. Atualiza todos os pdf_batches órfãos
-      await admin
-        .from("pdf_batches")
-        .update({ empresa_id: empresaId })
-        .eq("vaga_id", defaultJobId)
-        .is("empresa_id", null);
-    }
 
     const [jobsRes, candidatesRes, empresaRes] = await Promise.all([
       supabase

@@ -210,18 +210,20 @@ export default function Home() {
 
     setJobs((prev) => {
       const next = prev.filter((job) => job.id !== jobId);
-      setSelectedJobId((current) => {
-        if (current !== jobId) return current;
+
+      if (selectedJobId === jobId) {
         if (next[0]) {
           try { localStorage.setItem('rankhire_vaga_selecionada', next[0].id); } catch { /* ignore */ }
-          return next[0].id;
+          setSelectedJobId(next[0].id);
+        } else {
+          try { localStorage.removeItem('rankhire_vaga_selecionada'); } catch { /* ignore */ }
+          setSelectedJobId("");
         }
-        try { localStorage.removeItem('rankhire_vaga_selecionada'); } catch { /* ignore */ }
-        return "";
-      });
+      }
+
       return next;
     });
-  }, []);
+  }, [selectedJobId]);
 
   const handleChangeJobStatus = useCallback(async (jobId: string, status: JobStatus) => {
     const res = await fetch(`/api/vagas/${jobId}`, {

@@ -48,6 +48,9 @@ export default function OnboardingPage() {
           throw new Error(data.error || "Nao foi possivel criar a vaga inicial. Tente novamente em instantes.");
         }
         
+        if (data.vaga?.id) {
+          try { localStorage.setItem('rankhire_vaga_selecionada', data.vaga.id); } catch { /* ignore */ }
+        }
         setStep(3);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Erro ao salvar.");
