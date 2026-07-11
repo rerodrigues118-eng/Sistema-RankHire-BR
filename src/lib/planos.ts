@@ -68,12 +68,33 @@ export function getPlanoAtual(empresa: EmpresaSimples) {
   if (empresa.subscription_status === 'active') {
     return empresa.plano;
   }
-  if (empresa.plano === 'trial') {
+  if (empresa.plano === 'trial' || empresa.plano === 'trial_starter') {
     const expirou = new Date(empresa.trial_expires_at) < new Date();
     if (expirou) return 'expirado';
     return 'trial';
   }
   return 'expirado';
+}
+
+export function getPlanAccessState(empresa: Partial<EmpresaSimples> | undefined, usedThisMonth: number) {
+  const planKey = (empresa?.plano || 'trial').toLowerCase();
+  const normalizedPlan = planKey === 'trial_starter' ? 'trial' : planKey;
+  const planConfig = PLANOS[normalizedPlan] || PLANOS.trial;
+  const isTrial = normalizedPlan === 'trial';
+  const isActiveSubscription = empresa?.subscription_status === 'active' || empresa?.subscription_status === 'trialing';
+  const pdfLimit = getPdfLimitFromPlan(planKey, empresa) ?? planConfig.limite_pdfs_mes;
+  const canUploadPdf = pdfLimit === null ? true : usedThisMonth < pdfLimit;
+  const canUseLinkedIn = !planConfig.linkedin_bloqueado && isActiveSubscription;
+
+  return {
+    planKey,
+    normalizedPlan,
+    isTrial,
+    isActiveSubscription,
+    pdfLimit,
+    canUploadPdf,
+    canUseLinkedIn,
+  };
 }
 
 export function podePDF(empresa: EmpresaSimples, usadoMes: number): boolean {
