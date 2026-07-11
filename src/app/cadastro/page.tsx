@@ -35,7 +35,7 @@ export default function CadastroPage() {
   const [termosAceitos, setTermosAceitos] = useState(false);
   const [aceitaMarketing, setAceitaMarketing] = useState(false);
 
-  const [telefone, setTelefone] = useState("");
+  const [telefone, setTelefone] = useState("+55");
   const [codigo, setCodigo] = useState("");
 
   const [cnpj, setCnpj] = useState("");
@@ -282,11 +282,23 @@ export default function CadastroPage() {
               </Field>
             </div>
 
-            <Field label="Celular (Apenas para evitar duplicatas)">
+            <Field label="Celular">
               <input
                 value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
-                className="auth-input"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val.startsWith("+55")) {
+                    // Prevent deleting the +55 prefix
+                    if (val === "" || val === "+" || val === "+5" || val === "5" || val === "55") {
+                      setTelefone("+55");
+                    } else {
+                      setTelefone("+55" + val.replace(/^\+?55/, ""));
+                    }
+                  } else {
+                    setTelefone(val);
+                  }
+                }}
+                className="auth-input w-full"
                 placeholder="+5511999999999"
                 inputMode="tel"
                 required

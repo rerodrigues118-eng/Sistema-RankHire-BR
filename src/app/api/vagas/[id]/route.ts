@@ -22,7 +22,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     const update = {
-      titulo: body.title,
       title: body.title,
       area: body.area,
       tipo_contrato: body.contract,
@@ -39,7 +38,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .update(cleanUpdate)
       .eq("id", id)
       .eq("empresa_id", usuario.empresa_id)
-      .select("id,titulo,area,tipo_contrato,localizacao,briefing,status,created_at")
+      .select("id,title,area,tipo_contrato,localizacao,briefing,status,created_at")
       .single();
 
     if (error) {
