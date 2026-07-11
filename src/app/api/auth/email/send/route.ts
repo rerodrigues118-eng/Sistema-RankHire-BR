@@ -14,23 +14,26 @@ export async function POST(req: Request) {
 
     const emailTrimmed = email.trim().toLowerCase();
 
-    // 1. Verificar duplicidade de e-mail e telefone
-    const { data: existingUser, error: dbError } = await supabaseAdmin
+    // 1. Verificar duplicidade de e-mail e telefone (check both email and phone)
+    const { data: existingEmail } = await supabaseAdmin
       .from('usuarios')
       .select('email, telefone')
-      .or(`email.eq.${emailTrimmed},telefone.eq.${telefone}`)
+      .eq('email', emailTrimmed)
       .limit(1);
 
-    if (dbError) {
-      console.error('[auth/email/send] Erro ao consultar banco:', dbError);
-      return NextResponse.json({ error: 'Erro ao validar dados' }, { status: 500 });
-    }
+    const { data: existingPhone } = await supabaseAdmin
+      .from('usuarios')
+      .select('email, telefone')
+      .eq('telefone', telefone)
+      .limit(1);
+
+    const existingUser = [...(existingEmail || []), ...(existingPhone || [])];
 
     if (existingUser && existingUser.length > 0) {
-      const isEmail = existingUser[0].email === emailTrimmed;
+      const hasEmail = existingUser.some(u => u.email === emailTrimmed);
       return NextResponse.json(
         { 
-          error: isEmail ? 'Este e-mail já está cadastrado.' : 'Este número de telefone já está vinculado a uma conta.' 
+          error: hasEmail ? 'Este e-mail já está cadastrado.' : 'Este número de telefone já está vinculado a uma conta.' 
         },
         { status: 409 }
       );

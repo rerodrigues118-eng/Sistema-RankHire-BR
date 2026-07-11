@@ -22,7 +22,7 @@ function sanitizeText(raw: string): string {
 async function downloadAndParsePdf(storagePath: string, admin: ReturnType<typeof createSupabaseAdminClient>): Promise<string> {
   const start = Date.now();
   const { data, error } = await admin.storage
-    .from("curriculos")
+    .from("uploads")
     .createSignedUrl(storagePath, 120);
 
   if (error || !data?.signedUrl) {

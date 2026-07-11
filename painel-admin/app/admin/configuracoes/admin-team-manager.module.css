@@ -1,0 +1,106 @@
+.container {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 20px;
+  padding: 24px;
+  margin-top: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.formRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.input, .select {
+  border-radius: 10px;
+  background: #0d1117;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+  padding: 10px 12px;
+  min-width: 240px;
+}
+
+.input {
+  flex: 1;
+}
+
+.select {
+  min-width: 180px;
+}
+
+.button {
+  border: none;
+  border-radius: 10px;
+  background: #238636;
+  color: #fff;
+  padding: 12px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  margin-top: 24px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.th, .td {
+  text-align: left;
+  padding: 12px;
+}
+
+.thead {
+  color: #8b949e;
+}
+
+.tr {
+  border-top: 1px solid #23272b;
+}
+
+.actionButton {
+  background: none;
+  border: none;
+  color: #58a6ff;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.actionButton[disabled] {
+  opacity: 0.6;
+}
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #0d1117;
+  color: #8b949e;
+  font-size: 0.85rem;
+}
