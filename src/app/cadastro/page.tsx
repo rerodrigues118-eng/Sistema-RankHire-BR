@@ -358,7 +358,7 @@ export default function CadastroPage() {
             </div>
 
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-300">
-              Telefone confirmado. Falta apenas revisar os dados da empresa.
+              E-mail confirmado. Falta apenas revisar os dados da empresa.
             </div>
 
             <div className="grid grid-cols-2 gap-4">
