@@ -1,6 +1,7 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 type LabelInput = {
   id?: string;
@@ -39,7 +40,11 @@ export async function GET() {
       .order("posicao", { ascending: true });
 
     if (labelError) {
-      return NextResponse.json({ error: labelError.message }, { status: 500 });
+      logger.error('[profile/labels] labelError:', labelError);
+      return NextResponse.json({ 
+        error: `Erro ao buscar etiquetas: ${labelError.message}`,
+        code: labelError.code 
+      }, { status: 500 });
     }
 
     return NextResponse.json({ labels: labelData || [] });

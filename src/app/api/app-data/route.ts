@@ -103,11 +103,27 @@ export async function GET() {
     ]);
 
     if (jobsRes.error) {
-      return NextResponse.json({ error: jobsRes.error.message }, { status: 500 });
+      logger.error('[app-data] jobsRes.error:', jobsRes.error);
+      return NextResponse.json({ 
+        error: `Erro ao buscar vagas: ${jobsRes.error.message}`,
+        code: jobsRes.error.code 
+      }, { status: 500 });
     }
 
     if (candidatesRes.error) {
-      return NextResponse.json({ error: candidatesRes.error.message }, { status: 500 });
+      logger.error('[app-data] candidatesRes.error:', candidatesRes.error);
+      return NextResponse.json({ 
+        error: `Erro ao buscar candidatos: ${candidatesRes.error.message}`,
+        code: candidatesRes.error.code 
+      }, { status: 500 });
+    }
+
+    if (empresaRes.error) {
+      logger.error('[app-data] empresaRes.error:', empresaRes.error);
+      return NextResponse.json({ 
+        error: `Erro ao buscar empresa: ${empresaRes.error.message}`,
+        code: empresaRes.error.code 
+      }, { status: 500 });
     }
 
     const allCandidates = (candidatesRes.data || []) as Array<Record<string, unknown>>;

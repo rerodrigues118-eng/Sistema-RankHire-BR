@@ -28,11 +28,15 @@ export async function GET() {
       .eq("empresa_id", empresaId)
       .order("posicao", { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      logger.error('[etiquetas] Supabase error:', error);
+      throw new Error(`Erro ao buscar etiquetas: ${error.message}`);
+    }
 
     return NextResponse.json({ etiquetas: data || [] });
   } catch (err: unknown) {
     logger.error("Erro em GET /api/etiquetas", err);
-    return NextResponse.json({ error: (err as Error).message || "Erro" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Erro ao carregar etiquetas";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

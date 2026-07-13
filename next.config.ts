@@ -7,8 +7,8 @@ const nextConfig: NextConfig = {
   async headers() {
     const cspHeader = `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval';
-      style-src 'self' 'unsafe-inline';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com;
+      style-src 'self' 'unsafe-inline' https://www.gstatic.com;
       connect-src 'self' https://*.supabase.co https://api.groq.com https://api.deepseek.com https://api.apify.com ws://localhost:* http://localhost:*;
       img-src 'self' data: https:;
       frame-ancestors 'none';

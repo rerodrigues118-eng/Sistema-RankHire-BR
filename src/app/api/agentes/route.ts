@@ -1,6 +1,7 @@
 import { handleApiError } from "@/lib/api";
 import { callAI } from "@/lib/ai-client";
 import { requireAuth } from "@/lib/auth-guard";
+import { logger } from "@/lib/logger";
 import type { Agent, AgentCriterion, AgentFilterSet, AgentRun, AgentCandidate } from "@/lib/types";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
@@ -208,11 +209,19 @@ export async function GET() {
     ]);
 
     if (vagasRes.error) {
-      return NextResponse.json({ error: vagasRes.error.message }, { status: 500 });
+      logger.error('[agentes] vagasRes.error:', vagasRes.error);
+      return NextResponse.json({ 
+        error: `Erro ao buscar vagas: ${vagasRes.error.message}`,
+        code: vagasRes.error.code 
+      }, { status: 500 });
     }
 
     if (agentesRes.error) {
-      return NextResponse.json({ error: agentesRes.error.message }, { status: 500 });
+      logger.error('[agentes] agentesRes.error:', agentesRes.error);
+      return NextResponse.json({ 
+        error: `Erro ao buscar agentes: ${agentesRes.error.message}`,
+        code: agentesRes.error.code 
+      }, { status: 500 });
     }
 
     const agentes = (agentesRes.data || []) as AgentRow[];
