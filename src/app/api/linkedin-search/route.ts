@@ -168,6 +168,31 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
 
+    // Check trial search limit
+    const isTrial = empresa?.plano === 'trial' || empresa?.subscription_status === 'trialing';
+    if (isTrial) {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+      const { count: searchesThisMonth } = await admin
+        .from('linkedin_searches')
+        .select('id', { count: 'exact', head: true })
+        .eq('empresa_id', usuario.empresa_id)
+        .gte('created_at', monthStart)
+        .lt('created_at', nextMonthStart);
+
+      const trialsearchesLimit = 3;
+      if ((searchesThisMonth || 0) >= trialsearchesLimit) {
+        return NextResponse.json({
+          error: 'Limite de buscas do trial atingido.',
+          code: 'TRIAL_SEARCH_LIMIT',
+          limite: trialsearchesLimit,
+          usado: searchesThisMonth,
+          upgrade_message: 'Seu trial inclui até 3 buscas por mês. Faça upgrade para continuar buscando mais candidatos.'
+        }, { status: 402 });
+      }
+    }
+
     const {
       title,
       location,

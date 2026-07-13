@@ -24,11 +24,11 @@ export interface PlanoInfo {
 export const PLANOS: Record<string, PlanoInfo> = {
   trial: {
     nome: 'Trial Gratuito',
-    limite_pdfs_mes: 10,
-    limite_buscas_linkedin: 0,
+    limite_pdfs_mes: 15,
+    limite_buscas_linkedin: 3,
     limite_vagas: 1,
     duracao_dias: 14,
-    linkedin_bloqueado: true,
+    linkedin_bloqueado: false,
     agente_ia_bloqueado: true,
   },
   starter: {
@@ -130,7 +130,7 @@ export function getPdfLimitFromPlan(planKey?: string | null, empresa?: Partial<E
   }
 
   // Known named plans
-  if (normalized === 'trial') return 10;
+  if (normalized === 'trial') return 15;
   if (normalized === 'starter') return 100;
   if (normalized === 'pro') return 500;
   if (normalized === 'agencia') return null; // effectively unlimited

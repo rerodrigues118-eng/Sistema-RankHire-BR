@@ -84,12 +84,14 @@ export async function POST(req: Request) {
         cnpj: companyBody.cnpj?.trim() || null,
         tamanho: body.tamanho || "1-10",
         segmento: body.segmento || "Tecnologia",
-        plano: "trial_starter",
+        plano: "trial",
         trial_expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
         subscription_status: "trialing",
-        limite_pdfs_mes: 10,
-        limite_buscas_linkedin: 0,
+        limite_pdfs_mes: 15,
+        limite_buscas_linkedin: 3,
         limite_vagas: 1,
+        creditos_pdfs_usados: 0,
+        creditos_buscas_usados: 0,
       };
 
       const empresaId = usuarioAtual?.empresa_id ?? undefined;

@@ -7,6 +7,9 @@ import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import ScoreGauge from "@/components/score-gauge";
 import type { Agent, AgentCandidate, AgentCriterion, AgentFrequency, AgentProfile, Job } from "@/lib/types";
 import { AVATAR_COLORS } from "@/lib/mock-data";
+import Link from "next/link";
+import { podeUsarAgenteIA } from "@/lib/plano-access";
+import { useEmpresa } from "@/hooks/useEmpresa";
 
 type AgentTab = "criar" | "dashboard" | "candidatos" | "performance";
 type CalibrationDecision = "aprovado" | "rejeitado" | "pulado";
@@ -163,6 +166,7 @@ function AgentCandidateCard({
 }
 
 export default function AgenteIAPage() {
+  const { empresa, isLoading: isLoadingEmpresa } = useEmpresa();
   const [activeTab, setActiveTab] = useState<AgentTab>("criar");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -186,6 +190,28 @@ export default function AgenteIAPage() {
     frequencia: "diaria",
     scoreMinimoNotificacao: 4,
   });
+
+  // Check access
+  const temAcesso = empresa ? podeUsarAgenteIA(empresa) : false;
+
+  if (!isLoadingEmpresa && !temAcesso) {
+    return (
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-6 lg:px-8">
+        <div className="flex flex-col items-center justify-center min-h-96 gap-4 rounded-[28px] border border-slate-200 bg-white p-8">
+          <div className="text-6xl">🔒</div>
+          <h2 className="text-2xl font-semibold text-slate-900">Agente IA</h2>
+          <p className="text-gray-600 text-center max-w-md leading-6">
+            O Agente IA está disponível nos planos Pro e Agência. Faça upgrade para ter um recrutador virtual trabalhando para você automaticamente.
+          </p>
+          <Link href="/dashboard?page=settings">
+            <button className="bg-[#1B4FD8] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#163fb3] transition">
+              Ver planos →
+            </button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const calibrationProfiles = useMemo(() => {
     return candidates.slice(0, 8).map((c) => ({

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getCachedProfile, setCachedProfile } from "@/lib/profile-cache";
+import { getPlanoBadge } from "@/lib/plano-access";
 
 interface SidebarProps {
   activePage: PageId;
@@ -63,6 +64,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
   const [userEmail, setUserEmail] = useState<string>("Carregando...");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [planoBadge, setPlanoBadge] = useState<{ label: string; color: string }>({ label: "TRIAL", color: "gray" });
   const router = useRouter();
 
   useEffect(() => {
@@ -103,6 +105,18 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
           } catch {
             // ignore
           }
+        }
+
+        // Fetch company plan
+        try {
+          const empresaRes = await fetch('/api/empresas', { credentials: 'include' });
+          if (empresaRes.ok) {
+            const empresaData = await empresaRes.json();
+            const badge = getPlanoBadge(empresaData.empresa || {});
+            setPlanoBadge(badge);
+          }
+        } catch {
+          // ignore
         }
       } catch {
         // role check failed
@@ -216,7 +230,14 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
               {displayName || userEmail}
             </span>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-[10px] bg-[rgba(212,175,55,0.15)] text-[var(--gold)] font-semibold px-1.5 rounded-sm">PRO</span>
+              <span className={`text-[10px] font-semibold px-1.5 rounded-sm ${
+                planoBadge.color === 'gold' ? 'bg-[rgba(212,175,55,0.15)] text-[var(--gold)]' :
+                planoBadge.color === 'green' ? 'bg-[rgba(6,214,160,0.15)] text-[#06D6A0]' :
+                planoBadge.color === 'blue' ? 'bg-[rgba(27,79,216,0.15)] text-[#1B4FD8]' :
+                'bg-[rgba(107,114,128,0.15)] text-[#6B7280]'
+              }`}>
+                {planoBadge.label}
+              </span>
             </div>
           </div>
         </div>

@@ -17,9 +17,14 @@ export type Empresa = {
   segmento: string | null;
   plano: string | null;
   status?: string | null;
+  subscription_status?: string | null;
   trial_expires_at?: string | null;
   admin_email?: string | null;
   mrr_centavos?: number | null;
+  limite_pdfs_mes?: number | null;
+  limite_buscas_linkedin?: number | null;
+  creditos_pdfs_usados?: number | null;
+  creditos_buscas_usados?: number | null;
 };
 
 export type EmailUnsubscribeBody = {
