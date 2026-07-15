@@ -49,7 +49,7 @@ export default function TrialBanner() {
         <div className="bg-amber-50 text-amber-900 px-6 py-3 flex items-center justify-between border-b border-amber-200">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-600" />
-            <span className="font-semibold text-[14px]">⚠️ Seu trial expira em {diasRestantes} {diasRestantes === 1 ? 'dia' : 'dias'}! Não perca seus dados — escolha um plano</span>
+            <span className="font-semibold text-[14px]">Seu trial expira em {diasRestantes} {diasRestantes === 1 ? 'dia' : 'dias'}! Não perca seus dados — escolha um plano</span>
           </div>
           <Link href="/configuracoes/plano" className="px-4 py-1.5 bg-amber-600 text-white font-medium text-[13px] rounded hover:bg-amber-700 transition">
             Assinar agora →
@@ -60,7 +60,8 @@ export default function TrialBanner() {
       return (
         <div className="bg-yellow-50 text-yellow-800 px-6 py-3 flex items-center justify-between border-b border-yellow-200">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-[14px]">⚡ Você está no trial gratuito — {diasRestantes} dias restantes</span>
+            <AlertTriangle className="w-5 h-5 text-yellow-600" />
+            <span className="font-medium text-[14px]">Você está no trial gratuito — {diasRestantes} dias restantes</span>
           </div>
           <Link href="/configuracoes/plano" className="text-yellow-700 hover:text-yellow-900 font-medium text-[13px] underline">
             Fazer upgrade para continuar após o período
@@ -75,7 +76,7 @@ export default function TrialBanner() {
       <div className="bg-red-50 text-red-800 px-6 py-3 flex items-center justify-between border-b border-red-200">
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-red-600" />
-          <span className="font-semibold text-[14px]">⚠️ Problema com seu pagamento — atualize para manter o acesso</span>
+          <span className="font-semibold text-[14px]">Problema com seu pagamento — atualize para manter o acesso</span>
         </div>
         <Link href="/configuracoes/plano" className="px-4 py-1.5 bg-red-600 text-white font-medium text-[13px] rounded hover:bg-red-700 transition">
           Atualizar pagamento →

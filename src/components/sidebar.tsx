@@ -18,7 +18,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { getCachedProfile, setCachedProfile } from "@/lib/profile-cache";
+import { clearCachedProfile, getCachedProfile, setCachedProfile } from "@/lib/profile-cache";
 import { getPlanoBadge } from "@/lib/plano-access";
 
 interface SidebarProps {
@@ -87,20 +87,24 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         if (res.ok) {
           const data = await res.json();
           setUserEmail(data.email || "Usuário");
-          // prefer cached profile to avoid flashes
+          // prefer cached profile to avoid flashes, then refresh from server
           try {
             const cached = getCachedProfile();
             if (cached) {
               setAvatarUrl(cached.avatar_url || null);
               setDisplayName(cached.nome || cached.email || null);
-            } else {
-              const p = await fetch('/api/profile', { credentials: 'include' });
-              if (p.ok) {
-                const pd = await p.json();
-                setAvatarUrl(pd.profile?.avatar_url || null);
-                setDisplayName(pd.profile?.nome || pd.profile?.email || null);
-                try { setCachedProfile(pd.profile); } catch {}
-              }
+            }
+          } catch {
+            // ignore
+          }
+
+          try {
+            const p = await fetch('/api/profile', { credentials: 'include', cache: 'no-store' });
+            if (p.ok) {
+              const pd = await p.json();
+              setAvatarUrl(pd.profile?.avatar_url || null);
+              setDisplayName(pd.profile?.nome || pd.profile?.email || null);
+              try { setCachedProfile(pd.profile); } catch {}
             }
           } catch {
             // ignore
@@ -139,6 +143,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
   }, []);
 
   const handleLogout = async () => {
+    clearCachedProfile();
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/login');

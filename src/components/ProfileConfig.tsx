@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from 'next/image';
 import { createClient } from "@/lib/supabase/client";
-import { getCachedProfile, setCachedProfile } from "@/lib/profile-cache";
+import { clearCachedProfile, getCachedProfile, setCachedProfile } from "@/lib/profile-cache";
 import {
   Camera,
   CheckCircle2,
@@ -102,8 +102,8 @@ export default function ProfileConfig() {
       } catch {}
 
       const [profileRes, labelsRes] = await Promise.all([
-        fetch("/api/profile", { credentials: 'include' }),
-        fetch("/api/profile/labels", { credentials: 'include' }),
+        fetch("/api/profile", { credentials: 'include', cache: 'no-store' }),
+        fetch("/api/profile/labels", { credentials: 'include', cache: 'no-store' }),
       ]);
 
       if (!active) return;
@@ -332,8 +332,8 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
       const d = await res.json();
       if (res.ok) {
         setFeedback({ type: "success", text: d.message || "Alteracao aplicada." });
-        // refresh profile
-        const p = await (await fetch('/api/profile', { credentials: 'include' })).json();
+        // refresh profile from server and update cache
+        const p = await (await fetch('/api/profile', { credentials: 'include', cache: 'no-store' })).json();
         setProfile(p.profile);
         try { setCachedProfile(p.profile); } catch {}
         setShowSecurityModal(false);
@@ -562,7 +562,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
             <Monitor className="h-4 w-4 text-slate-400" />
           </div>
 
-          <button onClick={async () => { const supabase = createClient(); await supabase.auth.signOut({ scope: 'global' }); window.location.href = '/login'; }} className="flex items-center justify-between rounded-lg border border-red-200 px-4 py-4 text-left text-red-600 hover:bg-red-50">
+          <button onClick={async () => { clearCachedProfile(); const supabase = createClient(); await supabase.auth.signOut({ scope: 'global' }); window.location.href = '/login'; }} className="flex items-center justify-between rounded-lg border border-red-200 px-4 py-4 text-left text-red-600 hover:bg-red-50">
             <span>
               <span className="block text-[13px] font-semibold">Encerrar sessoes</span>
               <span className="mt-1 block text-xs text-red-400">Sair de todos os dispositivos</span>

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { clearCachedProfile } from '@/lib/profile-cache';
 import {
   ArrowLeft,
   Camera,
@@ -87,8 +88,8 @@ export default function PerfilConfigPage() {
       setLoading(true);
 
       const [profileRes, labelsRes] = await Promise.all([
-        fetch("/api/profile", { credentials: 'include' }),
-        fetch("/api/profile/labels", { credentials: 'include' }),
+        fetch("/api/profile", { credentials: 'include', cache: 'no-store' }),
+        fetch("/api/profile/labels", { credentials: 'include', cache: 'no-store' }),
       ]);
 
       if (!active) return;
@@ -224,6 +225,7 @@ export default function PerfilConfigPage() {
   }
 
   async function handleGlobalSignOut() {
+    clearCachedProfile();
     const supabase = createClient();
     await supabase.auth.signOut({ scope: "global" });
     router.push("/login");
