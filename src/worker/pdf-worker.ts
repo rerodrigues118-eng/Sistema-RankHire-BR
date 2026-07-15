@@ -245,15 +245,8 @@ if (conn) {
   const workerOptions: WorkerOptions = {
     connection: conn as ConnectionOptions,
     concurrency,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 2000, // 2s, 4s, 8s
-      },
-      removeOnComplete: { count: 100 },
-      removeOnFail: { count: 200 },
-    },
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 200 },
   };
 
   new Worker("pdf-processing", processor, workerOptions);
