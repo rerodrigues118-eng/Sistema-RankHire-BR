@@ -11,8 +11,6 @@ const EmpresaPatchSchema = z.object({
   segmento: z.string().trim().min(1).optional(),
 });
 
-type UsuarioRow = { empresa_id: string | null };
-
 type EmpresaRow = {
   id: string;
   nome: string | null;
@@ -23,6 +21,7 @@ type EmpresaRow = {
   subscription_status: string | null;
   trial_expires_at: string | null;
   limite_pdfs_mes: number | null;
+  role?: string | null;
 };
 
 export async function GET() {
@@ -33,7 +32,7 @@ export async function GET() {
     // Converted to use authenticated `supabase` for user-scoped read
     const { data: usuario, error: usuarioError } = await supabase
       .from("usuarios")
-      .select("empresa_id")
+      .select("empresa_id, role")
       .eq("id", userId)
       .maybeSingle();
 
@@ -57,7 +56,11 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ empresa: empresa || null });
+    const empresaWithRole = empresa
+      ? { ...(empresa as EmpresaRow), role: usuario?.role ?? null }
+      : null;
+
+    return NextResponse.json({ empresa: empresaWithRole });
   } catch (error: unknown) {
     console.error("[GET /api/empresas] catch error:", error);
     return handleApiError(error);

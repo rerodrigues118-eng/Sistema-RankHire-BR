@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { fetchWithTimeout, handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
@@ -88,7 +89,7 @@ async function persistLinkedinSearchArtifacts({
   filtros,
   results,
 }: {
-  supabase: any;
+  supabase: SupabaseClient;
   empresaId: string;
   vagaId?: string | null;
   userId: string;
@@ -146,7 +147,7 @@ export async function POST(req: Request) {
     const admin = createSupabaseAdminClient();
     const { data: usuario } = await admin
       .from("usuarios")
-      .select("empresa_id")
+      .select("empresa_id, role")
       .eq("id", userId)
       .single();
 
@@ -160,7 +161,8 @@ export async function POST(req: Request) {
       .eq("id", usuario.empresa_id)
       .single();
 
-    const access = getPlanAccessState(empresa || undefined, 0);
+    const userRole = usuario.role || null;
+    const access = getPlanAccessState(empresa || undefined, 0, userRole);
     if (!access.canUseLinkedIn) {
       return NextResponse.json({
         error: "Busca no LinkedIn indisponível no seu plano atual.",
@@ -168,8 +170,8 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
 
-    // Check trial search limit
-    const isTrial = empresa?.plano === 'trial' || empresa?.subscription_status === 'trialing';
+    const isAdmin = userRole === 'superadmin' || userRole === 'admin';
+    const isTrial = !isAdmin && (empresa?.plano === 'trial' || empresa?.subscription_status === 'trialing');
     if (isTrial) {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -212,7 +214,7 @@ export async function POST(req: Request) {
     } = body;
 
     const queryParts: string[] = [];
-    let locationStr = "Brazil";
+    let locationStr = location?.trim() ? location : "Brazil";
 
     if (_rawFilters) {
       if (person_titles?.length) queryParts.push(...person_titles);

@@ -5,7 +5,16 @@ export type EmpresaPlano = {
   limite_buscas_linkedin?: number | null;
   creditos_pdfs_usados?: number | null;
   creditos_buscas_usados?: number | null;
+  role?: string | null;
 };
+
+function normalizeRole(role?: string | null) {
+  return String(role || "").trim().toLowerCase();
+}
+
+function isAdminRole(role?: string | null) {
+  return ["admin", "superadmin"].includes(normalizeRole(role));
+}
 
 export function getPlanoBadge(empresa: EmpresaPlano) {
   if (empresa.subscription_status === "active") {
@@ -20,6 +29,7 @@ export function getPlanoBadge(empresa: EmpresaPlano) {
 }
 
 export function podeUsarAgenteIA(empresa: EmpresaPlano): boolean {
+  if (isAdminRole(empresa.role)) return true;
   return (
     empresa.subscription_status === "active" &&
     ["pro", "agencia"].includes(String(empresa.plano || ""))
@@ -27,6 +37,7 @@ export function podeUsarAgenteIA(empresa: EmpresaPlano): boolean {
 }
 
 export function podeUsarBuscaLinkedIn(empresa: EmpresaPlano): boolean {
+  if (isAdminRole(empresa.role)) return true;
   if (empresa.subscription_status === "active") return true;
   const isTrial =
     empresa.plano === "trial" ||
@@ -36,6 +47,7 @@ export function podeUsarBuscaLinkedIn(empresa: EmpresaPlano): boolean {
 }
 
 export function podeProcessarPDF(empresa: EmpresaPlano): boolean {
+  if (isAdminRole(empresa.role)) return true;
   const isTrial =
     empresa.plano === "trial" ||
     empresa.plano === "trial_starter" ||
@@ -45,6 +57,21 @@ export function podeProcessarPDF(empresa: EmpresaPlano): boolean {
 }
 
 export function getCreditsInfo(empresa: EmpresaPlano) {
+  if (isAdminRole(empresa.role)) {
+    return {
+      pdfs: {
+        usado: empresa.creditos_pdfs_usados || 0,
+        limite: null,
+        label: "PDFs ilimitados",
+      },
+      buscas: {
+        usado: empresa.creditos_buscas_usados || 0,
+        limite: null,
+        label: "Buscas ilimitadas",
+      },
+    };
+  }
+
   const isTrial =
     empresa.plano === "trial" ||
     empresa.plano === "trial_starter" ||

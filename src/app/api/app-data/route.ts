@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/admin";
 import { logger } from "@/lib/logger";
+import type { EmpresaSimples } from "@/lib/planos";
 
 type JobRow = {
   id: string;
@@ -320,7 +321,7 @@ export async function GET() {
     const { getPdfLimitFromPlan } = await import('@/lib/planos');
     const isAdmin = userRole === "superadmin" || userRole === "admin";
     const plan = empresaRes.data?.plano || null;
-    const limit = getPdfLimitFromPlan(plan, (empresaRes.data || undefined) as any) ?? empresaRes.data?.limite_pdfs_mes ?? 10;
+    const limit = getPdfLimitFromPlan(plan, empresaRes.data as Partial<EmpresaSimples> | undefined, userRole) ?? empresaRes.data?.limite_pdfs_mes ?? 10;
     const remaining = limit === null ? null : Math.max(0, limit - processedPdfCount);
 
     const quota = {

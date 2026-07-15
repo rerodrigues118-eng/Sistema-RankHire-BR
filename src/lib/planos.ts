@@ -6,7 +6,29 @@ export type EmpresaSimples = {
   subscription_status: string;
   trial_expires_at: string;
   limite_pdfs_mes?: number;
+  role?: string | null;
 };
+
+function normalizeRole(role?: string | null) {
+  return String(role || '').trim().toLowerCase();
+}
+
+function isAdminRole(role?: string | null) {
+  const normalized = normalizeRole(role);
+  return normalized === 'admin' || normalized === 'superadmin';
+}
+
+function getEffectivePlanKey(planKey?: string | null) {
+  const mapping: Record<string, string> = {
+    'trial_starter': 'trial',
+    'profissional': 'starter',
+    'enterprise': 'pro',
+    'superadmin': 'agencia',
+    'admin': 'agencia',
+  };
+  const normalized = String(planKey || '').trim().toLowerCase();
+  return normalized ? mapping[normalized] ?? normalized : 'trial';
+}
 
 export interface PlanoInfo {
   nome: string;
@@ -76,15 +98,20 @@ export function getPlanoAtual(empresa: EmpresaSimples) {
   return 'expirado';
 }
 
-export function getPlanAccessState(empresa: Partial<EmpresaSimples> | undefined, usedThisMonth: number) {
+export function getPlanAccessState(
+  empresa: Partial<EmpresaSimples> | undefined,
+  usedThisMonth: number,
+  role?: string | null
+) {
+  const userRole = role ?? empresa?.role;
   const planKey = (empresa?.plano || 'trial').toLowerCase();
   const normalizedPlan = planKey === 'trial_starter' ? 'trial' : planKey;
   const planConfig = PLANOS[normalizedPlan] || PLANOS.trial;
   const isTrial = normalizedPlan === 'trial';
-  const isActiveSubscription = empresa?.subscription_status === 'active' || empresa?.subscription_status === 'trialing';
-  const pdfLimit = getPdfLimitFromPlan(planKey, empresa) ?? planConfig.limite_pdfs_mes;
-  const canUploadPdf = pdfLimit === null ? true : usedThisMonth < pdfLimit;
-  const canUseLinkedIn = !planConfig.linkedin_bloqueado && isActiveSubscription;
+  const isActiveSubscription = isAdminRole(userRole) || empresa?.subscription_status === 'active' || empresa?.subscription_status === 'trialing';
+  const pdfLimit = getPdfLimitFromPlan(planKey, empresa, userRole) ?? planConfig.limite_pdfs_mes;
+  const canUploadPdf = isAdminRole(userRole) ? true : pdfLimit === null ? true : usedThisMonth < pdfLimit;
+  const canUseLinkedIn = isAdminRole(userRole) ? true : !planConfig.linkedin_bloqueado && isActiveSubscription;
 
   return {
     planKey,
@@ -98,19 +125,25 @@ export function getPlanAccessState(empresa: Partial<EmpresaSimples> | undefined,
 }
 
 export function podePDF(empresa: EmpresaSimples, usadoMes: number): boolean {
-  const planoKey = empresa.plano as keyof typeof PLANOS;
+  if (isAdminRole(empresa.role)) return true;
+  const planoKey = getEffectivePlanKey(empresa.plano) as keyof typeof PLANOS;
   const plano = PLANOS[planoKey] || PLANOS.trial;
   return usadoMes < plano.limite_pdfs_mes;
 }
 
 export function podeLinkedIn(empresa: EmpresaSimples): boolean {
-  const planoKey = empresa.plano as keyof typeof PLANOS;
+  if (isAdminRole(empresa.role)) return true;
+  const planoKey = getEffectivePlanKey(empresa.plano) as keyof typeof PLANOS;
   const plano = PLANOS[planoKey] || PLANOS.trial;
   return !plano.linkedin_bloqueado && empresa.subscription_status === 'active';
 }
 
 // Return PDF export/upload limit for a given company plan key or empresa object.
-export function getPdfLimitFromPlan(planKey?: string | null, empresa?: Partial<EmpresaSimples>): number | null {
+export function getPdfLimitFromPlan(
+  planKey?: string | null,
+  empresa?: Partial<EmpresaSimples>,
+  role?: string | null
+): number | null {
   // Normalize known external plan keys
   const mapping: Record<string, string> = {
     'trial_starter': 'trial',
@@ -120,9 +153,11 @@ export function getPdfLimitFromPlan(planKey?: string | null, empresa?: Partial<E
     'admin': 'agencia',
   };
 
+  if (isAdminRole(role ?? empresa?.role)) return null;
   if (!planKey && empresa?.plano) planKey = empresa.plano;
 
-  const normalized = planKey ? (mapping[planKey] ?? planKey) : undefined;
+  const normalizedPlanKey = planKey ? String(planKey).trim().toLowerCase() : undefined;
+  const normalized = normalizedPlanKey ? (mapping[normalizedPlanKey] ?? normalizedPlanKey) : undefined;
 
   if (!normalized) {
     // fallback to empresa limit or default 10

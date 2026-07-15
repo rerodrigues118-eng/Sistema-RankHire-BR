@@ -168,7 +168,7 @@ export async function POST(req: Request) {
 
     const { data: usuario, error: usuarioError } = await admin
       .from("usuarios")
-      .select("empresa_id")
+      .select("empresa_id, role")
       .eq("id", userId)
       .single();
 
@@ -209,6 +209,7 @@ export async function POST(req: Request) {
 
     // Check quota before creating batch
     const { data: empresa } = await admin.from('empresas').select('id,plano,limite_pdfs_mes,subscription_status').eq('id', vaga.empresa_id).single();
+    const userRole = usuario?.role || null;
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
@@ -219,7 +220,7 @@ export async function POST(req: Request) {
       .gte('created_at', monthStart)
       .lt('created_at', nextMonthStart);
     const used = count ?? 0;
-    const access = getPlanAccessState(empresa || undefined, used);
+    const access = getPlanAccessState(empresa || undefined, used, userRole);
     const planLimit = access.pdfLimit;
 
     if (!access.canUploadPdf) {
@@ -261,6 +262,8 @@ export async function POST(req: Request) {
     }
 
     const redisConn = getRedisConnection();
+    let queuedInBackground = false;
+
     if (redisConn) {
       try {
         const pdfQueue = await getPdfQueue();
@@ -274,10 +277,13 @@ export async function POST(req: Request) {
             })
           )
         );
+        queuedInBackground = true;
       } catch (queueError) {
         console.error("[upload-batch] Falha ao enfileirar jobs de PDF:", queueError);
       }
+    }
 
+    if (queuedInBackground) {
       return NextResponse.json({
         queued: candidatesData.length,
         batch_id: batchId,
@@ -285,7 +291,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Process all PDFs inline (fallback when background queue is unavailable)
+    // Process all PDFs inline if background queue is unavailable or enqueue failed
     const processedCandidates = await Promise.all(
       candidatesData.map((cand) =>
         processCandidate(cand.id, cand.file_url, vaga_id, batchId, admin)

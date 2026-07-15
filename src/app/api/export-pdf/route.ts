@@ -118,7 +118,7 @@ export async function GET() {
           used: 0,
           limit: null,
           remaining: null,
-          plano: empresa?.plano || "superadmin",
+          plano: empresa?.plano || 'sem-plano',
           mes: new Date().toISOString().slice(0, 7),
         },
       });
