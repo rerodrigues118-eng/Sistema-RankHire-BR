@@ -36,6 +36,13 @@ type CalibrationAnswer = {
   decisao: CalibrationDecision;
 };
 
+type AgentesApiResponse = {
+  agentes: Agent[];
+  vagas: Array<{ id: string; titulo?: string; title?: string }>;
+  candidatos: AgentCandidate[];
+  notificacoes: AgentNotification[];
+};
+
 // Removed static mocked profiles; calibration will use real candidates when available
 
 const scoreSeries = [12, 18, 14, 20, 16, 22, 19, 25, 28, 21, 24, 32, 29, 30, 34, 38, 33, 40, 36, 42, 39, 45, 41, 47, 46, 49, 44, 50, 48, 52];
@@ -85,6 +92,11 @@ function groupCandidatesByDate(candidates: AgentCandidate[]) {
     });
 
   return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
+}
+
+function pickAvatarColor(seed: string): string {
+  const hash = Array.from(seed || "").reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) >>> 0, 0);
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
 
 function AgentPill({ children, active = false }: { children: React.ReactNode; active?: boolean }) {
@@ -182,7 +194,7 @@ export default function AgenteIAPage() {
   const workflowRafRef = useRef<number | null>(null);
   const [calibrationDecisions, setCalibrationDecisions] = useState<CalibrationAnswer[]>([]);
   const [isSavingCalibration, setIsSavingCalibration] = useState(false);
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftAgent>({
     nome: "",
     vagaId: "",
@@ -190,28 +202,6 @@ export default function AgenteIAPage() {
     frequencia: "diaria",
     scoreMinimoNotificacao: 4,
   });
-
-  // Check access
-  const temAcesso = empresa ? podeUsarAgenteIA(empresa) : false;
-
-  if (!isLoadingEmpresa && !temAcesso) {
-    return (
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-6 lg:px-8">
-        <div className="flex flex-col items-center justify-center min-h-96 gap-4 rounded-[28px] border border-slate-200 bg-white p-8">
-          <div className="text-6xl">🔒</div>
-          <h2 className="text-2xl font-semibold text-slate-900">Agente IA</h2>
-          <p className="text-gray-600 text-center max-w-md leading-6">
-            O Agente IA está disponível nos planos Pro e Agência. Faça upgrade para ter um recrutador virtual trabalhando para você automaticamente.
-          </p>
-          <Link href="/dashboard?page=settings">
-            <button className="bg-[#1B4FD8] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#163fb3] transition">
-              Ver planos →
-            </button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   const calibrationProfiles = useMemo(() => {
     return candidates.slice(0, 8).map((c) => ({
@@ -222,7 +212,7 @@ export default function AgenteIAPage() {
       resumo: "",
       skills: c.skills || [],
       linkedinUrl: c.linkedinUrl || "",
-      avatarColor: c.avatarColor || AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+      avatarColor: c.avatarColor || pickAvatarColor(c.nome || c.id || ""),
     } as AgentProfile));
   }, [candidates]);
 
@@ -231,6 +221,8 @@ export default function AgenteIAPage() {
   }, [agents, selectedAgentId]);
 
   const candidateGroups = useMemo(() => groupCandidatesByDate(candidates), [candidates]);
+
+  const temAcesso = empresa ? podeUsarAgenteIA(empresa) : false;
 
   const activeMetrics = activeAgent?.metrics || {
     analisados: 0,
@@ -245,46 +237,70 @@ export default function AgenteIAPage() {
     async function loadAgents() {
       try {
         const res = await fetch("/api/agentes", { credentials: "include" });
-        const data = await res.json();
-
+        
         if (!alive) return;
+        
+        // Always try to parse as JSON, with safe fallbacks
+        let data: AgentesApiResponse = { agentes: [], vagas: [], candidatos: [], notificacoes: [] };
+        
+        try {
+          data = await res.json();
+        } catch (e) {
+          console.error("[AgenteIA] Failed to parse response:", e);
+          // Use default empty data
+        }
 
-        if (res.ok) {
-          if (Array.isArray(data.vagas) && data.vagas.length > 0) {
-            setJobs(
-              data.vagas.map((vaga: { id: string; titulo: string }) => ({
-                id: vaga.id,
-                title: vaga.titulo || "Vaga sem título",
-                department: "Geral",
-                candidatesCount: 0,
-                averageScore: 0,
-                topScore: 0,
-                status: "active",
-                createdDate: new Date().toLocaleDateString("pt-BR"),
-              })),
-            );
-          } else {
-            setJobs([]);
-          }
+        const vagas = Array.isArray(data.vagas) ? data.vagas : [];
+        const agentes = Array.isArray(data.agentes) ? data.agentes : [];
+        const candidatos = Array.isArray(data.candidatos) ? data.candidatos : [];
+        const notificacoes = Array.isArray(data.notificacoes) ? data.notificacoes : [];
 
-          if (Array.isArray(data.agentes) && data.agentes.length > 0) {
-            setAgents(data.agentes);
-            setSelectedAgentId(data.agentes[0].id);
-          }
-
-          if (Array.isArray(data.candidatos) && data.candidatos.length > 0) {
-            setCandidates(data.candidatos);
-          }
-
-          if (Array.isArray(data.notificacoes) && data.notificacoes.length > 0) {
-            setNotifications(data.notificacoes);
-          }
+        if (vagas.length > 0) {
+          setJobs(
+            vagas.map((vaga: { id: string; titulo?: string; title?: string }) => ({
+              id: vaga.id,
+              title: vaga.titulo || vaga.title || "Vaga sem título",
+              department: "Geral",
+              candidatesCount: 0,
+              averageScore: 0,
+              topScore: 0,
+              status: "active",
+              createdDate: new Date().toLocaleDateString("pt-BR"),
+            }))
+          );
         } else {
-          throw new Error(data.error || "Falha ao carregar agentes.");
+          setJobs([]);
+        }
+
+        if (agentes.length > 0) {
+          setAgents(agentes);
+          setSelectedAgentId(agentes[0].id);
+        } else {
+          setAgents([]);
+          setSelectedAgentId(null);
+        }
+
+        if (candidatos.length > 0) {
+          setCandidates(candidatos);
+        } else {
+          setCandidates([]);
+        }
+
+        if (notificacoes.length > 0) {
+          setNotifications(notificacoes);
+        } else {
+          setNotifications([]);
         }
       } catch (error: unknown) {
         if (alive) {
-          setLoadError(error instanceof Error ? error.message : "Falha ao carregar agentes.");
+          const errorMessage = error instanceof Error ? error.message : "Falha ao carregar agentes.";
+          setLoadError(errorMessage);
+          console.error("[AgenteIA] Unexpected error:", error);
+          setJobs([]);
+          setAgents([]);
+          setSelectedAgentId(null);
+          setCandidates([]);
+          setNotifications([]);
         }
       } finally {
         if (alive) {
@@ -528,6 +544,25 @@ export default function AgenteIAPage() {
 
   const currentProfile = calibrationProfiles[calibrationIndex];
   const unreadNotifications = notifications.filter((notification) => notification.unread);
+
+  if (!isLoadingEmpresa && !temAcesso) {
+    return (
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-6 lg:px-8">
+        <div className="flex flex-col items-center justify-center min-h-96 gap-4 rounded-[28px] border border-slate-200 bg-white p-8">
+          <div className="text-6xl">🔒</div>
+          <h2 className="text-2xl font-semibold text-slate-900">Agente IA</h2>
+          <p className="text-gray-600 text-center max-w-md leading-6">
+            O Agente IA está disponível nos planos Pro e Agência. Faça upgrade para ter um recrutador virtual trabalhando para você automaticamente.
+          </p>
+          <Link href="/dashboard?page=settings">
+            <button className="bg-[#1B4FD8] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#163fb3] transition">
+              Ver planos →
+            </button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-6 lg:px-8">

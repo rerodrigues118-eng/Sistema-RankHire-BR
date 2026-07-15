@@ -430,8 +430,8 @@ export default function Home() {
         return;
       }
 
-      supabase
-        .channel(`batch-${batchData.batch_id}`)
+      const channel = supabase.channel(`batch-${batchData.batch_id}`);
+      channel
         .on(
           "postgres_changes",
           {
@@ -470,6 +470,7 @@ export default function Home() {
             addCandidateFromData(cand, batchData);
           }
         }
+        supabase.removeChannel(channel);
         setIsUploading(false);
       } else {
         // Polling fallback: para versoes antigas ou quando o processamento e async
@@ -480,6 +481,7 @@ export default function Home() {
           pollAttempts++;
           if (pendingPaths.size === 0 || pollAttempts >= maxPollAttempts) {
             clearInterval(pollTimer);
+            supabase.removeChannel(channel);
             setIsUploading(false);
             return;
           }
@@ -488,6 +490,7 @@ export default function Home() {
             // Para o polling imediatamente se der 404 (batch nao existe)
             if (batchRes.status === 404) {
               clearInterval(pollTimer);
+              supabase.removeChannel(channel);
               setIsUploading(false);
               return;
             }
@@ -511,6 +514,7 @@ export default function Home() {
             }
             if (batchPoll.status === "completed" || pendingPaths.size === 0) {
               clearInterval(pollTimer);
+              supabase.removeChannel(channel);
               setIsUploading(false);
             }
           } catch {
@@ -518,8 +522,12 @@ export default function Home() {
           }
         }, 3000);
 
-        // Cleanup timer apos 1 minuto no maximo
-        setTimeout(() => { clearInterval(pollTimer); setIsUploading(false); }, 60_000);
+        // Cleanup timer e canal apos 1 minuto no maximo
+        setTimeout(() => {
+          clearInterval(pollTimer);
+          supabase.removeChannel(channel);
+          setIsUploading(false);
+        }, 60_000);
       }
 
       e.target.value = "";

@@ -3,7 +3,8 @@ import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from '@/lib/admin';
 import { logger } from '@/lib/logger';
-import { getPdfLimitFromPlan, getPlanAccessState } from '@/lib/planos';
+import { getPlanAccessState } from '@/lib/planos';
+import { checkRateLimit } from "@/lib/rate-limit";
 import { callAI } from "@/lib/ai-client";
 import { buildScoringPrompt } from "@/lib/scoring-prompt";
 import { getPdfQueue, getRedisConnection } from '@/lib/queue';
@@ -22,7 +23,7 @@ function sanitizeText(raw: string): string {
 async function downloadAndParsePdf(storagePath: string, admin: ReturnType<typeof createSupabaseAdminClient>): Promise<string> {
   const start = Date.now();
   const { data, error } = await admin.storage
-    .from("uploads")
+    .from("curriculos")
     .createSignedUrl(storagePath, 120);
 
   if (error || !data?.signedUrl) {
@@ -73,7 +74,7 @@ async function processCandidate(
 
     let scoreFinal = 3.0;
     let candidatoNome = "Candidato sem nome";
-    let extraFields: Record<string, unknown> = {};
+    const extraFields: Record<string, unknown> = {};
     let criteriosForSave: { nome: string; nota: number; justificativa?: string }[] = [];
 
     if (!critError && formattedCriteria.length > 0) {
@@ -162,6 +163,24 @@ async function processCandidate(
 export async function POST(req: Request) {
   try {
     const { userId } = await requireAuth();
+    // admin-client: justificado — upload em lote e parsing usam privilégios administrativos
+    const admin = createSupabaseAdminClient();
+
+    const { data: usuario, error: usuarioError } = await admin
+      .from("usuarios")
+      .select("empresa_id")
+      .eq("id", userId)
+      .single();
+
+    if (usuarioError || !usuario?.empresa_id) {
+      return NextResponse.json({ error: "Empresa não encontrada para este usuário" }, { status: 404 });
+    }
+
+    const rl = await checkRateLimit(`empresa:${usuario.empresa_id}:upload-batch`, 3, 60_000);
+    if (!rl.ok) {
+      return NextResponse.json({ error: "Limite de uploads excedido (máximo 3 lotes por minuto). Tente novamente mais tarde." }, { status: 429 });
+    }
+
     const { storagePaths, vaga_id } = (await req.json()) as {
       storagePaths?: string[];
       vaga_id?: string;
@@ -174,9 +193,6 @@ export async function POST(req: Request) {
     if (!vaga_id) {
       return NextResponse.json({ error: "vaga_id obrigatorio" }, { status: 400 });
     }
-
-    // admin-client: justificado — upload em lote e parsing usam privilégios administrativos
-    const admin = createSupabaseAdminClient();
     const { data: vaga, error: vagaError } = await admin
       .from("vagas")
       .select("id, empresa_id")
@@ -185,6 +201,10 @@ export async function POST(req: Request) {
 
     if (vagaError || !vaga?.empresa_id) {
       return NextResponse.json({ error: "Vaga nao encontrada para este usuario" }, { status: 404 });
+    }
+
+    if (vaga.empresa_id !== usuario.empresa_id) {
+      return NextResponse.json({ error: "Vaga não pertence à sua empresa." }, { status: 403 });
     }
 
     // Check quota before creating batch
