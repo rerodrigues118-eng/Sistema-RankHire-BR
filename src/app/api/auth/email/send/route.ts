@@ -1,10 +1,26 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendVerificationEmail } from '@/lib/email';
+import { checkRateLimit } from '@/lib/rate-limit';
 import Redis from 'ioredis';
+
+// Singleton Redis client para OTP — evita vazamento de conexões
+let otpRedis: Redis | null = null;
+function getOtpRedis(): Redis | null {
+  const url = process.env.REDIS_URL;
+  if (!url) return null;
+  if (!otpRedis) {
+    otpRedis = new Redis(url, { maxRetriesPerRequest: 3, enableReadyCheck: false });
+    otpRedis.on('error', (err) => console.warn('[otp-redis] connection error:', err.message));
+  }
+  return otpRedis;
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: Request) {
   try {
+    // ── Rate limit: 3 envios por e-mail por 10 min ──────────────
     const body = await req.json();
     const { email, telefone } = body;
 
@@ -12,9 +28,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'E-mail e telefone são obrigatórios' }, { status: 400 });
     }
 
-    const emailTrimmed = email.trim().toLowerCase();
+    const emailTrimmed = String(email).trim().toLowerCase();
+    if (!EMAIL_REGEX.test(emailTrimmed)) {
+      return NextResponse.json({ error: 'E-mail inválido' }, { status: 400 });
+    }
 
-    // 1. Verificar duplicidade de e-mail e telefone (check both email and phone)
+    const rl = await checkRateLimit(`otp-send:${emailTrimmed}`, 3, 600_000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'Muitas solicitações para este e-mail. Aguarde 10 minutos.' },
+        { status: 429 }
+      );
+    }
+
+    // 1. Verificar duplicidade de e-mail e telefone
     const { data: existingEmail } = await supabaseAdmin
       .from('usuarios')
       .select('email, telefone')
@@ -42,16 +69,13 @@ export async function POST(req: Request) {
     // 2. Gerar código OTP de 6 dígitos
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // 3. Salvar no Redis (validade de 10 minutos)
-    const redisUrl = process.env.REDIS_URL;
-    
-    if (redisUrl) {
-      const redis = new Redis(redisUrl);
+    // 3. Salvar no Redis (validade de 10 minutos) — usa client singleton
+    const redis = getOtpRedis();
+    if (redis) {
       await redis.set(`otp:${emailTrimmed}`, otp, 'EX', 600);
-      redis.disconnect();
     } else {
-      console.warn('REDIS_URL indisponível, simulando OTP...');
-      // Apenas fallback
+      console.warn('REDIS_URL indisponível, OTP não salvo.');
+      return NextResponse.json({ error: 'Serviço temporariamente indisponível' }, { status: 503 });
     }
 
     // 4. Enviar e-mail via Brevo

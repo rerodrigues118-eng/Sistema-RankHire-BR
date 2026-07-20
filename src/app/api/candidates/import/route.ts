@@ -12,13 +12,29 @@ export async function POST(req: Request) {
       candidateName?: string;
     };
 
-    // admin-client: justificado — import em lote pode requerer privilégios administrativos
     const admin = createSupabaseAdminClient();
-    // admin-client: justified — importing candidates writes to pdf_candidates with elevated permissions
     const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
 
     if (!usuario?.empresa_id) {
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
+    }
+
+    // ── Valida ownership da vaga se fornecida ────────────────────────
+    let vagaIdValido: string | null = null;
+    if (body.vagaId) {
+      const { data: vaga } = await admin
+        .from("vagas")
+        .select("id, empresa_id")
+        .eq("id", body.vagaId)
+        .single();
+
+      if (!vaga || vaga.empresa_id !== usuario.empresa_id) {
+        return NextResponse.json(
+          { error: "Vaga não encontrada ou não pertence à sua empresa" },
+          { status: 403 }
+        );
+      }
+      vagaIdValido = vaga.id;
     }
 
     // If a candidate with same linkedin URL and company already exists, return it instead of inserting duplicate
@@ -37,7 +53,7 @@ export async function POST(req: Request) {
 
     const insert = {
       empresa_id: usuario.empresa_id,
-      vaga_id: body.vagaId || null,
+      vaga_id: vagaIdValido,
       nome_candidato: body.candidateName || "Candidato importado",
       cargo_atual: null,
       empresa_atual: null,

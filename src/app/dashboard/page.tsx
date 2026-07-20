@@ -31,6 +31,18 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+
+  // ── Refs para cleanup de timers (memory leak prevention) ─────────
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup ao desmontar o componente
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
+    };
+  }, []);
   const [quota, setQuota] = useState<{
     isAdmin: boolean;
     used: number;
@@ -481,6 +493,8 @@ export default function Home() {
           pollAttempts++;
           if (pendingPaths.size === 0 || pollAttempts >= maxPollAttempts) {
             clearInterval(pollTimer);
+            pollTimerRef.current = null;
+            if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null; }
             supabase.removeChannel(channel);
             setIsUploading(false);
             return;
@@ -490,6 +504,8 @@ export default function Home() {
             // Para o polling imediatamente se der 404 (batch nao existe)
             if (batchRes.status === 404) {
               clearInterval(pollTimer);
+              pollTimerRef.current = null;
+              if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null; }
               supabase.removeChannel(channel);
               setIsUploading(false);
               return;
@@ -514,6 +530,8 @@ export default function Home() {
             }
             if (batchPoll.status === "completed" || pendingPaths.size === 0) {
               clearInterval(pollTimer);
+              pollTimerRef.current = null;
+              if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null; }
               supabase.removeChannel(channel);
               setIsUploading(false);
             }
@@ -522,9 +540,11 @@ export default function Home() {
           }
         }, 3000);
 
+        pollTimerRef.current = pollTimer;
+
         // Cleanup timer e canal apos 1 minuto no maximo
-        setTimeout(() => {
-          clearInterval(pollTimer);
+        safetyTimeoutRef.current = setTimeout(() => {
+          if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
           supabase.removeChannel(channel);
           setIsUploading(false);
         }, 60_000);

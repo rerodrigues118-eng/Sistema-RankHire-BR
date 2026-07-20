@@ -121,30 +121,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     }
 
-    // Insert or update criteria
-    for (const crit of body.criteria) {
-      if (!crit.nome.trim()) continue;
-      const peso = Math.max(1, Math.min(5, crit.peso));
+    // Insert or update criteria — parallel via Promise.all
+    const ops = body.criteria
+      .filter((crit) => crit.nome.trim())
+      .map(async (crit) => {
+        const peso = Math.max(1, Math.min(5, crit.peso));
+        if (crit.id) {
+          return _supabase
+            .from("criteria")
+            .update({ nome: crit.nome.trim(), peso })
+            .eq("id", crit.id)
+            .eq("vaga_id", vagaId);
+        } else {
+          return _supabase
+            .from("criteria")
+            .insert({
+              vaga_id: vagaId,
+              nome: crit.nome.trim(),
+              peso,
+              gerado_por_ia: false,
+            });
+        }
+      });
 
-      if (crit.id) {
-        // Update
-        await _supabase
-          .from("criteria")
-          .update({ nome: crit.nome.trim(), peso })
-          .eq("id", crit.id)
-          .eq("vaga_id", vagaId);
-      } else {
-        // Insert
-        await _supabase
-          .from("criteria")
-          .insert({
-            vaga_id: vagaId,
-            nome: crit.nome.trim(),
-            peso,
-            gerado_por_ia: false,
-          });
-      }
-    }
+    await Promise.all(ops);
 
     // Fetch updated criteria to return
     const { data: rawUpdated } = await _supabase

@@ -2,6 +2,7 @@ import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type LabelInput = {
   id?: string;
@@ -12,7 +13,7 @@ type LabelInput = {
 
 const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
-async function getEmpresaId(userId: string, supabase: any) {
+async function getEmpresaId(userId: string, supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("usuarios")
     .select("empresa_id")

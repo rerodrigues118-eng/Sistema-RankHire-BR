@@ -3,12 +3,24 @@ import { callAI } from "../lib/ai-client";
 import { getRedisConnection } from "../lib/queue";
 import { buildScoringPrompt } from "../lib/scoring-prompt";
 import { createClient } from "@supabase/supabase-js";
-import { Job, Worker } from "bullmq";
+import { Job, Worker, type WorkerOptions, type ConnectionOptions } from "bullmq";
 import 'dotenv/config';
 
+// ── Early-exit guards ──────────────────────────────────────────────────
+if (!process.env.REDIS_URL) {
+  console.warn("[LinkedIn-Worker] REDIS_URL não configurado — worker desativado.");
+  process.exit(0);
+}
+
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  console.error("[LinkedIn-Worker] Supabase credentials ausentes — worker NÃO pode iniciar.");
+  process.exit(1);
+}
+
 const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
 type ScoringResult = {
@@ -85,50 +97,86 @@ async function processLinkedinJob(job: Job) {
     candidateName?: string;
   };
 
-  const profileData = await fetchLinkedinProfile(linkedinUrl, candidateName);
-  const profileDataString = JSON.stringify(profileData);
+  const jobStart = Date.now();
+  console.info(`[LinkedIn-Worker] start job ${job.id}`, { linkedinUrl, vagaId });
 
-  await supabaseAdmin.from("profiles_cache").upsert({
-    linkedin_url: linkedinUrl,
-    dados: profileData,
-    expires_at: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
-  });
+  try {
+    const profileData = await fetchLinkedinProfile(linkedinUrl, candidateName);
+    const profileDataString = JSON.stringify(profileData);
 
-  const { data: vaga } = await supabaseAdmin
-    .from("vagas")
-    .select("empresa_id")
-    .eq("id", vagaId)
-    .single();
+    await supabaseAdmin.from("profiles_cache").upsert({
+      linkedin_url: linkedinUrl,
+      dados: profileData,
+      expires_at: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
+    });
 
-  const { data: criteriaData } = await supabaseAdmin
-    .from("criteria")
-    .select("id,nome,peso")
-    .eq("vaga_id", vagaId);
+    const { data: vaga } = await supabaseAdmin
+      .from("vagas")
+      .select("empresa_id")
+      .eq("id", vagaId)
+      .single();
 
-  const formattedCriteria = (criteriaData || []).map((criteria) => ({
-    id: criteria.id,
-    name: criteria.nome,
-    weight: criteria.peso,
-  }));
+    const { data: criteriaData } = await supabaseAdmin
+      .from("criteria")
+      .select("id,nome,peso")
+      .eq("vaga_id", vagaId);
 
-  const prompt = buildScoringPrompt(profileDataString, formattedCriteria);
-  const jsonString = await callAI(prompt);
-  const cleanJsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-  const result = JSON.parse(cleanJsonString) as ScoringResult;
+    const formattedCriteria = (criteriaData || []).map((criteria) => ({
+      id: criteria.id,
+      name: criteria.nome,
+      weight: criteria.peso,
+    }));
 
-  await supabaseAdmin.from("pipeline_entries").upsert({
-    vaga_id: vagaId,
-    empresa_id: vaga?.empresa_id ?? null,
-    status: "triado",
-    notas: `LinkedIn: ${linkedinUrl}\nScore: ${result.score_final}`,
-  });
+    const prompt = buildScoringPrompt(profileDataString, formattedCriteria);
+    const jsonString = await callAI(prompt);
+    const cleanJsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
 
-  return { success: true, score: result.score_final };
+    let result: ScoringResult;
+    try {
+      result = JSON.parse(cleanJsonString) as ScoringResult;
+    } catch {
+      throw new Error("AI retornou JSON inválido");
+    }
+
+    if (typeof result.score_final !== "number") {
+      throw new Error("AI não retornou score_final");
+    }
+
+    await supabaseAdmin.from("pipeline_entries").upsert({
+      vaga_id: vagaId,
+      empresa_id: vaga?.empresa_id ?? null,
+      status: "triado",
+      notas: `LinkedIn: ${linkedinUrl}\nScore: ${result.score_final}`,
+    });
+
+    const duration = ((Date.now() - jobStart) / 1000).toFixed(1);
+    console.info(`[LinkedIn-Worker] ✅ ${linkedinUrl} | score: ${result.score_final} | ${duration}s`);
+
+    return { success: true, score: result.score_final };
+  } catch (error) {
+    console.error(`[LinkedIn-Worker] ❌ ${job.id}:`, error instanceof Error ? error.message : error);
+    throw error; // re-throw para BullMQ gerenciar retries
+  }
 }
 
-const linkedinConn = getRedisConnection();
-if (linkedinConn) {
-  new Worker("linkedin-enrichment", processLinkedinJob, {
-    connection: linkedinConn as any,
+const conn = getRedisConnection();
+if (conn) {
+  const workerOptions: WorkerOptions = {
+    connection: conn as ConnectionOptions,
+    concurrency: 3,
+    removeOnComplete: { count: 200 },
+    removeOnFail: { count: 200 },
+  };
+
+  const worker = new Worker("linkedin-enrichment", processLinkedinJob, workerOptions);
+
+  worker.on("completed", (job) => {
+    console.log(`[LinkedIn-Worker] Job ${job.id} concluído`);
   });
+
+  worker.on("failed", (job, err) => {
+    console.error(`[LinkedIn-Worker] Job ${job?.id} falhou:`, err.message);
+  });
+} else {
+  console.warn("[LinkedIn-Worker] Redis não disponível — worker não iniciado.");
 }

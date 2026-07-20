@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import "dotenv/config";
 
 import { fetchWithTimeout } from "../lib/api";
 import { callAI } from "../lib/ai-client";
@@ -7,26 +7,26 @@ import { buildScoringPrompt } from "../lib/scoring-prompt";
 import { createClient } from "@supabase/supabase-js";
 import { Job, Worker, type WorkerOptions, type ConnectionOptions } from "bullmq";
 
-import pdfParse from 'pdf-parse';
+import pdfParse from "pdf-parse";
 
 // ── Early-exit guards para variáveis de ambiente ausentes ──────────────
 if (!process.env.REDIS_URL) {
-  console.warn('[Worker] REDIS_URL não configurado — worker desativado.');
+  console.warn("[Worker] REDIS_URL não configurado — worker desativado.");
   process.exit(0);
 }
 
 if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('[Worker] SUPABASE_SERVICE_ROLE_KEY ausente — worker NÃO pode iniciar.');
+  console.error("[Worker] SUPABASE_SERVICE_ROLE_KEY ausente — worker NÃO pode iniciar.");
   process.exit(1);
 }
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  console.error('[Worker] NEXT_PUBLIC_SUPABASE_URL ausente — worker NÃO pode iniciar.');
+  console.error("[Worker] NEXT_PUBLIC_SUPABASE_URL ausente — worker NÃO pode iniciar.");
   process.exit(1);
 }
 
 if (!process.env.GROQ_API_KEY) {
-  console.warn('[Worker] GROQ_API_KEY não configurado — scoring por IA desativado, score padrão 3.0 será usado.');
+  console.warn("[Worker] GROQ_API_KEY não configurado — scoring por IA desativado, score padrão 3.0 será usado.");
 }
 
 const supabaseAdmin = createClient(
@@ -59,7 +59,7 @@ function sanitizeText(raw: string): string {
   return raw
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
     .replace(/\s{3,}/g, "\n\n")
-    .slice(0, 6000)
+    .slice(0, 12000) // aumentado de 6000 para 12000 para CVs longos
     .trim();
 }
 
@@ -81,19 +81,18 @@ async function downloadPdf(storagePath: string): Promise<Buffer> {
 }
 
 async function incrementarCreditosPdf(empresaId: string): Promise<void> {
-  const { error } = await supabaseAdmin.rpc('incrementar_creditos_pdf', {
+  const { error } = await supabaseAdmin.rpc("incrementar_creditos_pdf", {
     p_empresa_id: empresaId,
   });
   if (error) {
-    // Não bloqueia o fluxo principal, apenas loga o aviso
     console.warn(`[Worker] Falha ao incrementar créditos para empresa ${empresaId}:`, error.message);
   }
 }
 
 const processor = async (job: Job) => {
   const rawData = job.data as Record<string, unknown>;
-  const candidateId = rawData.candidateId as string || rawData.candidate_id as string;
-  const storagePath = rawData.storagePath as string || rawData.storage_path as string;
+  const candidateId = (rawData.candidateId as string) || (rawData.candidate_id as string);
+  const storagePath = (rawData.storagePath as string) || (rawData.storage_path as string);
   const vagaId = (rawData.vagaId as string) || (rawData.vaga_id as string) || (rawData.vaga as string);
   const batchId = (rawData.batchId as string) || (rawData.batch_id as string);
 
@@ -103,7 +102,7 @@ const processor = async (job: Job) => {
   // ── PASSO 1: Marca como processando ─────────────────────────────────
   await supabaseAdmin
     .from("pdf_candidates")
-    .update({ status: 'processando' })
+    .update({ status: "processando" })
     .eq("id", candidateId);
 
   try {
@@ -115,6 +114,10 @@ const processor = async (job: Job) => {
 
     // ── PASSO 4: Sanitização do texto ────────────────────────────────
     const cvText = sanitizeText(pdfData.text);
+
+    if (!cvText || cvText.length < 50) {
+      throw new Error("PDF sem texto suficiente (pode ser imagem escaneada)");
+    }
 
     // ── PASSO 5: Busca critérios da vaga ────────────────────────────
     const { data: criteriaData, error: critError } = await supabaseAdmin
@@ -150,7 +153,7 @@ const processor = async (job: Job) => {
       throw new Error("Formato JSON retornado pela IA e invalido.");
     }
 
-    // ── PASSO 8: Normaliza scores ────────────────────────────────────
+    // ── PASSO 8: Normaliza scores (sempre 1.0 a 5.0) ────────────────
     const safeScoreFinal = Math.max(1.0, Math.min(5.0, Number(result.score_final)));
     const safeCriterios = result.criterios.map((criteria) => ({
       ...criteria,
@@ -163,7 +166,7 @@ const processor = async (job: Job) => {
       parsed_text: cvText,
       score_final: safeScoreFinal,
       nome_candidato: candidatoNome,
-      status: 'concluido',
+      status: "concluido",
     };
 
     if (result.email) candidateUpdate.email_contato = result.email;
@@ -198,37 +201,33 @@ const processor = async (job: Job) => {
     if (evaluationsToInsert.length > 0) {
       await supabaseAdmin
         .from("candidate_evaluations")
-        .upsert(evaluationsToInsert, { onConflict: 'candidate_id,criteria_id' });
+        .upsert(evaluationsToInsert, { onConflict: "candidate_id,criteria_id" });
     }
 
-    // ── PASSO 11: Incrementar progresso do batch ─────────────────────
-    const { data: batch } = await supabaseAdmin
-      .from("pdf_batches")
-      .select("processed_files,total_files,empresa_id")
-      .eq("id", batchId)
+    // ── PASSO 11: Incrementar progresso do batch via RPC ─────────────
+    if (batchId) {
+      await supabaseAdmin.rpc("incrementar_batch_processado", {
+        p_candidate_id: candidateId,
+      });
+    }
+
+    // ── PASSO 12: Incrementar créditos da empresa ────────────────────
+    const { data: candidateRecord } = await supabaseAdmin
+      .from("pdf_candidates")
+      .select("empresa_id")
+      .eq("id", candidateId)
       .single();
 
-    if (batch) {
-      const newProcessed = (batch.processed_files || 0) + 1;
-      await supabaseAdmin
-        .from("pdf_batches")
-        .update({
-          processed_files: newProcessed,
-          status: newProcessed >= batch.total_files ? "completed" : "processing",
-        })
-        .eq("id", batchId);
-
-      // ── PASSO 12: Incrementar créditos da empresa ────────────────
-      if (batch.empresa_id) {
-        await incrementarCreditosPdf(batch.empresa_id);
-      }
+    if (candidateRecord?.empresa_id) {
+      await incrementarCreditosPdf(candidateRecord.empresa_id);
     }
 
-    console.info(`[Worker] job completed ${job.id}`, { candidateId, durationMs: Date.now() - jobStart, score: safeScoreFinal });
+    const duration = ((Date.now() - jobStart) / 1000).toFixed(1);
+    console.info(`[Worker] ✅ ${candidateId} | score: ${safeScoreFinal} | ${duration}s`);
     return { success: true, score: safeScoreFinal };
   } catch (error) {
     // ── PASSO 13: Em qualquer erro → UPDATE status='erro' ───────────
-    console.error(`[Worker] Failed job ${job.id} for ${candidateId}:`, error);
+    console.error(`[Worker] ❌ ${candidateId}:`, error instanceof Error ? error.message : error);
     await supabaseAdmin
       .from("pdf_candidates")
       .update({ status: "erro" })
@@ -237,19 +236,31 @@ const processor = async (job: Job) => {
   }
 };
 
-// ── Inicializa o worker com concurrency=5, retries=3, backoff exponencial ──
+// ── Inicializa o worker com concurrency=10, limiter 50/min, retries=3 ──
 const conn = getRedisConnection();
 if (conn) {
-  const concurrency = Number(process.env.PDF_WORKER_CONCURRENCY || '5');
-  console.info(`[Worker] starting pdf-processing worker concurrency=${concurrency}`);
+  const concurrency = Number(process.env.PDF_WORKER_CONCURRENCY || "10");
+  console.info(`[Worker] 🚀 starting pdf-processing worker concurrency=${concurrency} | meta: 30+ CVs/min`);
   const workerOptions: WorkerOptions = {
     connection: conn as ConnectionOptions,
     concurrency,
-    removeOnComplete: { count: 100 },
-    removeOnFail: { count: 200 },
+    limiter: {
+      max: 50,
+      duration: 60_000,
+    },
+    removeOnComplete: { count: 500 },
+    removeOnFail: { count: 500 },
   };
 
-  new Worker("pdf-processing", processor, workerOptions);
+  const worker = new Worker("pdf-processing", processor, workerOptions);
+
+  worker.on("completed", (job) => {
+    console.log(`[Worker] Job ${job.id} concluído`);
+  });
+
+  worker.on("failed", (job, err) => {
+    console.error(`[Worker] Job ${job?.id} falhou:`, err.message);
+  });
 } else {
-  console.warn('[Worker] Redis não disponível — worker não iniciado.');
+  console.warn("[Worker] Redis não disponível — worker não iniciado.");
 }
