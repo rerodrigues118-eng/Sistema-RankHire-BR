@@ -66,6 +66,12 @@ async function processCandidate(
   try {
     const cvText = await downloadAndParsePdf(storagePath, admin);
 
+    if (!cvText || cvText.length < 20) {
+      logger.warn("[processCandidate] PDF text too short or empty", { candidateId, textLength: cvText?.length ?? 0 });
+      await admin.from("pdf_candidates").update({ status: "erro", parsed_text: cvText || "" }).eq("id", candidateId);
+      return { id: candidateId, status: "erro", file_url: storagePath, error: "PDF vazio ou ilegível" };
+    }
+
     const { data: criteriaData, error: critError } = await admin
       .from("criteria")
       .select("id,nome,peso,description,weight")
@@ -84,66 +90,92 @@ async function processCandidate(
     const extraFields: Record<string, unknown> = {};
     let criteriosForSave: { nome: string; nota: number; justificativa?: string }[] = [];
 
-    if (!critError && formattedCriteria.length > 0) {
-      // ── AI scoring WITH criteria ────────────────────────────────────
-      const prompt = buildScoringPrompt(cvText, formattedCriteria);
-      const jsonString = await callAI(prompt);
-      const cleanJson = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-      const result = JSON.parse(cleanJson);
-
-      if (typeof result.score_final === "number" && Array.isArray(result.criterios)) {
-        scoreFinal = Math.max(1.0, Math.min(5.0, Number(result.score_final)));
-        criteriosForSave = result.criterios.map(
-          (c: { nome: string; nota: number; justificativa?: string }) => ({
-            ...c,
-            nota: Math.max(1.0, Math.min(5.0, Number(c.nota))),
-          })
-        );
-        candidatoNome = result.nome || "Candidato sem nome";
-        if (result.email) extraFields.email_contato = result.email;
-        if (result.telefone) extraFields.telefone = result.telefone;
-        if (result.linkedin) extraFields.linkedin_url = result.linkedin;
-        if (result.cidade) extraFields.cidade = result.cidade;
-        if (result.cargo_atual) extraFields.cargo_atual = result.cargo_atual;
-        if (result.empresa_atual) extraFields.empresa_atual = result.empresa_atual;
-        if (result.pretensao_salarial) extraFields.pretensao_salarial = result.pretensao_salarial;
-        if (result.disponibilidade) extraFields.disponibilidade = result.disponibilidade;
-        if (result.regime_preferido) extraFields.regime_preferido = result.regime_preferido;
-        if (result.resumo) extraFields.resumo_ia = result.resumo;
-      }
-    } else {
-      // ── No criteria: still call AI to extract candidate info ─────────
-      try {
-        const extractPrompt = `Analise o currículo abaixo e extraia as informações do candidato. Retorne SOMENTE JSON válido (sem markdown).
+    // Build prompt based on whether criteria exist
+    const hasCriteria = !critError && formattedCriteria.length > 0;
+    const prompt = hasCriteria
+      ? buildScoringPrompt(cvText, formattedCriteria)
+      : `Analise o currículo abaixo e extraia as informações do candidato. Retorne SOMENTE JSON válido (sem markdown, sem texto extra).
 
 CURRÍCULO:
-${cvText}
+${cvText.slice(0, 4000)}
 
-JSON de saída:
-{"nome":"...","email":null,"telefone":null,"linkedin":null,"cidade":null,"cargo_atual":null,"empresa_atual":null,"pretensao_salarial":null,"disponibilidade":"A combinar","regime_preferido":null,"resumo":"Resumo breve do perfil do candidato"}`;
+Retorne EXATAMENTE este JSON (preencha com null se não encontrar):
+{"nome":"nome completo","email":null,"telefone":null,"linkedin":null,"cidade":null,"cargo_atual":null,"empresa_atual":null,"pretensao_salarial":null,"disponibilidade":"A combinar","regime_preferido":null,"resumo":"resumo breve do perfil"}`;
 
-        const jsonString = await callAI(extractPrompt);
-        const cleanJson = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-        const result = JSON.parse(cleanJson);
+    // Call AI with robust error handling
+    let aiResult: Record<string, unknown> | null = null;
+    try {
+      const jsonString = await callAI(prompt);
+      logger.info("[processCandidate] AI raw response", { candidateId, responseLength: jsonString.length, preview: jsonString.slice(0, 200) });
+      
+      // Clean and parse JSON
+      let cleaned = jsonString.trim();
+      // Remove markdown code blocks if present
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/g, "").trim();
+      // Extract JSON object if wrapped in extra text
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (jsonMatch) cleaned = jsonMatch[0];
+      
+      aiResult = JSON.parse(cleaned);
+    } catch (aiErr) {
+      logger.error("[processCandidate] AI call/parse failed", {
+        candidateId,
+        error: aiErr instanceof Error ? aiErr.message : String(aiErr),
+      });
+      // Fallback: try to extract basic info from PDF text with regex
+      aiResult = extractWithRegex(cvText);
+    }
 
-        candidatoNome = result.nome || "Candidato sem nome";
-        if (result.email) extraFields.email_contato = result.email;
-        if (result.telefone) extraFields.telefone = result.telefone;
-        if (result.linkedin) extraFields.linkedin_url = result.linkedin;
-        if (result.cidade) extraFields.cidade = result.cidade;
-        if (result.cargo_atual) extraFields.cargo_atual = result.cargo_atual;
-        if (result.empresa_atual) extraFields.empresa_atual = result.empresa_atual;
-        if (result.pretensao_salarial) extraFields.pretensao_salarial = result.pretensao_salarial;
-        if (result.disponibilidade) extraFields.disponibilidade = result.disponibilidade;
-        if (result.regime_preferido) extraFields.regime_preferido = result.regime_preferido;
-        if (result.resumo) extraFields.resumo_ia = result.resumo;
-      } catch (extractErr) {
-        logger.warn("[processCandidate] Falha na extração sem critérios", {
-          error: extractErr instanceof Error ? extractErr.message : "unknown",
-        });
+    // Process AI result with flexible type handling
+    if (aiResult) {
+      // Extract name (flexible: accept any string field)
+      candidatoNome = String(aiResult.nome || aiResult.name || aiResult.nome_completo || "Candidato sem nome");
+      
+      // Extract score (flexible: accept string or number)
+      if (hasCriteria) {
+        const rawScore = aiResult.score_final ?? aiResult.score ?? aiResult.nota_final;
+        if (rawScore !== null && rawScore !== undefined) {
+          const parsed = Number(rawScore);
+          if (!isNaN(parsed)) {
+            scoreFinal = Math.max(1.0, Math.min(5.0, parsed));
+          }
+        }
+
+        // Extract criteria scores
+        const rawCriterios = aiResult.criterios || aiResult.criteria || [];
+        if (Array.isArray(rawCriterios)) {
+          criteriosForSave = rawCriterios
+            .map((c: Record<string, unknown>) => ({
+              nome: String(c.nome || c.name || c.criterio || ""),
+              nota: Math.max(1.0, Math.min(5.0, Number(c.nota || c.score || c.note || 3))),
+              justificativa: String(c.justificativa || c.justification || c.observacao || ""),
+            }))
+            .filter((c: { nome: string }) => c.nome);
+        }
+      }
+
+      // Extract extra fields
+      const fieldMap: [string, string][] = [
+        ["email", "email_contato"],
+        ["telefone", "telefone"],
+        ["linkedin", "linkedin_url"],
+        ["cidade", "cidade"],
+        ["cargo_atual", "cargo_atual"],
+        ["empresa_atual", "empresa_atual"],
+        ["pretensao_salarial", "pretensao_salarial"],
+        ["disponibilidade", "disponibilidade"],
+        ["regime_preferido", "regime_preferido"],
+        ["resumo", "resumo_ia"],
+      ];
+      for (const [srcKey, destKey] of fieldMap) {
+        const val = aiResult[srcKey];
+        if (val !== null && val !== undefined && String(val).trim() !== "") {
+          extraFields[destKey] = String(val);
+        }
       }
     }
 
+    // Save to database
     await admin
       .from("pdf_candidates")
       .update({
@@ -173,8 +205,8 @@ JSON de saída:
       }
     }
 
-    // Increment batch progress
-    await admin.rpc("incrementar_batch_processado", { p_candidate_id: candidateId });
+    // Increment batch progress (ignore errors)
+    try { await admin.rpc("incrementar_batch_processado", { p_candidate_id: candidateId }); } catch { /* ignore */ }
 
     // Increment company credits
     const { data: cand } = await admin
@@ -183,13 +215,15 @@ JSON de saída:
       .eq("id", candidateId)
       .single();
     if (cand?.empresa_id) {
-      await admin.rpc("incrementar_creditos_pdf", { p_empresa_id: cand.empresa_id });
+      try { await admin.rpc("incrementar_creditos_pdf", { p_empresa_id: cand.empresa_id }); } catch { /* ignore */ }
     }
 
     logger.info("processCandidate completed", {
       candidateId,
       durationMs: Date.now() - procStart,
       scoreFinal,
+      nome: candidatoNome,
+      fieldsExtracted: Object.keys(extraFields).length,
     });
     return {
       id: candidateId,
@@ -201,9 +235,43 @@ JSON de saída:
     };
   } catch (err) {
     console.error(`[upload-batch] Erro ao processar candidato ${candidateId}:`, err);
-    await admin.from("pdf_candidates").update({ status: "erro" }).eq("id", candidateId);
+    try { await admin.from("pdf_candidates").update({ status: "erro" }).eq("id", candidateId); } catch { /* ignore */ }
     return { id: candidateId, status: "erro", file_url: storagePath };
   }
+}
+
+/**
+ * Fallback extraction using regex when AI fails completely.
+ */
+function extractWithRegex(text: string): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  
+  // Try to extract email
+  const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
+  if (emailMatch) result.email = emailMatch[0];
+  
+  // Try to extract phone
+  const phoneMatch = text.match(/(?:\+?\d{1,3}[\s-]?)?\(?\d{2,3}\)?[\s-]?\d{4,5}[\s-]?\d{4}/);
+  if (phoneMatch) result.telefone = phoneMatch[0];
+  
+  // Try to extract LinkedIn
+  const linkedinMatch = text.match(/linkedin\.com\/in\/[\w-]+/i);
+  if (linkedinMatch) result.linkedin = `https://${linkedinMatch[0]}`;
+  
+  // Try to extract name (first line or "Nome:" pattern)
+  const nomeMatch = text.match(/(?:nome|name)[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/i);
+  if (nomeMatch) {
+    result.nome = nomeMatch[1].trim();
+  } else {
+    // Use first capitalized words as name
+    const firstLine = text.split("\n").find((l) => l.trim().length > 3 && l.trim().length < 80);
+    if (firstLine) result.nome = firstLine.trim().slice(0, 60);
+  }
+  
+  result.resumo = text.slice(0, 300).replace(/\n/g, " ").trim();
+  result.disponibilidade = "A combinar";
+  
+  return result;
 }
 
 export async function POST(req: Request) {

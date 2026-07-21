@@ -141,64 +141,73 @@ const processor = async (job: Job) => {
     let safeCriterios: { nome: string; nota: number; justificativa?: string }[] = [];
     const extraFields: Record<string, string | null> = {};
 
-    if (hasCriteria) {
-      // ── PASSO 6a: Chama IA COM critérios para scoring ────────────────
-      const prompt = buildScoringPrompt(cvText, formattedCriteria);
-      const aiStart = Date.now();
-      const jsonString = await callAI(prompt);
-      const aiDuration = Date.now() - aiStart;
-      console.info(`[Worker] AI call duration ms: ${aiDuration}`, { jobId: job.id, candidateId });
-
-      const cleanJsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-      const result = JSON.parse(cleanJsonString) as ScoringResult;
-
-      if (typeof result.score_final === "number" && Array.isArray(result.criterios)) {
-        safeScoreFinal = Math.max(1.0, Math.min(5.0, Number(result.score_final)));
-        safeCriterios = result.criterios.map((criteria) => ({
-          ...criteria,
-          nota: Math.max(1.0, Math.min(5.0, Number(criteria.nota))),
-        }));
-        candidatoNome = result.nome || "Candidato sem nome";
-        if (result.email) extraFields.email_contato = result.email;
-        if (result.telefone) extraFields.telefone = result.telefone;
-        if (result.linkedin) extraFields.linkedin_url = result.linkedin;
-        if (result.cidade) extraFields.cidade = result.cidade;
-        if (result.cargo_atual) extraFields.cargo_atual = result.cargo_atual;
-        if (result.empresa_atual) extraFields.empresa_atual = result.empresa_atual;
-        if (result.pretensao_salarial) extraFields.pretensao_salarial = result.pretensao_salarial;
-        if (result.disponibilidade) extraFields.disponibilidade = result.disponibilidade;
-        if (result.regime_preferido) extraFields.regime_preferido = result.regime_preferido;
-        if (result.resumo) extraFields.resumo_ia = result.resumo;
-      }
-    } else {
-      // ── PASSO 6b: Sem critérios — extrai apenas dados do candidato ───
-      console.info(`[Worker] Sem critérios para vaga ${vagaId}, extraindo dados do candidato...`);
-      try {
-        const extractPrompt = `Analise o currículo abaixo e extraia as informações do candidato. Retorne SOMENTE JSON válido (sem markdown).
+    // Build unified prompt
+    const prompt = hasCriteria
+      ? buildScoringPrompt(cvText, formattedCriteria)
+      : `Analise o currículo abaixo e extraia as informações do candidato. Retorne SOMENTE JSON válido (sem markdown, sem texto extra).
 
 CURRÍCULO:
-${cvText}
+${cvText.slice(0, 4000)}
 
-JSON de saída:
-{"nome":"...","email":null,"telefone":null,"linkedin":null,"cidade":null,"cargo_atual":null,"empresa_atual":null,"pretensao_salarial":null,"disponibilidade":"A combinar","regime_preferido":null,"resumo":"Resumo breve do perfil do candidato"}`;
+Retorne EXATAMENTE este JSON (preencha com null se não encontrar):
+{"nome":"nome completo","email":null,"telefone":null,"linkedin":null,"cidade":null,"cargo_atual":null,"empresa_atual":null,"pretensao_salarial":null,"disponibilidade":"A combinar","regime_preferido":null,"resumo":"resumo breve do perfil"}`;
 
-        const jsonString = await callAI(extractPrompt);
-        const cleanJson = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-        const result = JSON.parse(cleanJson);
+    // Call AI with robust parsing
+    let aiResult: Record<string, unknown> | null = null;
+    try {
+      const aiStart = Date.now();
+      const jsonString = await callAI(prompt);
+      console.info(`[Worker] AI call duration ms: ${Date.now() - aiStart}`, { jobId: job.id, candidateId });
 
-        candidatoNome = result.nome || "Candidato sem nome";
-        if (result.email) extraFields.email_contato = result.email;
-        if (result.telefone) extraFields.telefone = result.telefone;
-        if (result.linkedin) extraFields.linkedin_url = result.linkedin;
-        if (result.cidade) extraFields.cidade = result.cidade;
-        if (result.cargo_atual) extraFields.cargo_atual = result.cargo_atual;
-        if (result.empresa_atual) extraFields.empresa_atual = result.empresa_atual;
-        if (result.pretensao_salarial) extraFields.pretensao_salarial = result.pretensao_salarial;
-        if (result.disponibilidade) extraFields.disponibilidade = result.disponibilidade;
-        if (result.regime_preferido) extraFields.regime_preferido = result.regime_preferido;
-        if (result.resumo) extraFields.resumo_ia = result.resumo;
-      } catch (extractErr) {
-        console.warn(`[Worker] Falha na extração sem critérios:`, extractErr instanceof Error ? extractErr.message : extractErr);
+      let cleaned = jsonString.trim();
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/g, "").trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (jsonMatch) cleaned = jsonMatch[0];
+      aiResult = JSON.parse(cleaned);
+    } catch (aiErr) {
+      console.warn(`[Worker] AI call/parse failed:`, aiErr instanceof Error ? aiErr.message : String(aiErr));
+      // Regex fallback
+      aiResult = {
+        email: cvText.match(/[\w.-]+@[\w.-]+\.\w+/)?.[0] || null,
+        telefone: cvText.match(/(?:\+?\d{1,3}[\s-]?)?\(?\d{2,3}\)?[\s-]?\d{4,5}[\s-]?\d{4}/)?.[0] || null,
+        linkedin: cvText.match(/linkedin\.com\/in\/[\w-]+/i)?.[0] ? `https://${cvText.match(/linkedin\.com\/in\/[\w-]+/i)![0]}` : null,
+        resumo: cvText.slice(0, 300).replace(/\n/g, " ").trim(),
+        disponibilidade: "A combinar",
+      };
+      const firstLine = cvText.split("\n").find((l) => l.trim().length > 3 && l.trim().length < 80);
+      if (firstLine) aiResult.nome = firstLine.trim().slice(0, 60);
+    }
+
+    if (aiResult) {
+      candidatoNome = String(aiResult.nome || aiResult.name || "Candidato sem nome");
+
+      if (hasCriteria) {
+        const rawScore = aiResult.score_final ?? aiResult.score ?? aiResult.nota_final;
+        if (rawScore != null) {
+          const parsed = Number(rawScore);
+          if (!isNaN(parsed)) safeScoreFinal = Math.max(1.0, Math.min(5.0, parsed));
+        }
+        const rawCriterios = aiResult.criterios || aiResult.criteria || [];
+        if (Array.isArray(rawCriterios)) {
+          safeCriterios = rawCriterios
+            .map((c: Record<string, unknown>) => ({
+              nome: String(c.nome || c.name || ""),
+              nota: Math.max(1.0, Math.min(5.0, Number(c.nota || c.score || 3))),
+              justificativa: String(c.justificativa || c.justification || ""),
+            }))
+            .filter((c: { nome: string }) => c.nome);
+        }
+      }
+
+      const fieldMap: [string, string][] = [
+        ["email", "email_contato"], ["telefone", "telefone"], ["linkedin", "linkedin_url"],
+        ["cidade", "cidade"], ["cargo_atual", "cargo_atual"], ["empresa_atual", "empresa_atual"],
+        ["pretensao_salarial", "pretensao_salarial"], ["disponibilidade", "disponibilidade"],
+        ["regime_preferido", "regime_preferido"], ["resumo", "resumo_ia"],
+      ];
+      for (const [src, dest] of fieldMap) {
+        const val = aiResult[src];
+        if (val != null && String(val).trim()) extraFields[dest] = String(val);
       }
     }
 
