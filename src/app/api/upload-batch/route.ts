@@ -1,6 +1,7 @@
 import { handleApiError, fetchWithTimeout } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/admin";
 import { logger } from "@/lib/logger";
 import { getPlanAccessState } from "@/lib/planos";
@@ -418,27 +419,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Erro na insercao de dados" }, { status: 500 });
     }
 
-    // ── Process candidates inline in parallel batches of 5 ──────────
-    // On serverless (Vercel), no background worker exists — process inline.
-    // Parallel batches of 5 balance speed vs API rate limits.
-    const CONCURRENCY = 5;
-    const processedCandidates: Array<Record<string, unknown>> = [];
+    // ── Process in background AFTER response is sent ──────────────────
+    // Uses Next.js after() to return instantly while processing continues
+    const candidatesToProcess = [...candidatesData];
+    const vagaIdForBg = vaga_id;
+    const batchIdForBg = batchId;
 
-    for (let i = 0; i < candidatesData.length; i += CONCURRENCY) {
-      const batch = candidatesData.slice(i, i + CONCURRENCY);
-      const results = await Promise.all(
-        batch.map((cand) =>
-          processCandidate(cand.id, cand.file_url, vaga_id, batchId, admin)
-        )
-      );
-      processedCandidates.push(...results);
-    }
+    after(async () => {
+      const bgAdmin = createSupabaseAdminClient();
+      const CONCURRENCY = 5;
+      for (let i = 0; i < candidatesToProcess.length; i += CONCURRENCY) {
+        const batch = candidatesToProcess.slice(i, i + CONCURRENCY);
+        await Promise.all(
+          batch.map((cand) =>
+            processCandidate(cand.id, cand.file_url, vagaIdForBg, batchIdForBg, bgAdmin)
+          )
+        );
+      }
+      // Mark batch as completed
+      try {
+        await bgAdmin.from("pdf_batches").update({ status: "completed" }).eq("id", batchIdForBg);
+      } catch { /* ignore */ }
+    });
 
+    // ── Return IMMEDIATELY — user sees instant response ──────────────
     return NextResponse.json({
       queued: candidatesData.length,
       batch_id: batchId,
-      candidates: processedCandidates,
-      message: "Processamento concluido com sucesso",
+      message: `${arquivosPermitidos.length} currículos enviados para processamento`,
     });
   } catch (error: unknown) {
     return handleApiError(error);
