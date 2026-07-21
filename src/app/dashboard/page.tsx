@@ -607,6 +607,7 @@ export default function Home() {
                   onFileUpload={handleFileUpload}
                   fileInputRef={fileInputRef}
                   onSelectCandidate={handleOpenDrawer}
+                  onToggleShortlist={handleToggleShortlist}
                   quota={quota}
                 />
               )}

@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import React, { useState, useMemo } from "react";
 import type { Candidate } from "@/lib/types";
-import { Search, SlidersHorizontal, Filter, MoreHorizontal, ExternalLink, MessageCircle } from "lucide-react";
+import { Search, SlidersHorizontal, Filter, MoreHorizontal, ExternalLink, MessageCircle, Star } from "lucide-react";
 
 interface CandidatosPageProps {
   candidates: Candidate[];
@@ -14,25 +14,31 @@ interface CandidatosPageProps {
 export default function CandidatosPage({ candidates, onSelectCandidate }: CandidatosPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(true);
+
   const filteredCandidates = useMemo(() => {
     let list = [...candidates];
-    
+
+    // Management page only keeps favorited candidates
+    if (showOnlyFavorites) {
+      list = list.filter((c) => c.shortlist || c.status === "shortlist");
+    }
+
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
-      list = list.filter(c => 
-        c.name.toLowerCase().includes(q) || 
-        c.role.toLowerCase().includes(q) || 
+      list = list.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        c.role.toLowerCase().includes(q) ||
         c.company.toLowerCase().includes(q)
       );
     }
-    
+
     if (statusFilter !== "all") {
       list = list.filter(c => c.status === statusFilter);
     }
-    
+
     return list.sort((a, b) => b.score - a.score);
-  }, [candidates, searchTerm, statusFilter]);
+  }, [candidates, searchTerm, statusFilter, showOnlyFavorites]);
 
   const renderStatusBadge = (status: string) => {
     const map: Record<string, { label: string, color: string, bg: string }> = {
@@ -77,9 +83,22 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowOnlyFavorites((prev) => !prev)}
+            className={`flex items-center gap-2 px-3 py-[9px] rounded-lg text-[13px] font-medium border transition-all ${
+              showOnlyFavorites
+                ? "bg-[#FFFBEA] border-[#F5C000] text-[#B45309]"
+                : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB]"
+            }`}
+          >
+            <Star className={`w-4 h-4 ${showOnlyFavorites ? "fill-[#F5C000] text-[#F5C000]" : ""}`} strokeWidth={1.8} />
+            {showOnlyFavorites ? "Apenas favoritos" : "Mostrar todos"}
+          </button>
+
           <div className="flex items-center gap-2 text-[13px]">
             <span className="text-[#6B7280]">Status:</span>
-            <select 
+            <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="input-rh py-[9px] bg-white cursor-pointer"
@@ -92,7 +111,7 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
               <option value="contratado">Contratado</option>
             </select>
           </div>
-          
+
           <button className="btn-ghost bg-white flex items-center gap-2 h-auto py-[9px]">
             <SlidersHorizontal className="w-4 h-4" /> Mais filtros
           </button>
@@ -184,7 +203,9 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
               {filteredCandidates.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-16 text-center text-[13px] text-[#6B7280] bg-white">
-                    Nenhum candidato corresponde aos filtros selecionados.
+                    {showOnlyFavorites
+                      ? "Nenhum candidato favoritado. Use a estrela no PDF Ranker para salvar no CRM."
+                      : "Nenhum candidato corresponde aos filtros selecionados."}
                   </td>
                 </tr>
               )}

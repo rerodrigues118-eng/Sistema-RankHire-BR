@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  Star,
 } from "lucide-react";
 
 interface PdfCriterion {
@@ -30,6 +31,7 @@ interface PdfRankerPageProps {
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onSelectCandidate: (c: Candidate) => void;
+  onToggleShortlist?: (id: string) => void;
   quota?: {
     isAdmin: boolean;
     used: number;
@@ -90,6 +92,7 @@ export default function PdfRankerPage({
   onFileUpload,
   fileInputRef,
   onSelectCandidate,
+  onToggleShortlist,
   quota,
 }: PdfRankerPageProps) {
   const [activeTab, setActiveTab] = useState<"triagem" | "funil">("triagem");
@@ -414,38 +417,56 @@ export default function PdfRankerPage({
                     {topCandidates.map((c) => {
                       const firstTag = c.confirmedTags[0] || c.partialTags[0] || c.otherTags[0];
                       return (
-                        <div
-                          key={c.id}
-                          onClick={() => onSelectCandidate(c)}
-                          className="flex items-center justify-between p-3 rounded-[8px] hover:bg-[#F9FAFB] transition-colors cursor-pointer border border-[#E5E7EB]"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold flex-shrink-0"
-                              style={{ backgroundColor: c.avatarColor + "15", color: c.avatarColor }}
-                            >
-                              {c.initials}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[13px] font-medium text-[#111827] truncate">
-                                {c.name}
-                              </p>
-                              <p className="text-[12px] text-[#6B7280] truncate">
-                                {c.role} · {c.company}
-                              </p>
-                            </div>
-                          </div>
+                        <div key={c.id} className="flex items-center gap-2 group">
+                          {/* Star button outside the card */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleShortlist?.(c.id);
+                            }}
+                            className={`w-9 h-9 rounded-[8px] flex items-center justify-center flex-shrink-0 transition-all border ${
+                              c.shortlist
+                                ? "bg-[#FFFBEA] border-[#F5C000] text-[#F5C000]"
+                                : "bg-white border-[#E5E7EB] text-[#9CA3AF] hover:border-[#F5C000] hover:text-[#F5C000]"
+                            }`}
+                            title={c.shortlist ? "Remover dos favoritos" : "Favoritar e salvar no CRM/Pipeline"}
+                          >
+                            <Star className={`w-4 h-4 ${c.shortlist ? "fill-[#F5C000]" : ""}`} strokeWidth={1.8} />
+                          </button>
 
-                          <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                            {firstTag && (
-                              <span className="bg-[#F3F4F6] text-[#4B5563] px-2 py-0.5 rounded-[4px] text-[11px] font-medium">
-                                {firstTag}
-                              </span>
-                            )}
-                            <div className="inline-flex items-center bg-[#FEF9C3] px-2 py-0.5 rounded border border-[#FEF08A]">
-                              <span className="text-[13px] font-semibold text-[#854D0E]">
-                                {c.score > 0 ? c.score.toFixed(1) : "—"}
-                              </span>
+                          <div
+                            onClick={() => onSelectCandidate(c)}
+                            className="flex-1 flex items-center justify-between p-3 rounded-[8px] hover:bg-[#F9FAFB] transition-colors cursor-pointer border border-[#E5E7EB]"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold flex-shrink-0"
+                                style={{ backgroundColor: c.avatarColor + "15", color: c.avatarColor }}
+                              >
+                                {c.initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-medium text-[#111827] truncate">
+                                  {c.name}
+                                </p>
+                                <p className="text-[12px] text-[#6B7280] truncate">
+                                  {c.role} · {c.company}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                              {firstTag && (
+                                <span className="bg-[#F3F4F6] text-[#4B5563] px-2 py-0.5 rounded-[4px] text-[11px] font-medium">
+                                  {firstTag}
+                                </span>
+                              )}
+                              <div className="inline-flex items-center bg-[#FEF9C3] px-2 py-0.5 rounded border border-[#FEF08A]">
+                                <span className="text-[13px] font-semibold text-[#854D0E]">
+                                  {c.score > 0 ? c.score.toFixed(1) : "—"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>

@@ -61,6 +61,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (typeof body.disponibilidade === "string") update.disponibilidade = body.disponibilidade;
     if (typeof body.regime === "string") update.regime_preferido = body.regime;
 
+    const isShortlistToggle = typeof body.shortlist === "boolean";
+    const shouldBeShortlisted = isShortlistToggle ? body.shortlist : undefined;
+
     // Handle manual score updates if provided (score logic 4)
     if (Array.isArray(body.evaluations)) {
       // Load vacancy criteria
@@ -136,6 +139,38 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Sync pipeline_entries with shortlist state: favorite = save to pipeline
+    if (shouldBeShortlisted === true) {
+      const { data: existingEntry } = await admin
+        .from("pipeline_entries")
+        .select("id")
+        .eq("candidate_id", id)
+        .eq("empresa_id", usuario.empresa_id)
+        .maybeSingle();
+
+      if (!existingEntry) {
+        await admin.from("pipeline_entries").insert({
+          candidate_id: id,
+          vaga_id: candidate.vaga_id,
+          empresa_id: usuario.empresa_id,
+          status: "shortlist",
+          notas: `Adicionado à shortlist via PDF Ranker\nCandidato: ${updatedCandidate.nome_candidato || ""}\nScore: ${updatedCandidate.score_final ?? "—"}`,
+        });
+      } else {
+        await admin
+          .from("pipeline_entries")
+          .update({ status: "shortlist", updated_at: new Date().toISOString() })
+          .eq("id", existingEntry.id)
+          .eq("empresa_id", usuario.empresa_id);
+      }
+    } else if (shouldBeShortlisted === false) {
+      await admin
+        .from("pipeline_entries")
+        .delete()
+        .eq("candidate_id", id)
+        .eq("empresa_id", usuario.empresa_id);
     }
 
     // Load final evaluations to return to client

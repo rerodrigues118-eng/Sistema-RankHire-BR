@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import type { Candidate, KanbanStatus } from "@/lib/types";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Star } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -175,6 +175,11 @@ export default function PipelinePage({
 }: PipelinePageProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(true);
+
+  const pipelineCandidates = showOnlyFavorites
+    ? candidates.filter((c) => c.shortlist || c.status === "shortlist")
+    : candidates;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -183,13 +188,13 @@ export default function PipelinePage({
 
   const grouped = KANBAN_COLUMNS.reduce(
     (acc, col) => {
-      acc[col.key] = candidates.filter((c) => c.status === col.key);
+      acc[col.key] = pipelineCandidates.filter((c) => c.status === col.key);
       return acc;
     },
     {} as Record<KanbanStatus, Candidate[]>
   );
 
-  const activeCandidate = candidates.find((c) => c.id === activeId) || null;
+  const activeCandidate = pipelineCandidates.find((c) => c.id === activeId) || null;
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(String(event.active.id));
@@ -216,13 +221,13 @@ export default function PipelinePage({
         onMoveCandidate(String(active.id), destColumn.key);
       } else {
         // Dropped on another card — find which column that card is in
-        const destCand = candidates.find((c) => c.id === overId);
-        if (destCand && destCand.status !== candidates.find((c) => c.id === String(active.id))?.status) {
+        const destCand = pipelineCandidates.find((c) => c.id === overId);
+        if (destCand && destCand.status !== pipelineCandidates.find((c) => c.id === String(active.id))?.status) {
           onMoveCandidate(String(active.id), destCand.status);
         }
       }
     },
-    [candidates, onMoveCandidate]
+    [pipelineCandidates, onMoveCandidate]
   );
 
   return (
@@ -232,16 +237,30 @@ export default function PipelinePage({
         <div>
           <h1 className="text-[24px] font-semibold text-[#111827]">Pipeline</h1>
           <p className="text-[14px] text-[#6B7280] mt-1">
-            Arraste os cards entre colunas para mover candidatos no funil.
+            Apenas candidatos favoritados aparecem aqui. Arraste os cards entre colunas para mover no funil.
           </p>
         </div>
-        <button
-          onClick={onResetPipeline}
-          className="btn-ghost flex items-center gap-2 bg-white"
-        >
-          <RotateCcw className="w-4 h-4" strokeWidth={1.8} />
-          Resetar pipeline
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowOnlyFavorites((prev) => !prev)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium border transition-all ${
+              showOnlyFavorites
+                ? "bg-[#FFFBEA] border-[#F5C000] text-[#B45309]"
+                : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB]"
+            }`}
+          >
+            <Star className={`w-4 h-4 ${showOnlyFavorites ? "fill-[#F5C000] text-[#F5C000]" : ""}`} strokeWidth={1.8} />
+            {showOnlyFavorites ? "Apenas favoritos" : "Mostrar todos"}
+          </button>
+          <button
+            onClick={onResetPipeline}
+            className="btn-ghost flex items-center gap-2 bg-white"
+          >
+            <RotateCcw className="w-4 h-4" strokeWidth={1.8} />
+            Resetar pipeline
+          </button>
+        </div>
       </div>
 
       {/* Kanban DnD Board */}
