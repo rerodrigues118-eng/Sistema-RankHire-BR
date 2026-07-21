@@ -265,14 +265,14 @@ export default function PdfRankerPage({
         {(localQuota || quota) && (
           <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-sm flex items-center gap-4 text-sm max-w-sm">
             <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold">
-              {(localQuota || quota)?.isAdmin ? "∞" : ((localQuota || quota)?.remaining ?? "∞")}
+              {(localQuota || quota)?.isAdmin ? "∞" : ((localQuota || quota)?.used ?? 0)}
             </div>
             <div>
               <p className="font-semibold text-gray-900 leading-tight">
-                {(localQuota || quota)?.isAdmin ? "Processamento de PDFs ilimitado" : `${(localQuota || quota)?.used} de ${(localQuota || quota)?.limit} processados`}
+                {(localQuota || quota)?.isAdmin ? "Processamento de PDFs ilimitado" : `${(localQuota || quota)?.used ?? 0} de ${(localQuota || quota)?.limit ?? '—'} PDFs importados`}
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
-                {(localQuota || quota)?.isAdmin ? `Acesso Admin · Plano ${(localQuota || quota)?.plano}` : `Plano ${(localQuota || quota)?.plano} · Mês de ${(localQuota || quota)?.mes}`}
+                {(localQuota || quota)?.isAdmin ? `Acesso Admin · Plano Pro` : `Plano ${(localQuota || quota)?.plano} · Mês de ${(localQuota || quota)?.mes}`}
               </p>
             </div>
           </div>

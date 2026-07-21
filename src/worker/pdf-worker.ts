@@ -125,12 +125,8 @@ const processor = async (job: Job) => {
       .select("id,nome,peso,description,weight")
       .eq("vaga_id", vagaId);
 
-    if (critError || !criteriaData?.length) {
-      throw new Error(`Nenhum criterio cadastrado para vaga ${vagaId}`);
-    }
-
     // Normaliza: suporta colunas legadas (description/weight) e novas (nome/peso)
-    const formattedCriteria = criteriaData
+    const formattedCriteria = (criteriaData || [])
       .map((c) => ({
         id: c.id,
         name: (c.nome || c.description || "").trim(),
@@ -138,28 +134,73 @@ const processor = async (job: Job) => {
       }))
       .filter((c) => c.name);
 
-    // ── PASSO 6: Chama IA com timeout de 30s ────────────────────────
-    const prompt = buildScoringPrompt(cvText, formattedCriteria);
-    const aiStart = Date.now();
-    const jsonString = await callAI(prompt);
-    const aiDuration = Date.now() - aiStart;
-    console.info(`[Worker] AI call duration ms: ${aiDuration}`, { jobId: job.id, candidateId });
+    const hasCriteria = !critError && formattedCriteria.length > 0;
 
-    // ── PASSO 7: Parse e valida JSON ────────────────────────────────
-    const cleanJsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-    const result = JSON.parse(cleanJsonString) as ScoringResult;
+    let safeScoreFinal = 3.0;
+    let candidatoNome = "Candidato sem nome";
+    let safeCriterios: { nome: string; nota: number; justificativa?: string }[] = [];
+    const extraFields: Record<string, string | null> = {};
 
-    if (typeof result.score_final !== "number" || !Array.isArray(result.criterios)) {
-      throw new Error("Formato JSON retornado pela IA e invalido.");
+    if (hasCriteria) {
+      // ── PASSO 6a: Chama IA COM critérios para scoring ────────────────
+      const prompt = buildScoringPrompt(cvText, formattedCriteria);
+      const aiStart = Date.now();
+      const jsonString = await callAI(prompt);
+      const aiDuration = Date.now() - aiStart;
+      console.info(`[Worker] AI call duration ms: ${aiDuration}`, { jobId: job.id, candidateId });
+
+      const cleanJsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
+      const result = JSON.parse(cleanJsonString) as ScoringResult;
+
+      if (typeof result.score_final === "number" && Array.isArray(result.criterios)) {
+        safeScoreFinal = Math.max(1.0, Math.min(5.0, Number(result.score_final)));
+        safeCriterios = result.criterios.map((criteria) => ({
+          ...criteria,
+          nota: Math.max(1.0, Math.min(5.0, Number(criteria.nota))),
+        }));
+        candidatoNome = result.nome || "Candidato sem nome";
+        if (result.email) extraFields.email_contato = result.email;
+        if (result.telefone) extraFields.telefone = result.telefone;
+        if (result.linkedin) extraFields.linkedin_url = result.linkedin;
+        if (result.cidade) extraFields.cidade = result.cidade;
+        if (result.cargo_atual) extraFields.cargo_atual = result.cargo_atual;
+        if (result.empresa_atual) extraFields.empresa_atual = result.empresa_atual;
+        if (result.pretensao_salarial) extraFields.pretensao_salarial = result.pretensao_salarial;
+        if (result.disponibilidade) extraFields.disponibilidade = result.disponibilidade;
+        if (result.regime_preferido) extraFields.regime_preferido = result.regime_preferido;
+        if (result.resumo) extraFields.resumo_ia = result.resumo;
+      }
+    } else {
+      // ── PASSO 6b: Sem critérios — extrai apenas dados do candidato ───
+      console.info(`[Worker] Sem critérios para vaga ${vagaId}, extraindo dados do candidato...`);
+      try {
+        const extractPrompt = `Analise o currículo abaixo e extraia as informações do candidato. Retorne SOMENTE JSON válido (sem markdown).
+
+CURRÍCULO:
+${cvText}
+
+JSON de saída:
+{"nome":"...","email":null,"telefone":null,"linkedin":null,"cidade":null,"cargo_atual":null,"empresa_atual":null,"pretensao_salarial":null,"disponibilidade":"A combinar","regime_preferido":null,"resumo":"Resumo breve do perfil do candidato"}`;
+
+        const jsonString = await callAI(extractPrompt);
+        const cleanJson = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
+        const result = JSON.parse(cleanJson);
+
+        candidatoNome = result.nome || "Candidato sem nome";
+        if (result.email) extraFields.email_contato = result.email;
+        if (result.telefone) extraFields.telefone = result.telefone;
+        if (result.linkedin) extraFields.linkedin_url = result.linkedin;
+        if (result.cidade) extraFields.cidade = result.cidade;
+        if (result.cargo_atual) extraFields.cargo_atual = result.cargo_atual;
+        if (result.empresa_atual) extraFields.empresa_atual = result.empresa_atual;
+        if (result.pretensao_salarial) extraFields.pretensao_salarial = result.pretensao_salarial;
+        if (result.disponibilidade) extraFields.disponibilidade = result.disponibilidade;
+        if (result.regime_preferido) extraFields.regime_preferido = result.regime_preferido;
+        if (result.resumo) extraFields.resumo_ia = result.resumo;
+      } catch (extractErr) {
+        console.warn(`[Worker] Falha na extração sem critérios:`, extractErr instanceof Error ? extractErr.message : extractErr);
+      }
     }
-
-    // ── PASSO 8: Normaliza scores (sempre 1.0 a 5.0) ────────────────
-    const safeScoreFinal = Math.max(1.0, Math.min(5.0, Number(result.score_final)));
-    const safeCriterios = result.criterios.map((criteria) => ({
-      ...criteria,
-      nota: Math.max(1.0, Math.min(5.0, Number(criteria.nota))),
-    }));
-    const candidatoNome = result.nome || "Candidato sem nome";
 
     // ── PASSO 9: UPDATE pdf_candidates ──────────────────────────────
     const candidateUpdate: Record<string, unknown> = {
@@ -169,16 +210,10 @@ const processor = async (job: Job) => {
       status: "concluido",
     };
 
-    if (result.email) candidateUpdate.email_contato = result.email;
-    if (result.telefone) candidateUpdate.telefone = result.telefone;
-    if (result.linkedin) candidateUpdate.linkedin_url = result.linkedin;
-    if (result.cidade) candidateUpdate.cidade = result.cidade;
-    if (result.cargo_atual) candidateUpdate.cargo_atual = result.cargo_atual;
-    if (result.empresa_atual) candidateUpdate.empresa_atual = result.empresa_atual;
-    if (result.pretensao_salarial) candidateUpdate.pretensao_salarial = result.pretensao_salarial;
-    if (result.disponibilidade) candidateUpdate.disponibilidade = result.disponibilidade;
-    if (result.regime_preferido) candidateUpdate.regime_preferido = result.regime_preferido;
-    if (result.resumo) candidateUpdate.resumo_ia = result.resumo;
+    // Merge extra fields extracted by AI into the update
+    for (const [key, value] of Object.entries(extraFields)) {
+      if (value) candidateUpdate[key] = value;
+    }
 
     await supabaseAdmin
       .from("pdf_candidates")

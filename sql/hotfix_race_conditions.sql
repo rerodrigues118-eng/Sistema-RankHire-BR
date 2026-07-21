@@ -68,3 +68,29 @@ DO $$ BEGIN
       FOR ALL USING (true) WITH CHECK (true);
   END IF;
 END $$;
+
+-- ════════════════════════════════════════════════════════════
+-- F5. Admin company → Plano Pro (tudo ilimitado)
+-- Atualiza a empresa de qualquer usuário com role admin/superadmin
+-- para plano "pro" com subscription ativo.
+-- ════════════════════════════════════════════════════════════
+UPDATE public.empresas
+SET
+  plano = 'pro',
+  subscription_status = 'active',
+  limite_pdfs_mes = 9999,
+  limite_buscas_linkedin = 9999,
+  trial_expires_at = NULL
+WHERE id IN (
+  SELECT DISTINCT empresa_id
+  FROM public.usuarios
+  WHERE LOWER(TRIM(role)) IN ('admin', 'superadmin')
+    AND empresa_id IS NOT NULL
+);
+
+-- Verifica resultado
+SELECT u.email, u.role, e.nome AS empresa, e.plano, e.subscription_status
+FROM public.usuarios u
+JOIN public.empresas e ON e.id = u.empresa_id
+WHERE LOWER(TRIM(u.role)) IN ('admin', 'superadmin')
+ORDER BY u.email;

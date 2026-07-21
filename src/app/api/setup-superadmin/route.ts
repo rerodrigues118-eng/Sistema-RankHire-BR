@@ -42,10 +42,31 @@ export async function GET() {
     }, { status: 500 });
   }
 
+  // 5. Atualiza a empresa do admin para plano Pro (tudo ilimitado)
+  const { data: usuario } = await adminClient
+    .from("usuarios")
+    .select("empresa_id")
+    .eq("id", user.id)
+    .single();
+
+  if (usuario?.empresa_id) {
+    await adminClient
+      .from("empresas")
+      .update({
+        plano: "pro",
+        subscription_status: "active",
+        limite_pdfs_mes: 9999,
+        limite_buscas_linkedin: 9999,
+        trial_expires_at: null,
+      })
+      .eq("id", usuario.empresa_id);
+  }
+
   return NextResponse.json({
     success: true,
-    message: "✅ Superadmin configurado! Recarregue o sistema (F5) para ver o botão do Painel Admin na Sidebar.",
+    message: "✅ Superadmin configurado com plano Pro! Recarregue o sistema (F5) para ver as mudanças.",
     usuario: user.email,
     role: "superadmin",
+    plano: "pro",
   });
 }

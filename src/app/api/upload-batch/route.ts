@@ -86,6 +86,7 @@ async function processCandidate(
     let criteriosForSave: { nome: string; nota: number; justificativa?: string }[] = [];
 
     if (!critError && formattedCriteria.length > 0) {
+      // ── AI scoring WITH criteria ────────────────────────────────────
       const prompt = buildScoringPrompt(cvText, formattedCriteria);
       const jsonString = await callAI(prompt);
       const cleanJson = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -110,6 +111,37 @@ async function processCandidate(
         if (result.disponibilidade) extraFields.disponibilidade = result.disponibilidade;
         if (result.regime_preferido) extraFields.regime_preferido = result.regime_preferido;
         if (result.resumo) extraFields.resumo_ia = result.resumo;
+      }
+    } else {
+      // ── No criteria: still call AI to extract candidate info ─────────
+      try {
+        const extractPrompt = `Analise o currículo abaixo e extraia as informações do candidato. Retorne SOMENTE JSON válido (sem markdown).
+
+CURRÍCULO:
+${cvText}
+
+JSON de saída:
+{"nome":"...","email":null,"telefone":null,"linkedin":null,"cidade":null,"cargo_atual":null,"empresa_atual":null,"pretensao_salarial":null,"disponibilidade":"A combinar","regime_preferido":null,"resumo":"Resumo breve do perfil do candidato"}`;
+
+        const jsonString = await callAI(extractPrompt);
+        const cleanJson = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
+        const result = JSON.parse(cleanJson);
+
+        candidatoNome = result.nome || "Candidato sem nome";
+        if (result.email) extraFields.email_contato = result.email;
+        if (result.telefone) extraFields.telefone = result.telefone;
+        if (result.linkedin) extraFields.linkedin_url = result.linkedin;
+        if (result.cidade) extraFields.cidade = result.cidade;
+        if (result.cargo_atual) extraFields.cargo_atual = result.cargo_atual;
+        if (result.empresa_atual) extraFields.empresa_atual = result.empresa_atual;
+        if (result.pretensao_salarial) extraFields.pretensao_salarial = result.pretensao_salarial;
+        if (result.disponibilidade) extraFields.disponibilidade = result.disponibilidade;
+        if (result.regime_preferido) extraFields.regime_preferido = result.regime_preferido;
+        if (result.resumo) extraFields.resumo_ia = result.resumo;
+      } catch (extractErr) {
+        logger.warn("[processCandidate] Falha na extração sem critérios", {
+          error: extractErr instanceof Error ? extractErr.message : "unknown",
+        });
       }
     }
 
@@ -341,9 +373,38 @@ export async function POST(req: Request) {
             },
           }))
         );
-        queuedInBackground = true;
+
+        // ── Verify a worker is actually processing ────────────────────
+        // Wait 3s then check if at least one job was picked up.
+        // If not, no worker is running → fall back to inline processing.
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        const realQueue = pdfQueue as { getJobCounts?: (...args: string[]) => Promise<Record<string, number>>; getJobs?: (...args: unknown[]) => Promise<Array<{ remove: () => Promise<void> }>> };
+        const counts = realQueue.getJobCounts ? await realQueue.getJobCounts("waiting", "active") : null;
+        const waiting = counts?.waiting || 0;
+        const active = counts?.active || 0;
+
+        if (active > 0 || (counts && waiting < candidatesData.length)) {
+          // Worker picked up at least one job → trust background processing
+          queuedInBackground = true;
+          logger.info("[upload-batch] Worker ativo, jobs na fila", { active, waiting });
+        } else {
+          // No worker running — all jobs still waiting
+          logger.warn("[upload-batch] Nenhum worker detectado. Fallback para processamento inline.", { waiting });
+          // Remove jobs from queue (they'll never be processed)
+          if (realQueue.getJobs) {
+            try {
+              const waitingJobs = await realQueue.getJobs(["waiting"], 0, candidatesData.length);
+              for (const job of waitingJobs) {
+                await job.remove();
+              }
+            } catch {
+              // ignore cleanup errors
+            }
+          }
+        }
       } catch (queueError) {
-        console.error("[upload-batch] Falha ao enfileirar jobs de PDF:", queueError);
+        console.error("[upload-batch] Falha ao enfileirar/verificar jobs de PDF:", queueError);
       }
     }
 
