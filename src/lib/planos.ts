@@ -15,7 +15,7 @@ function normalizeRole(role?: string | null) {
 
 function isAdminRole(role?: string | null) {
   const normalized = normalizeRole(role);
-  return normalized === 'admin' || normalized === 'superadmin';
+  return normalized === 'superadmin';
 }
 
 function getEffectivePlanKey(planKey?: string | null) {
@@ -24,7 +24,6 @@ function getEffectivePlanKey(planKey?: string | null) {
     'profissional': 'starter',
     'enterprise': 'pro',
     'superadmin': 'agencia',
-    'admin': 'agencia',
   };
   const normalized = String(planKey || '').trim().toLowerCase();
   return normalized ? mapping[normalized] ?? normalized : 'trial';
@@ -150,7 +149,6 @@ export function getPdfLimitFromPlan(
     'profissional': 'starter',
     'enterprise': 'pro',
     'superadmin': 'agencia',
-    'admin': 'agencia',
   };
 
   if (isAdminRole(role ?? empresa?.role)) return null;

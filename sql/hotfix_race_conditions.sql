@@ -145,3 +145,45 @@ CREATE POLICY "agente_candidatos_select" ON public.agente_candidatos FOR SELECT 
 CREATE POLICY "agente_candidatos_insert" ON public.agente_candidatos FOR INSERT WITH CHECK (true);
 CREATE POLICY "agente_candidatos_update" ON public.agente_candidatos FOR UPDATE USING (true);
 
+-- ════════════════════════════════════════════════════════════
+-- F7: CORRIGE PLANOS — Apenas superadmin tem Pro, resto é trial
+-- ════════════════════════════════════════════════════════════
+
+-- 1. Reseta todas as empresas que NÃO são do superadmin para trial
+UPDATE public.empresas
+SET
+  plano = 'trial',
+  subscription_status = 'trialing',
+  limite_pdfs_mes = 15,
+  limite_buscas_linkedin = 3,
+  trial_expires_at = COALESCE(trial_expires_at, (NOW() + INTERVAL '14 days')::timestamptz)
+WHERE id NOT IN (
+  SELECT DISTINCT u.empresa_id
+  FROM public.usuarios u
+  WHERE LOWER(TRIM(u.email)) = 'delski.contato@gmail.com'
+    AND u.empresa_id IS NOT NULL
+);
+
+-- 2. Garante que a empresa do superadmin esteja Pro
+UPDATE public.empresas
+SET
+  plano = 'pro',
+  subscription_status = 'active',
+  limite_pdfs_mes = 9999,
+  limite_buscas_linkedin = 9999,
+  trial_expires_at = NULL
+WHERE id IN (
+  SELECT DISTINCT u.empresa_id
+  FROM public.usuarios u
+  WHERE LOWER(TRIM(u.email)) = 'delski.contato@gmail.com'
+    AND u.empresa_id IS NOT NULL
+);
+
+-- Verifica resultado final
+SELECT u.email, u.role, e.nome AS empresa, e.plano, e.subscription_status
+FROM public.usuarios u
+JOIN public.empresas e ON e.id = u.empresa_id
+ORDER BY
+  CASE WHEN LOWER(TRIM(u.email)) = 'delski.contato@gmail.com' THEN 0 ELSE 1 END,
+  u.email;
+

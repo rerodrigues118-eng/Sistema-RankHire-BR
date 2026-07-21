@@ -319,7 +319,7 @@ export async function GET() {
     }
 
     const { getPdfLimitFromPlan } = await import('@/lib/planos');
-    const isAdmin = userRole === "superadmin" || userRole === "admin";
+    const isAdmin = userRole === "superadmin";
     const plan = empresaRes.data?.plano || null;
     const limit = getPdfLimitFromPlan(plan, empresaRes.data as Partial<EmpresaSimples> | undefined, userRole) ?? empresaRes.data?.limite_pdfs_mes ?? 10;
     const remaining = limit === null ? null : Math.max(0, limit - processedPdfCount);

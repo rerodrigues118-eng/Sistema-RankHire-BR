@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       .single();
 
     const userRole = (usuario.role || "").toLowerCase();
-    const isAdmin = userRole === "admin" || userRole === "superadmin";
+    const isAdmin = userRole === "superadmin";
     const isTrial =
       !isAdmin &&
       (empresa?.plano === "trial" ||

@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     }
 
     const userRole = usuario.role || "member";
-    const isAdmin = userRole === "superadmin" || userRole === "admin";
+    const isAdmin = userRole === "superadmin";
 
     // Superadmins and admins get unlimited exports
     if (!isAdmin) {
@@ -109,7 +109,7 @@ export async function GET() {
       .single();
 
     const userRole = usuario.role || "member";
-    const isAdmin = userRole === "superadmin" || userRole === "admin";
+    const isAdmin = userRole === "superadmin";
 
     if (isAdmin) {
       return NextResponse.json({

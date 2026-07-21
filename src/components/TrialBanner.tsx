@@ -24,9 +24,9 @@ export default function TrialBanner() {
 
   if (!empresa) return null;
 
-  // Admin/superadmin users never see trial banners
+  // Only superadmin users never see trial banners
   const role = (empresa.role || '').trim().toLowerCase();
-  if (role === 'admin' || role === 'superadmin') return null;
+  if (role === 'superadmin') return null;
 
   const status = getPlanoAtual(empresa);
 
