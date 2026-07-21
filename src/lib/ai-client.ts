@@ -40,9 +40,10 @@ export async function callAI(
       );
 
       if (response.status === 429) {
-        const retryAfter = response.headers.get('retry-after') || '10';
-        console.warn(`[AI] Rate limited (429), retry after ${retryAfter}s`);
-        await new Promise((r) => setTimeout(r, parseInt(retryAfter) * 1000));
+        const retryAfter = response.headers.get('retry-after') || '2';
+        const waitTime = Math.min(parseInt(retryAfter) * 1000, 3000);
+        console.warn(`[AI] Rate limited (429), retry in ${waitTime}ms`);
+        await new Promise((r) => setTimeout(r, waitTime));
         attempt++;
         continue;
       }

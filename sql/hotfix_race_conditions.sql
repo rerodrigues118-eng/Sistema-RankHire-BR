@@ -94,3 +94,54 @@ FROM public.usuarios u
 JOIN public.empresas e ON e.id = u.empresa_id
 WHERE LOWER(TRIM(u.role)) IN ('admin', 'superadmin')
 ORDER BY u.email;
+
+-- ════════════════════════════════════════════════════════════
+-- F6: CRIA TABELAS FALTANTES (agente_runs, agente_candidatos)
+-- ════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS public.agente_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agente_id uuid NOT NULL REFERENCES public.agentes_ia(id) ON DELETE CASCADE,
+  status text NOT NULL DEFAULT 'rodando',
+  perfis_analisados int DEFAULT 0,
+  candidatos_encontrados int DEFAULT 0,
+  candidatos_score_alto int DEFAULT 0,
+  logs jsonb,
+  executado_em timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_agente_runs_agente ON public.agente_runs(agente_id, executado_em DESC);
+
+CREATE TABLE IF NOT EXISTS public.agente_candidatos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agente_id uuid NOT NULL REFERENCES public.agentes_ia(id) ON DELETE CASCADE,
+  linkedin_url text,
+  dados_perfil jsonb,
+  score_final numeric(3,2),
+  criterios_avaliacao jsonb,
+  visto boolean DEFAULT false,
+  status text DEFAULT 'novo',
+  descoberto_em timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_agente_candidatos_agente ON public.agente_candidatos(agente_id, descoberto_em DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_agente_candidatos_linkedin ON public.agente_candidatos(agente_id, linkedin_url) WHERE linkedin_url IS NOT NULL;
+
+-- RLS for agente_runs
+ALTER TABLE public.agente_runs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "agente_runs_select" ON public.agente_runs;
+DROP POLICY IF EXISTS "agente_runs_insert" ON public.agente_runs;
+DROP POLICY IF EXISTS "agente_runs_update" ON public.agente_runs;
+CREATE POLICY "agente_runs_select" ON public.agente_runs FOR SELECT USING (true);
+CREATE POLICY "agente_runs_insert" ON public.agente_runs FOR INSERT WITH CHECK (true);
+CREATE POLICY "agente_runs_update" ON public.agente_runs FOR UPDATE USING (true);
+
+-- RLS for agente_candidatos
+ALTER TABLE public.agente_candidatos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "agente_candidatos_select" ON public.agente_candidatos;
+DROP POLICY IF EXISTS "agente_candidatos_insert" ON public.agente_candidatos;
+DROP POLICY IF EXISTS "agente_candidatos_update" ON public.agente_candidatos;
+CREATE POLICY "agente_candidatos_select" ON public.agente_candidatos FOR SELECT USING (true);
+CREATE POLICY "agente_candidatos_insert" ON public.agente_candidatos FOR INSERT WITH CHECK (true);
+CREATE POLICY "agente_candidatos_update" ON public.agente_candidatos FOR UPDATE USING (true);
+

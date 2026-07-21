@@ -7,10 +7,9 @@ import { getPlanAccessState } from "@/lib/planos";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { callAI } from "@/lib/ai-client";
 import { buildScoringPrompt } from "@/lib/scoring-prompt";
-import { getPdfQueue, getRedisConnection } from "@/lib/queue";
 
-// IMPORTANT: Allow up to 60s for PDF processing on Vercel
-export const maxDuration = 60;
+// IMPORTANT: Allow up to 5 minutes for PDF processing on Vercel (Pro plan)
+export const maxDuration = 300;
 
 function sanitizeText(raw: string): string {
   return raw
@@ -351,78 +350,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Erro na insercao de dados" }, { status: 500 });
     }
 
-    // ── Enqueue ALL jobs at once via BullMQ addBulk ──────────────────
-    const redisConn = getRedisConnection();
-    let queuedInBackground = false;
+    // ── Process candidates inline in parallel batches of 5 ──────────
+    // On serverless (Vercel), no background worker exists — process inline.
+    // Parallel batches of 5 balance speed vs API rate limits.
+    const CONCURRENCY = 5;
+    const processedCandidates: Array<Record<string, unknown>> = [];
 
-    if (redisConn) {
-      try {
-        const pdfQueue = await getPdfQueue();
-        await pdfQueue.addBulk(
-          candidatesData.map((cand) => ({
-            name: "pdf-process",
-            data: {
-              candidateId: cand.id,
-              storagePath: cand.file_url,
-              vaga_id,
-              batchId,
-            },
-            opts: {
-              attempts: 3,
-              backoff: { type: "exponential" as const, delay: 2000 },
-            },
-          }))
-        );
-
-        // ── Verify a worker is actually processing ────────────────────
-        // Wait 3s then check if at least one job was picked up.
-        // If not, no worker is running → fall back to inline processing.
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-
-        const realQueue = pdfQueue as { getJobCounts?: (...args: string[]) => Promise<Record<string, number>>; getJobs?: (...args: unknown[]) => Promise<Array<{ remove: () => Promise<void> }>> };
-        const counts = realQueue.getJobCounts ? await realQueue.getJobCounts("waiting", "active") : null;
-        const waiting = counts?.waiting || 0;
-        const active = counts?.active || 0;
-
-        if (active > 0 || (counts && waiting < candidatesData.length)) {
-          // Worker picked up at least one job → trust background processing
-          queuedInBackground = true;
-          logger.info("[upload-batch] Worker ativo, jobs na fila", { active, waiting });
-        } else {
-          // No worker running — all jobs still waiting
-          logger.warn("[upload-batch] Nenhum worker detectado. Fallback para processamento inline.", { waiting });
-          // Remove jobs from queue (they'll never be processed)
-          if (realQueue.getJobs) {
-            try {
-              const waitingJobs = await realQueue.getJobs(["waiting"], 0, candidatesData.length);
-              for (const job of waitingJobs) {
-                await job.remove();
-              }
-            } catch {
-              // ignore cleanup errors
-            }
-          }
-        }
-      } catch (queueError) {
-        console.error("[upload-batch] Falha ao enfileirar/verificar jobs de PDF:", queueError);
-      }
+    for (let i = 0; i < candidatesData.length; i += CONCURRENCY) {
+      const batch = candidatesData.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(
+        batch.map((cand) =>
+          processCandidate(cand.id, cand.file_url, vaga_id, batchId, admin)
+        )
+      );
+      processedCandidates.push(...results);
     }
-
-    if (queuedInBackground) {
-      return NextResponse.json({
-        queued: candidatesData.length,
-        batch_id: batchId,
-        ignorados: storagePaths.length - arquivosPermitidos.length,
-        message: `${arquivosPermitidos.length} currículos na fila de processamento`,
-      });
-    }
-
-    // ── Fallback: process inline if Redis unavailable ────────────────
-    const processedCandidates = await Promise.all(
-      candidatesData.map((cand) =>
-        processCandidate(cand.id, cand.file_url, vaga_id, batchId, admin)
-      )
-    );
 
     return NextResponse.json({
       queued: candidatesData.length,

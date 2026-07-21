@@ -217,6 +217,12 @@ export async function GET() {
     }
 
     if (agentesRes.error) {
+      // Handle missing table gracefully
+      const err = agentesRes.error;
+      const isMissing = err.code === "42P01" || err.message?.includes("does not exist") || err.message?.includes("relation");
+      if (isMissing) {
+        return NextResponse.json({ agentes: [], vagas: [], candidatos: [], runs: [], notificacoes: [] });
+      }
       logger.error('[agentes] agentesRes.error:', agentesRes.error);
       return NextResponse.json({ 
         error: `Erro ao buscar agentes: ${agentesRes.error.message}`,
@@ -245,17 +251,24 @@ export async function GET() {
           { data: [], error: null },
         ];
 
-    if (runsRes.error) {
-      return NextResponse.json({ error: runsRes.error.message }, { status: 500 });
+    // Handle missing tables gracefully (tables may not exist yet)
+    const runsError = runsRes.error;
+    const candidatesError = candidatesRes.error;
+    const isTableMissing = (err: { message?: string; code?: string } | null) =>
+      err?.code === "42P01" || err?.message?.includes("does not exist") || err?.message?.includes("relation");
+
+    const runs = (runsError && isTableMissing(runsError)) ? [] : (runsRes.data || []) as RunRow[];
+    const candidates = (candidatesError && isTableMissing(candidatesError)) ? [] : (candidatesRes.data || []) as CandidateRow[];
+
+    if (runsError && !isTableMissing(runsError)) {
+      return NextResponse.json({ error: runsError.message }, { status: 500 });
     }
 
-    if (candidatesRes.error) {
-      return NextResponse.json({ error: candidatesRes.error.message }, { status: 500 });
+    if (candidatesError && !isTableMissing(candidatesError)) {
+      return NextResponse.json({ error: candidatesError.message }, { status: 500 });
     }
 
     const vagas = (vagasRes.data || []) as VagaRow[];
-    const runs = (runsRes.data || []) as RunRow[];
-    const candidates = (candidatesRes.data || []) as CandidateRow[];
     const vagasMap = new Map(vagas.map((vaga) => [vaga.id, vaga.title || "Vaga vinculada"]));
 
     const formattedAgents = agentes.map((agent) => formatAgent(agent, vagasMap.get(agent.vaga_id) || null, runs, candidates));
