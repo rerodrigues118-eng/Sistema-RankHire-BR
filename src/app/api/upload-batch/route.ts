@@ -41,7 +41,7 @@ async function downloadAndParsePdf(
   const arrayBuffer = await response.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const pdfParse = (await import("pdf-parse")).default;
+  const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
   const pdfData = await pdfParse(buffer);
   const text = sanitizeText(pdfData.text);
   logger.info("downloadAndParsePdf completed", {

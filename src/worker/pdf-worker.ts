@@ -7,7 +7,7 @@ import { buildScoringPrompt } from "../lib/scoring-prompt";
 import { createClient } from "@supabase/supabase-js";
 import { Job, Worker, type WorkerOptions, type ConnectionOptions } from "bullmq";
 
-import pdfParse from "pdf-parse";
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 // ── Early-exit guards para variáveis de ambiente ausentes ──────────────
 if (!process.env.REDIS_URL) {
@@ -72,7 +72,8 @@ async function downloadPdf(storagePath: string): Promise<Buffer> {
     throw new Error(`Falha ao gerar URL assinada: ${error?.message}`);
   }
 
-  const response = await fetchWithTimeout(data.signedUrl, {}, 30_000);
+  const signedUrl = encodeURI(data.signedUrl);
+  const response = await fetchWithTimeout(signedUrl, {}, 30_000);
   if (!response.ok) {
     throw new Error(`Erro ao baixar PDF. HTTP Status: ${response.status}`);
   }

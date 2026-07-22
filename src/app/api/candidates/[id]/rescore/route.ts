@@ -5,6 +5,27 @@ import { buildScoringPrompt } from "@/lib/scoring-prompt";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Redis from "ioredis";
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
+
+async function fetchPdfTextFromStorage(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  storagePath: string
+): Promise<string> {
+  const { data, error } = await admin.storage.from("curriculos").createSignedUrl(storagePath, 120);
+  if (error || !data?.signedUrl) {
+    throw new Error(`Falha ao gerar URL assinada: ${error?.message || "URL indefinida"}`);
+  }
+
+  const signedUrl = encodeURI(data.signedUrl);
+  const response = await fetch(signedUrl);
+  if (!response.ok) {
+    throw new Error(`Erro ao baixar PDF: HTTP ${response.status}`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const pdfData = await pdfParse(buffer);
+  return String(pdfData.text || "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ").trim();
+}
 
 // Reuse Redis client instance to avoid connection leaks
 let redisClient: Redis | null = null;
@@ -48,7 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // 2. Fetch candidate and ensure company isolation (security constraint 1)
     const { data: candidate } = await admin
       .from("pdf_candidates")
-      .select("id, empresa_id, parsed_text, vaga_id")
+      .select("id, empresa_id, parsed_text, vaga_id, storage_path, file_url")
       .eq("id", id)
       .eq("empresa_id", empresaId)
       .single();
@@ -57,7 +78,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Candidato não encontrado" }, { status: 404 });
     }
 
-    // 3. Apply rate limit (security constraint 2: 5 rescores per minute per company)
+    // 2.5 Fallback: se o texto extraído ainda não estiver salvo, tenta parsear o PDF direto do storage
+    let parsedText = candidate.parsed_text?.trim() || "";
+    if (!parsedText) {
+      const candidatePath = candidate.storage_path || candidate.file_url;
+      if (candidatePath) {
+        try {
+          parsedText = await fetchPdfTextFromStorage(admin, candidatePath);
+          if (parsedText) {
+            await admin.from("pdf_candidates").update({ parsed_text: parsedText }).eq("id", candidate.id);
+          }
+        } catch (fetchError) {
+          console.warn("[rescore] fallback parse PDF failed:", fetchError);
+        }
+      }
+    }
+
+    if (!parsedText) {
+      return NextResponse.json(
+        { error: "Texto do currículo não disponível. Faça upload novamente." },
+        { status: 422 }
+      );
+    }
+
+    // 3. Apply rate limit (security constraint 2: 5 rescores por minuto por empresa)
     const redis = getRedisClient();
     const rateLimitKey = `rate:rescore:${empresaId}`;
     const currentCount = await redis.incr(rateLimitKey);
@@ -71,8 +115,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    // 4. Validate parsed_text is not empty (edge case 6)
-    if (!candidate.parsed_text?.trim()) {
+    // 4. Validate parsed text is not empty (edge case 6)
+    if (!parsedText) {
       return NextResponse.json(
         { error: "Texto do currículo não disponível. Faça upload novamente." },
         { status: 422 }
@@ -80,7 +124,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     // 5. Clean and truncate candidate text (edge case 7)
-    const textoSeguro = candidate.parsed_text
+    const textoSeguro = parsedText
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ")
       .slice(0, 12000)
       .trim();

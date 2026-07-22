@@ -414,9 +414,18 @@ export default function Home() {
 
       const storagePaths: string[] = [];
 
+      function sanitizeFileName(filename: string) {
+        return filename
+          .normalize("NFKD")
+          .replace(/\p{Diacritic}/gu, "")
+          .replace(/[^a-zA-Z0-9._-]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+      }
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const fileName = `${Date.now()}_${file.name}`;
+        const safeName = sanitizeFileName(file.name) || "curriculo";
+        const fileName = `${Date.now()}_${safeName}`;
         const filePath = `${activeJob.id}/${fileName}`;
 
         const { data, error } = await supabase.storage.from("curriculos").upload(filePath, file);
@@ -491,10 +500,11 @@ export default function Home() {
       if (Array.isArray(batchData.candidates)) {
         for (const cand of batchData.candidates) {
           const score = cand.score_final ?? cand.score;
-          if (score != null) {
+          const candidatePath = (cand.file_url as string) || (cand.storage_path as string) || "";
+          if (score != null && candidatePath) {
             setUploads((prev) =>
               prev.map((u) =>
-                u.storagePath === cand.file_url
+                u.storagePath === candidatePath
                   ? { ...u, status: "completed", progress: 100 }
                   : u
               )
