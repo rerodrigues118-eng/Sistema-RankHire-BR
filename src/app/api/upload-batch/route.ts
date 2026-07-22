@@ -57,20 +57,43 @@ async function downloadAndParsePdf(
  */
 async function processCandidate(
   candidateId: string,
-  storagePath: string,
+  storagePath: string | null | undefined,
   vagaId: string,
   batchId: string,
   admin: ReturnType<typeof createSupabaseAdminClient>
 ) {
   const procStart = Date.now();
   logger.info("processCandidate start", { candidateId, storagePath, vagaId, batchId });
+
   try {
-    const cvText = await downloadAndParsePdf(storagePath, admin);
+    let effectiveStoragePath = storagePath;
+    if (!effectiveStoragePath) {
+      const { data: candidateData, error: candidateError } = await admin
+        .from("pdf_candidates")
+        .select("storage_path, file_url")
+        .eq("id", candidateId)
+        .single();
+
+      if (candidateError) {
+        throw new Error(`Falha ao carregar caminho do candidato: ${candidateError.message}`);
+      }
+
+      effectiveStoragePath = candidateData?.storage_path || candidateData?.file_url || null;
+      if (effectiveStoragePath) {
+        await admin.from("pdf_candidates").update({ storage_path: effectiveStoragePath }).eq("id", candidateId);
+      }
+    }
+
+    if (!effectiveStoragePath) {
+      throw new Error("Nenhum caminho de storage disponível para o candidato");
+    }
+
+    const cvText = await downloadAndParsePdf(effectiveStoragePath, admin);
 
     if (!cvText || cvText.length < 20) {
       logger.warn("[processCandidate] PDF text too short or empty", { candidateId, textLength: cvText?.length ?? 0 });
       await admin.from("pdf_candidates").update({ status: "erro", parsed_text: cvText || "" }).eq("id", candidateId);
-      return { id: candidateId, status: "erro", file_url: storagePath, error: "PDF vazio ou ilegível" };
+      return { id: candidateId, status: "erro", file_url: effectiveStoragePath, error: "PDF vazio ou ilegível" };
     }
 
     const { data: criteriaData, error: critError } = await admin
@@ -230,7 +253,7 @@ Retorne EXATAMENTE este JSON (preencha com null se não encontrar):
       id: candidateId,
       score_final: scoreFinal,
       nome_candidato: candidatoNome,
-      file_url: storagePath,
+      file_url: effectiveStoragePath,
       status: "concluido",
       ...extraFields,
     };
@@ -412,6 +435,7 @@ export async function POST(req: Request) {
       vaga_id,
       empresa_id: vaga.empresa_id,
       file_url: path,
+      storage_path: path,
     }));
 
     const { error: candError } = await admin.from("pdf_candidates").insert(candidatesData);
@@ -419,8 +443,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Erro na insercao de dados" }, { status: 500 });
     }
 
-    // ── Process in background AFTER response is sent ──────────────────
-    // Uses Next.js after() to return instantly while processing continues
+    // ── Processamento: pequenos lotes são síncronos (confiável); grandes usam after() ──
+    const shouldProcessInline = arquivosPermitidos.length <= 3;
+
+    if (shouldProcessInline) {
+      // Processa de forma síncrona e retorna os candidatos processados
+      const processed: Record<string, unknown>[] = [];
+      for (const cand of candidatesData) {
+        const result = await processCandidate(cand.id, cand.file_url, vaga_id, batchId, admin);
+        processed.push(result);
+      }
+      try {
+        await admin.from("pdf_batches").update({ status: "completed" }).eq("id", batchId);
+      } catch { /* ignore */ }
+
+      return NextResponse.json({
+        queued: candidatesData.length,
+        batch_id: batchId,
+        message: `${arquivosPermitidos.length} currículo(s) processado(s)`,
+        candidates: processed,
+      });
+    }
+
+    // Para lotes grandes, usa after() para resposta instantânea
     const candidatesToProcess = [...candidatesData];
     const vagaIdForBg = vaga_id;
     const batchIdForBg = batchId;
@@ -428,15 +473,22 @@ export async function POST(req: Request) {
     after(async () => {
       const bgAdmin = createSupabaseAdminClient();
       const CONCURRENCY = 5;
-      for (let i = 0; i < candidatesToProcess.length; i += CONCURRENCY) {
-        const batch = candidatesToProcess.slice(i, i + CONCURRENCY);
-        await Promise.all(
-          batch.map((cand) =>
-            processCandidate(cand.id, cand.file_url, vagaIdForBg, batchIdForBg, bgAdmin)
-          )
-        );
+      try {
+        for (let i = 0; i < candidatesToProcess.length; i += CONCURRENCY) {
+          const batch = candidatesToProcess.slice(i, i + CONCURRENCY);
+          await Promise.all(
+            batch.map((cand) =>
+              processCandidate(cand.id, cand.file_url, vagaIdForBg, batchIdForBg, bgAdmin)
+            )
+          );
+        }
+      } catch (bgErr) {
+        logger.error("[upload-batch] Background processing failed", {
+          batchId: batchIdForBg,
+          error: bgErr instanceof Error ? bgErr.message : String(bgErr),
+        });
       }
-      // Mark batch as completed
+      // Mark batch as completed (or failed)
       try {
         await bgAdmin.from("pdf_batches").update({ status: "completed" }).eq("id", batchIdForBg);
       } catch { /* ignore */ }

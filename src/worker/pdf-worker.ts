@@ -89,10 +89,33 @@ async function incrementarCreditosPdf(empresaId: string): Promise<void> {
   }
 }
 
+async function resolvePdfStoragePath(candidateId: string): Promise<string> {
+  const { data, error } = await supabaseAdmin
+    .from("pdf_candidates")
+    .select("storage_path, file_url")
+    .eq("id", candidateId)
+    .single();
+
+  if (error) {
+    throw new Error(`Falha ao buscar caminho do PDF para candidato ${candidateId}: ${error.message}`);
+  }
+
+  const path = data?.storage_path || data?.file_url;
+  if (!path) {
+    throw new Error(`Nenhum storage_path/file_url disponível para candidato ${candidateId}`);
+  }
+
+  if (!data?.storage_path && data?.file_url) {
+    await supabaseAdmin.from("pdf_candidates").update({ storage_path: data.file_url }).eq("id", candidateId);
+  }
+
+  return path;
+}
+
 const processor = async (job: Job) => {
   const rawData = job.data as Record<string, unknown>;
   const candidateId = (rawData.candidateId as string) || (rawData.candidate_id as string);
-  const storagePath = (rawData.storagePath as string) || (rawData.storage_path as string);
+  const storagePath = (rawData.storagePath as string) || (rawData.storage_path as string) || null;
   const vagaId = (rawData.vagaId as string) || (rawData.vaga_id as string) || (rawData.vaga as string);
   const batchId = (rawData.batchId as string) || (rawData.batch_id as string);
 
@@ -107,7 +130,8 @@ const processor = async (job: Job) => {
 
   try {
     // ── PASSO 2: Download do PDF ─────────────────────────────────────
-    const pdfBuffer = await downloadPdf(storagePath);
+    const effectiveStoragePath = storagePath || (await resolvePdfStoragePath(candidateId));
+    const pdfBuffer = await downloadPdf(effectiveStoragePath);
 
     // ── PASSO 3: Extração de texto ───────────────────────────────────
     const pdfData = await pdfParse(pdfBuffer);
