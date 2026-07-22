@@ -16,6 +16,7 @@ import {
   Star,
 } from "lucide-react";
 
+
 interface PdfCriterion {
   id?: string;
   nome: string;
@@ -99,6 +100,7 @@ export default function PdfRankerPage({
   const [criteria, setCriteria] = useState<PdfCriterion[]>([]);
   const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
   const [isSavingCriteria, setIsSavingCriteria] = useState(false);
+  const [isGeneratingCriteria, setIsGeneratingCriteria] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastIdRef = useRef(0);
   const [localQuota, setLocalQuota] = useState<typeof quota | null>(quota ?? null);
@@ -222,6 +224,43 @@ export default function PdfRankerPage({
       showToast("error", "Falha de conexão ao salvar critérios.");
     } finally {
       setIsSavingCriteria(false);
+    }
+  };
+
+  const handleGenerateCriteria = async () => {
+    if (!activeJob?.id) {
+      showToast("error", "Selecione uma vaga antes de gerar critérios.");
+      return;
+    }
+
+    setIsGeneratingCriteria(true);
+    try {
+      const res = await fetch(`/api/vagas/${activeJob.id}/criteria/generate`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo_vaga: activeJob.title,
+          briefing: activeJob.briefing ?? "",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.criteria)) {
+        setCriteria(
+          data.criteria.map((c: { id?: string; nome?: string | null; peso?: number | null }) => ({
+            id: c.id,
+            nome: c.nome ?? "",
+            peso: c.peso ?? 3,
+          }))
+        );
+        showToast("success", "Critérios gerados com IA com sucesso!");
+      } else {
+        showToast("error", data.error || "Erro ao gerar critérios com IA.");
+      }
+    } catch {
+      showToast("error", "Falha de conexão ao gerar critérios.");
+    } finally {
+      setIsGeneratingCriteria(false);
     }
   };
 
@@ -496,20 +535,30 @@ export default function PdfRankerPage({
 
           {/* Criteria card */}
           <div className="bg-white rounded-[12px] p-6" style={{ border: "1px solid #E5E7EB" }}>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
               <div>
                 <h2 className="text-[15px] font-semibold text-[#111827]">Critérios de Avaliação</h2>
                 <p className="text-[12px] text-[#6B7280] mt-0.5">
                   Escala de peso de 1 (baixo) a 5 (essencial)
                 </p>
               </div>
-              <button
-                onClick={() => handleAddCriteria()}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#EFF6FF] text-[#1D4ED8] hover:bg-[#1D4ED8] hover:text-white rounded-[8px] text-[13px] font-medium transition-all duration-200"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Adicionar critério
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleGenerateCriteria}
+                  disabled={isGeneratingCriteria || isLoadingCriteria}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#1D4ED8] text-white hover:bg-[#0D3B75] rounded-[8px] text-[13px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  {isGeneratingCriteria ? "Gerando..." : "Gerar com IA"}
+                </button>
+                <button
+                  onClick={() => handleAddCriteria()}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#EFF6FF] text-[#1D4ED8] hover:bg-[#1D4ED8] hover:text-white rounded-[8px] text-[13px] font-medium transition-all duration-200"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Adicionar critério
+                </button>
+              </div>
             </div>
 
             {isLoadingCriteria ? (

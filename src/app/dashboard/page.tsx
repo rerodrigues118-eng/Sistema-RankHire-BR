@@ -297,73 +297,93 @@ export default function Home() {
     const actualScore = (candData.score_final as number | null) ?? (candData.score as number | null);
     if (actualScore == null) return;
 
-    const file_url = (candData.file_url as string) || "";
+    const candidateName = (candData.nome_candidato as string | null) || "";
+    const fileUrl = (candData.file_url as string) || "";
+    const storagePath = (candData.storage_path as string) || "";
     const fallbackBasename =
-      file_url.split("/").pop()?.replace(/\.pdf$/i, "").replace(/[-_]/g, " ") || "Candidato";
+      fileUrl.split("/").pop()?.replace(/\.pdf$/i, "").replace(/[-_]/g, " ") || storagePath.split("/").pop()?.replace(/\.pdf$/i, "").replace(/[-_]/g, " ") || "Candidato";
     const parts = fallbackBasename.split(" ").filter(Boolean);
     const fallbackName =
       parts.length >= 2
         ? `${parts[0].charAt(0).toUpperCase()}${parts[0].slice(1)} ${parts[1].charAt(0).toUpperCase()}${parts[1].slice(1)}`
         : fallbackBasename;
 
-    const finalName = (candData.nome_candidato as string | null) || fallbackName;
-    const color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+    const finalName = candidateName || fallbackName;
 
-    // Se file_url não está direto no candData, busca em batchData.candidates (polling antigo)
-    const effectiveFileUrl = file_url || (() => {
+    // Se file_url/storage_path não está direto no candData, busca em batchData.candidates (polling antigo)
+    const effectiveFileUrl = fileUrl || storagePath || (() => {
       const batchCandidates = batchData.candidates as Array<Record<string, unknown>> | undefined;
       const candMeta = batchCandidates?.find((c) => c.id === candData.id);
-      return (candMeta?.file_url as string) || "";
+      return (candMeta?.file_url as string) || (candMeta?.storage_path as string) || "";
     })();
 
-    const newCand: Candidate = {
-      id: candData.id as string,
-      name: finalName,
-      role: activeJob?.title || "Vaga selecionada",
-      company: (candData.empresa_atual as string | null) || "Via upload",
-      city: (candData.cidade as string | null) || "Não informado",
-      score: actualScore as number,
-      avatarColor: color,
-      initials: finalName
-        .split(" ")
-        .map((part: string) => part[0])
-        .join("")
-        .substring(0, 2)
-        .toUpperCase(),
-      confirmedTags: ["Extraído via AI"],
-      partialTags: [],
-      otherTags: [],
-      shortlist: false,
-      status: "triado" as KanbanStatus,
-      linkedinUrl: (candData.linkedin_url as string | null) || "#",
-      createdAt: new Date().toISOString(),
-      // Mapeando campos extras extraídos pela IA para os campos da interface Candidate
-      email: (candData.email_contato as string | null) || undefined,
-      phone: (candData.telefone as string | null) || undefined,
-      pretensaoSalarial: (candData.pretensao_salarial as string | null) || undefined,
-      disponibilidade: (candData.disponibilidade as string | null) || undefined,
-      regime: (candData.regime_preferido as string | null) || undefined,
-      aiSummary: (candData.resumo_ia as string | null) || undefined,
-      // Campos extras novos
-      emailContato: candData.email_contato as string | null | undefined,
-      telefone: candData.telefone as string | null | undefined,
-      cargoAtual: candData.cargo_atual as string | null | undefined,
-      regimePreferido: candData.regime_preferido as string | null | undefined,
-      resumoIa: candData.resumo_ia as string | null | undefined,
-    };
-
-    void effectiveFileUrl; // usado apenas para referência de fallback
-
     setCandidates((prev) => {
-      if (prev.some((c) => c.id === newCand.id)) return prev;
-      return [newCand, ...prev];
+      const existingIndex = prev.findIndex((c) => c.id === candData.id);
+      const base = existingIndex >= 0 ? prev[existingIndex] : null;
+      const color = base?.avatarColor ?? AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+
+      const updated: Candidate = {
+        id: candData.id as string,
+        name: finalName,
+        role: (candData.cargo_atual as string | null) || base?.role || activeJob?.title || "",
+        company: (candData.empresa_atual as string | null) || base?.company || "",
+        city: (candData.cidade as string | null) || base?.city || "",
+        score: actualScore as number,
+        avatarColor: color,
+        initials: finalName
+          .split(" ")
+          .map((part: string) => part[0])
+          .join("")
+          .substring(0, 2)
+          .toUpperCase(),
+        confirmedTags: base?.confirmedTags?.length ? base.confirmedTags : ["Extraído via AI"],
+        partialTags: base?.partialTags || [],
+        otherTags: base?.otherTags || [],
+        etiqueta: base?.etiqueta,
+        shortlist: base?.shortlist || false,
+        status: (base?.status as KanbanStatus) || "triado",
+        linkedinUrl: (candData.linkedin_url as string | null) || base?.linkedinUrl || "#",
+        createdAt: base?.createdAt || new Date().toISOString(),
+        email: (candData.email_contato as string | null) || base?.email || undefined,
+        phone: (candData.telefone as string | null) || base?.phone || undefined,
+        pretensaoSalarial: (candData.pretensao_salarial as string | null) || base?.pretensaoSalarial || undefined,
+        disponibilidade: (candData.disponibilidade as string | null) || base?.disponibilidade || undefined,
+        regime: (candData.regime_preferido as string | null) || base?.regime || undefined,
+        aiSummary: (candData.resumo_ia as string | null) || base?.aiSummary || undefined,
+        emailContato: (candData.email_contato as string | null | undefined) || base?.emailContato,
+        telefone: (candData.telefone as string | null | undefined) || base?.telefone,
+        cargoAtual: (candData.cargo_atual as string | null | undefined) || base?.cargoAtual,
+        regimePreferido: (candData.regime_preferido as string | null | undefined) || base?.regimePreferido,
+        resumoIa: (candData.resumo_ia as string | null | undefined) || base?.resumoIa,
+        observacoes: base?.observacoes,
+        evaluations: base?.evaluations,
+      };
+
+      if (existingIndex >= 0) {
+        const next = [...prev];
+        next[existingIndex] = updated;
+        return next;
+      }
+      return [updated, ...prev];
     });
 
-    setUploads((prev) => {
-      const pending = prev.filter((u) => u.status !== "completed" && u.status !== "failed");
-      if (pending.length === 0) setIsUploading(false);
-      return prev;
-    });
+    // Marca o upload correspondente como concluído
+    if (effectiveFileUrl) {
+      setUploads((prev) => {
+        const next = prev.map((u) =>
+          u.storagePath === effectiveFileUrl ? { ...u, status: "completed" as const, progress: 100 } : u
+        );
+        const pending = next.filter((u) => u.status !== "completed" && u.status !== "failed");
+        if (pending.length === 0) setIsUploading(false);
+        return next;
+      });
+    } else {
+      setUploads((prev) => {
+        const pending = prev.filter((u) => u.status !== "completed" && u.status !== "failed");
+        if (pending.length === 0) setIsUploading(false);
+        return prev;
+      });
+    }
   }, [activeJob]);
 
   const handleFileUpload = useCallback(
@@ -515,11 +535,12 @@ export default function Home() {
             if (Array.isArray(batchPoll.candidates)) {
               for (const cand of batchPoll.candidates) {
                 const score = cand.score_final ?? cand.score;
-                if (score != null && pendingPaths.has(cand.file_url)) {
-                  pendingPaths.delete(cand.file_url);
+                const candidatePath = (cand.file_url as string) || (cand.storage_path as string) || "";
+                if (score != null && candidatePath && pendingPaths.has(candidatePath)) {
+                  pendingPaths.delete(candidatePath);
                   setUploads((prev) =>
                     prev.map((u) =>
-                      u.storagePath === cand.file_url
+                      u.storagePath === candidatePath
                         ? { ...u, status: "completed", progress: 100 }
                         : u
                     )

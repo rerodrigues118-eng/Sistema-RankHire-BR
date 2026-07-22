@@ -83,6 +83,8 @@ export async function GET() {
           disponibilidade,
           regime_preferido,
           resumo_ia,
+          file_url,
+          storage_path,
           created_at,
           candidate_etiquetas(
             etiquetas(id,nome,cor,posicao)
@@ -193,16 +195,16 @@ export async function GET() {
         .map((e: Record<string, unknown>) => e.name as string);
 
       const avatarColor = AVATAR_PALETTE[index % AVATAR_PALETTE.length];
-      const candidateName = (cand.nome_candidato as string | null) || `Candidato ${index + 1}`;
+      const candidateName = (cand.nome_candidato as string | null) || "";
       const candEtiquetas = cand.candidate_etiquetas as Array<Record<string, unknown>> | undefined;
       const etiqueta = candEtiquetas?.[0] ? (candEtiquetas[0].etiquetas as string | null) : null;
 
       return {
         id: cand.id,
         name: candidateName,
-        role: (cand.cargo_atual as string | null) || "Email Designer",
-        company: (cand.empresa_atual as string | null) || "Via upload",
-        city: (cand.cidade as string | null) || "Brasil",
+        role: (cand.cargo_atual as string | null) || "",
+        company: (cand.empresa_atual as string | null) || "",
+        city: (cand.cidade as string | null) || "",
         vagaId: (cand.vaga_id as string | null) || undefined,
         email: (cand.email_contato as string | null) || "",
         phone: (cand.telefone as string | null) || "",

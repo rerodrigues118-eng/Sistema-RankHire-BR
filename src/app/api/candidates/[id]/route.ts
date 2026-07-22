@@ -215,3 +215,46 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { userId, supabase: _supabase } = await requireAuth();
+    const admin = createSupabaseAdminClient();
+    const { id } = await params;
+
+    const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
+    if (!usuario?.empresa_id) {
+      return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
+    }
+
+    // Security: ensure candidate belongs to user's company
+    const { data: candidate } = await admin
+      .from("pdf_candidates")
+      .select("id, shortlist")
+      .eq("id", id)
+      .eq("empresa_id", usuario.empresa_id)
+      .single();
+
+    if (!candidate) {
+      return NextResponse.json({ error: "Candidato nao encontrado" }, { status: 404 });
+    }
+
+    // Favorited candidates are kept in CRM/Pipeline; remove favorite first
+    if (candidate.shortlist) {
+      return NextResponse.json(
+        { error: "Candidato favoritado não pode ser removido diretamente. Desfavorite-o primeiro." },
+        { status: 409 }
+      );
+    }
+
+    const { error } = await admin.from("pdf_candidates").delete().eq("id", id).eq("empresa_id", usuario.empresa_id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: "Candidato removido" });
+  } catch (error: unknown) {
+    return handleApiError(error);
+  }
+}
+

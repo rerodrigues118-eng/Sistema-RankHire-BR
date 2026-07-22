@@ -24,7 +24,7 @@ export async function GET(
 
     const { data: candidates, error: candError } = await supabase
       .from("pdf_candidates")
-      .select("id, file_url, score_final, score, nome_candidato, status")
+      .select("id, file_url, storage_path, score_final, nome_candidato, status")
       .eq("batch_id", id);
 
     if (candError) {
