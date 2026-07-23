@@ -15,6 +15,7 @@ export async function GET() {
       .from("vagas")
       .select("id,title,area,tipo_contrato,localizacao,briefing,status,created_at,updated_at")
       .eq("empresa_id", usuario.empresa_id)
+      .eq("status", "ativa")
       .order("created_at", { ascending: false });
 
     if (error) {

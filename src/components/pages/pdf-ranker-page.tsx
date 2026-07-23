@@ -125,7 +125,7 @@ export default function PdfRankerPage({
     setIsLoadingCriteria(true);
     setCriteriaLoaded(false);
     try {
-      const res = await fetch(`/api/vagas/${activeJob.id}/criteria`, { credentials: "include" });
+      const res = await fetch(`/api/criteria?vaga_id=${activeJob.id}`, { credentials: "include" });
       const data = await res.json();
       if (res.ok && Array.isArray(data.criteria)) {
         setCriteria(
@@ -198,20 +198,22 @@ export default function PdfRankerPage({
     const valid = inputCriteria.filter((c) => c.nome && c.nome.trim());
     if (valid.length === 0) {
       showToast("error", "Adicione pelo menos um critério antes de salvar.");
-      return false;
+      return { ok: false, vaga: activeJob.title };
     }
 
     setIsSavingCriteria(true);
     try {
-      const res = await fetch(`/api/vagas/${activeJob.id}/criteria`, {
+      const res = await fetch(`/api/criteria`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          criteria: valid.map((c) => ({
-            id: c.id,
+          vaga_id: activeJob.id,
+          criterios: valid.map((c) => ({
             nome: c.nome.trim(),
             peso: c.peso,
+            descricao: "",
+            gerado_por_ia: false,
           })),
         }),
       });
@@ -224,22 +226,22 @@ export default function PdfRankerPage({
             peso: c.peso ?? 3,
           }))
         );
-        return true;
+        return { ok: true, vaga: data.vaga || activeJob.title };
       }
       showToast("error", data.error || "Erro ao salvar critérios.");
-      return false;
+      return { ok: false, vaga: activeJob.title };
     } catch {
       showToast("error", "Falha de conexão ao salvar critérios.");
-      return false;
+      return { ok: false, vaga: activeJob.title };
     } finally {
       setIsSavingCriteria(false);
     }
   }
 
   const handleSaveCriteria = async () => {
-    const saved = await saveCriteriaList(criteria);
-    if (saved) {
-      showToast("success", "Critérios do funil salvos com sucesso!");
+    const result = await saveCriteriaList(criteria);
+    if (result.ok) {
+      showToast("success", `✓ ${criteria.length} critérios salvos para "${result.vaga}"`);
     }
   };
 
@@ -268,9 +270,9 @@ export default function PdfRankerPage({
           peso: c.peso ?? 3,
         }));
         setCriteria(generated);
-        const saved = await saveCriteriaList(generated);
-        if (saved) {
-          showToast("success", "Critérios gerados e salvos com sucesso!");
+        const result = await saveCriteriaList(generated);
+        if (result.ok) {
+          showToast("success", `✓ ${generated.length} critérios salvos para "${result.vaga}"`);
         }
       } else {
         showToast("error", data.error || "Erro ao gerar critérios com IA.");
