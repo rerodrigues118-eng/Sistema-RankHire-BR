@@ -7,7 +7,10 @@ import { buildScoringPrompt } from "../lib/scoring-prompt";
 import { createClient } from "@supabase/supabase-js";
 import { Job, Worker, type WorkerOptions, type ConnectionOptions } from "bullmq";
 
-import pdfParse from "pdf-parse/lib/pdf-parse.js";
+async function loadPdfParse() {
+  const module = await import("pdf-parse/lib/pdf-parse.js");
+  return module.default ?? module;
+}
 
 // ── Early-exit guards para variáveis de ambiente ausentes ──────────────
 if (!process.env.REDIS_URL) {
@@ -135,6 +138,7 @@ const processor = async (job: Job) => {
     const pdfBuffer = await downloadPdf(effectiveStoragePath);
 
     // ── PASSO 3: Extração de texto ───────────────────────────────────
+    const pdfParse = await loadPdfParse();
     const pdfData = await pdfParse(pdfBuffer);
 
     // ── PASSO 4: Sanitização do texto ────────────────────────────────

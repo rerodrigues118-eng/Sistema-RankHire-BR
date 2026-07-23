@@ -5,7 +5,11 @@ import { buildScoringPrompt } from "@/lib/scoring-prompt";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Redis from "ioredis";
-import pdfParse from "pdf-parse/lib/pdf-parse.js";
+
+async function loadPdfParse() {
+  const module = await import("pdf-parse/lib/pdf-parse.js");
+  return module.default ?? module;
+}
 
 async function fetchPdfTextFromStorage(
   admin: ReturnType<typeof createSupabaseAdminClient>,
@@ -23,6 +27,7 @@ async function fetchPdfTextFromStorage(
   }
 
   const buffer = Buffer.from(await response.arrayBuffer());
+  const pdfParse = await loadPdfParse();
   const pdfData = await pdfParse(buffer);
   return String(pdfData.text || "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ").trim();
 }

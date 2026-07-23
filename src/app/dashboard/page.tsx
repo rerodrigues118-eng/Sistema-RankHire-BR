@@ -328,6 +328,7 @@ export default function Home() {
         role: (candData.cargo_atual as string | null) || base?.role || activeJob?.title || "",
         company: (candData.empresa_atual as string | null) || base?.company || "",
         city: (candData.cidade as string | null) || base?.city || "",
+        vagaId: (candData.vaga_id as string | null) || base?.vagaId || activeJob?.id || undefined,
         score: actualScore as number,
         avatarColor: color,
         initials: finalName

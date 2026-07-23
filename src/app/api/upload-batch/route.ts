@@ -352,6 +352,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Vaga não pertence à sua empresa." }, { status: 403 });
     }
 
+    const { count: criteriaCount, error: criteriaError } = await admin
+      .from("criteria")
+      .select("id", { count: "exact", head: true })
+      .eq("vaga_id", vaga_id);
+
+    if (criteriaError) {
+      return NextResponse.json({ error: "Falha ao verificar critérios da vaga." }, { status: 500 });
+    }
+
+    if ((criteriaCount ?? 0) === 0) {
+      return NextResponse.json(
+        {
+          error: "Configure os critérios de avaliação da vaga antes de importar PDFs.",
+        },
+        { status: 400 }
+      );
+    }
+
     // ── Check quota ATOMICALLY via advisory lock (previne TOCTOU) ─────
     const { data: empresa } = await admin
       .from("empresas")

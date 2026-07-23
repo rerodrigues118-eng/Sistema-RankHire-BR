@@ -101,11 +101,15 @@ export default function PdfRankerPage({
   const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
   const [isSavingCriteria, setIsSavingCriteria] = useState(false);
   const [isGeneratingCriteria, setIsGeneratingCriteria] = useState(false);
+  const [criteriaLoaded, setCriteriaLoaded] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastIdRef = useRef(0);
   const [localQuota, setLocalQuota] = useState<typeof quota | null>(quota ?? null);
 
-  const topCandidates = [...candidates].sort((a, b) => b.score - a.score);
+  const topCandidates = candidates
+    .filter((candidate) => candidate.vagaId === activeJob.id)
+    .sort((a, b) => b.score - a.score);
+  const hasCriteria = criteria.some((c) => c.nome && c.nome.trim().length > 0);
 
   /* ── Toast helpers ────────────────────────── */
   const showToast = useCallback((type: ToastType, message: string) => {
@@ -119,6 +123,7 @@ export default function PdfRankerPage({
   /* ── Load criteria when switching to Funil tab ── */
   async function fetchCriteria() {
     setIsLoadingCriteria(true);
+    setCriteriaLoaded(false);
     try {
       const res = await fetch(`/api/vagas/${activeJob.id}/criteria`, { credentials: "include" });
       const data = await res.json();
@@ -131,23 +136,26 @@ export default function PdfRankerPage({
           }))
         );
       } else {
+        setCriteria([]);
         showToast("error", "Erro ao carregar critérios da vaga.");
       }
     } catch {
+      setCriteria([]);
       showToast("error", "Falha de conexão ao carregar critérios.");
     } finally {
       setIsLoadingCriteria(false);
+      setCriteriaLoaded(true);
     }
   }
 
   useEffect(() => {
-    if (activeTab === "funil" && activeJob?.id) {
+    if (activeJob?.id) {
       (async () => {
         await fetchCriteria();
       })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, activeJob?.id]);
+  }, [activeJob?.id]);
 
   // Refresh quota from server (canonical processed PDFs)
   useEffect(() => {
@@ -186,11 +194,11 @@ export default function PdfRankerPage({
     );
   };
 
-  const handleSaveCriteria = async () => {
-    const valid = criteria.filter((c) => c.nome && c.nome.trim());
+  async function saveCriteriaList(inputCriteria: PdfCriterion[]) {
+    const valid = inputCriteria.filter((c) => c.nome && c.nome.trim());
     if (valid.length === 0) {
       showToast("error", "Adicione pelo menos um critério antes de salvar.");
-      return;
+      return false;
     }
 
     setIsSavingCriteria(true);
@@ -216,14 +224,22 @@ export default function PdfRankerPage({
             peso: c.peso ?? 3,
           }))
         );
-        showToast("success", "Critérios do funil salvos com sucesso!");
-      } else {
-        showToast("error", data.error || "Erro ao salvar critérios.");
+        return true;
       }
+      showToast("error", data.error || "Erro ao salvar critérios.");
+      return false;
     } catch {
       showToast("error", "Falha de conexão ao salvar critérios.");
+      return false;
     } finally {
       setIsSavingCriteria(false);
+    }
+  }
+
+  const handleSaveCriteria = async () => {
+    const saved = await saveCriteriaList(criteria);
+    if (saved) {
+      showToast("success", "Critérios do funil salvos com sucesso!");
     }
   };
 
@@ -246,14 +262,16 @@ export default function PdfRankerPage({
       });
       const data = await res.json();
       if (res.ok && Array.isArray(data.criteria)) {
-        setCriteria(
-          data.criteria.map((c: { id?: string; nome?: string | null; peso?: number | null }) => ({
-            id: c.id,
-            nome: c.nome ?? "",
-            peso: c.peso ?? 3,
-          }))
-        );
-        showToast("success", "Critérios gerados com IA com sucesso!");
+        const generated = data.criteria.map((c: { id?: string; nome?: string | null; peso?: number | null }) => ({
+          id: c.id,
+          nome: c.nome ?? "",
+          peso: c.peso ?? 3,
+        }));
+        setCriteria(generated);
+        const saved = await saveCriteriaList(generated);
+        if (saved) {
+          showToast("success", "Critérios gerados e salvos com sucesso!");
+        }
       } else {
         showToast("error", data.error || "Erro ao gerar critérios com IA.");
       }
@@ -355,8 +373,14 @@ export default function PdfRankerPage({
           {/* ── Upload drop zone ────────────────────── */}
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full rounded-[12px] p-12 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all duration-200 border-2 border-dashed border-[#D1D5DB] hover:border-[#06D6A0] bg-[#FFFFFF] group"
+            onClick={() => {
+              if (!hasCriteria) {
+                showToast("info", "Configure os critérios do funil antes de importar currículos.");
+                return;
+              }
+              fileInputRef.current?.click();
+            }}
+            className={`w-full rounded-[12px] p-12 flex flex-col items-center justify-center gap-4 transition-all duration-200 border-2 border-dashed ${hasCriteria ? "border-[#D1D5DB] hover:border-[#06D6A0] bg-[#FFFFFF]" : "border-[#F3F4F6] bg-[#F9FAFB] cursor-not-allowed"}`}
           >
             <div className="w-14 h-14 rounded-full bg-[#F3F4F6] flex items-center justify-center transition-colors group-hover:bg-[rgba(6,214,160,0.1)]">
               <UploadCloud
@@ -378,11 +402,17 @@ export default function PdfRankerPage({
               multiple
               accept=".pdf"
               className="hidden"
+              disabled={!hasCriteria}
               onChange={onFileUpload}
             />
           </button>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {!hasCriteria && criteriaLoaded && (
+              <div className="md:col-span-2 rounded-[12px] border border-[#FEE2E2] bg-[#FEF3F2] p-4 text-sm text-[#991B1B]">
+                Configure os critérios na aba <strong>Funil de Critérios</strong> antes de importar currículos.
+              </div>
+            )}
             {/* ── Processing queue ──────────────────── */}
             <div className="flex flex-col">
               <div className="flex items-center justify-between mb-4">

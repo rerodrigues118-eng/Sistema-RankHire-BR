@@ -127,13 +127,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .map(async (crit) => {
         const peso = Math.max(1, Math.min(5, crit.peso));
         if (crit.id) {
-          return _supabase
+          const result = await _supabase
             .from("criteria")
             .update({ nome: crit.nome.trim(), peso })
             .eq("id", crit.id)
             .eq("vaga_id", vagaId);
+
+          if (result.error) {
+            throw new Error(result.error.message);
+          }
+
+          return result;
         } else {
-          return _supabase
+          const result = await _supabase
             .from("criteria")
             .insert({
               vaga_id: vagaId,
@@ -141,6 +147,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
               peso,
               gerado_por_ia: false,
             });
+
+          if (result.error) {
+            throw new Error(result.error.message);
+          }
+
+          return result;
         }
       });
 

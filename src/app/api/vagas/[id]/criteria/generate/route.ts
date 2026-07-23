@@ -1,16 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createSupabaseServerClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
+    const { id: vagaId } = await params;
     const body = await req.json();
     const { titulo_vaga, briefing } = body;
 
-    if (!titulo_vaga) return NextResponse.json({ error: "titulo_vaga obrigatório" }, { status: 400 });
+    const { data: usuario } = await supabase
+      .from("usuarios")
+      .select("empresa_id")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!usuario?.empresa_id) {
+      return NextResponse.json({ error: "Empresa não encontrada" }, { status: 404 });
+    }
+
+    const { data: vaga, error: vagaError } = await supabase
+      .from("vagas")
+      .select("id, title")
+      .eq("id", vagaId)
+      .eq("empresa_id", usuario.empresa_id)
+      .single();
+
+    if (vagaError || !vaga) {
+      return NextResponse.json({ error: "Vaga não encontrada" }, { status: 404 });
+    }
+
+    const safeTituloVaga = titulo_vaga || vaga.title || "Vaga";
+
+    if (!safeTituloVaga) return NextResponse.json({ error: "titulo_vaga obrigatório" }, { status: 400 });
 
     if (!process.env.GROQ_API_KEY) {
       return NextResponse.json({
@@ -26,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = `Você é um especialista em recrutamento.
-Crie 5 critérios de avaliação para a vaga: "${titulo_vaga}"
+Crie 5 critérios de avaliação para a vaga: "${safeTituloVaga}"
 ${briefing ? `\nBriefing: ${briefing}` : ""}
 
 Retorne APENAS este JSON (sem markdown):
@@ -44,7 +68,7 @@ Regras:
 - peso de 1 a 5 (5 = mais importante)
 - nomes curtos (máximo 4 palavras)
 - descrições diretas e objetivas
-- critérios específicos para "${titulo_vaga}"`;
+- critérios específicos para "${safeTituloVaga}"`;
 
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -68,7 +92,7 @@ Regras:
       console.error("[generate criteria] Groq error:", res.status);
       return NextResponse.json({
         criteria: [
-          { nome: "Experiência na área", peso: 5, descricao: `Experiência em ${titulo_vaga}` },
+          { nome: "Experiência na área", peso: 5, descricao: `Experiência em ${safeTituloVaga}` },
           { nome: "Habilidades técnicas", peso: 4, descricao: "Ferramentas e tecnologias da vaga" },
           { nome: "Formação", peso: 3, descricao: "Formação acadêmica relevante" },
           { nome: "Resultados comprovados", peso: 4, descricao: "Conquistas mensuráveis" },
