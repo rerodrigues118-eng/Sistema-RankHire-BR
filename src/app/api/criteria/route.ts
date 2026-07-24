@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
       empresa_id: usuario.empresa_id,
       nome: c.nome.trim(),
       peso: c.peso,
+      weight: c.peso,
       descricao: c.descricao?.trim() || "",
       description: c.descricao?.trim() || "",
       gerado_por_ia: c.gerado_por_ia,
