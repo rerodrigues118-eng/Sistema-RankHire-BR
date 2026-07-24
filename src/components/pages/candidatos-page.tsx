@@ -4,7 +4,8 @@ import Link from "next/link";
 
 import React, { useState, useMemo } from "react";
 import type { Candidate } from "@/lib/types";
-import { Search, SlidersHorizontal, Filter, MoreHorizontal, ExternalLink, MessageCircle, Star } from "lucide-react";
+import { Search, SlidersHorizontal, Filter, MoreHorizontal, ExternalLink, MessageCircle, Star, Lock } from "lucide-react";
+import { useEmpresa } from "@/hooks/useEmpresa";
 
 interface CandidatosPageProps {
   candidates: Candidate[];
@@ -15,6 +16,16 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(true);
+  const { empresa, isLoading: isLoadingEmpresa } = useEmpresa();
+
+  // Detect trial plan for CRM restriction
+  const isCrmLocked = !isLoadingEmpresa && empresa && (() => {
+    const plano = (empresa.plano || 'trial').toLowerCase();
+    const subStatus = empresa.subscription_status || '';
+    const isTrialPlan = plano === 'trial' || plano === 'trial_starter';
+    const isAdmin = ['admin', 'superadmin'].includes((empresa.role || '').toLowerCase());
+    return isTrialPlan && !isAdmin && subStatus !== 'active';
+  })();
 
   const filteredCandidates = useMemo(() => {
     let list = [...candidates];
@@ -56,6 +67,38 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
       </span>
     );
   };
+
+  if (isCrmLocked) {
+    return (
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-6 lg:px-8">
+        <div className="flex flex-col items-center justify-center min-h-96 gap-5 rounded-[28px] border border-slate-200 bg-white p-10">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg">
+            <Lock className="w-8 h-8 text-white" />
+          </div>
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">CRM de Candidatos</h2>
+            <p className="text-gray-500 max-w-md leading-relaxed">
+              O CRM completo está disponível nos planos <strong>Starter, Pro e Agência</strong>.
+              No Trial, os candidatos ficam apenas no Pipeline (triagem temporária).
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center max-w-sm">
+            {["Histórico permanente", "Etiquetas IA", "Exportar CSV"].map(f => (
+              <div key={f} className="bg-slate-50 rounded-xl p-3">
+                <p className="text-[12px] font-medium text-slate-600">{f}</p>
+              </div>
+            ))}
+          </div>
+          <Link
+            href="/dashboard?page=settings"
+            className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-8 py-3 rounded-full font-semibold text-[15px] hover:from-indigo-700 hover:to-violet-700 transition shadow-md hover:shadow-lg"
+          >
+            Ver Planos →
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pt-2 pb-10">

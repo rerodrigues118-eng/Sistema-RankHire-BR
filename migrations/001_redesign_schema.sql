@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS vagas (
   empresa_id uuid REFERENCES empresas(id),
   criado_por uuid REFERENCES usuarios(id),
   titulo text,
+  title text,
   area text,
   tipo_contrato text,
   localizacao text,
@@ -62,6 +63,7 @@ CREATE TABLE IF NOT EXISTS vagas (
 ALTER TABLE vagas ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES empresas(id);
 ALTER TABLE vagas ADD COLUMN IF NOT EXISTS criado_por uuid REFERENCES usuarios(id);
 ALTER TABLE vagas ADD COLUMN IF NOT EXISTS titulo text;
+ALTER TABLE vagas ADD COLUMN IF NOT EXISTS title text;
 ALTER TABLE vagas ADD COLUMN IF NOT EXISTS area text;
 ALTER TABLE vagas ADD COLUMN IF NOT EXISTS tipo_contrato text;
 ALTER TABLE vagas ADD COLUMN IF NOT EXISTS localizacao text;
@@ -75,15 +77,23 @@ ALTER TABLE vagas ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 CREATE TABLE IF NOT EXISTS criteria (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   vaga_id uuid REFERENCES vagas(id),
+  empresa_id uuid REFERENCES empresas(id),
   nome text,
+  descricao text,
+  description text,
   peso int CHECK (peso BETWEEN 1 AND 5),
+  weight int,
   gerado_por_ia boolean,
   created_at timestamptz DEFAULT now()
 );
 
 ALTER TABLE criteria ADD COLUMN IF NOT EXISTS vaga_id uuid REFERENCES vagas(id);
+ALTER TABLE criteria ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES empresas(id);
 ALTER TABLE criteria ADD COLUMN IF NOT EXISTS nome text;
+ALTER TABLE criteria ADD COLUMN IF NOT EXISTS descricao text;
+ALTER TABLE criteria ADD COLUMN IF NOT EXISTS description text;
 ALTER TABLE criteria ADD COLUMN IF NOT EXISTS peso int;
+ALTER TABLE criteria ADD COLUMN IF NOT EXISTS weight int;
 ALTER TABLE criteria ADD COLUMN IF NOT EXISTS gerado_por_ia boolean;
 ALTER TABLE criteria ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 
@@ -235,6 +245,43 @@ ALTER TABLE profiles_cache ADD COLUMN IF NOT EXISTS linkedin_url text;
 ALTER TABLE profiles_cache ADD COLUMN IF NOT EXISTS dados jsonb;
 ALTER TABLE profiles_cache ADD COLUMN IF NOT EXISTS expires_at timestamptz;
 ALTER TABLE profiles_cache ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- 12. LINKEDIN_PROFILES
+CREATE TABLE IF NOT EXISTS linkedin_profiles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  linkedin_url text UNIQUE NOT NULL,
+  nome text,
+  cargo_atual text,
+  empresa_atual text,
+  cidade text,
+  skills jsonb DEFAULT '[]',
+  idiomas jsonb DEFAULT '[]',
+  formacao jsonb DEFAULT '[]',
+  experiencias jsonb DEFAULT '[]',
+  sobre text,
+  anos_experiencia int,
+  dados_completos jsonb,
+  ultima_atualizacao timestamptz DEFAULT now(),
+  fonte text DEFAULT 'apify',
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS linkedin_url text;
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS nome text;
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS cargo_atual text;
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS empresa_atual text;
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS cidade text;
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS skills jsonb DEFAULT '[]';
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS idiomas jsonb DEFAULT '[]';
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS formacao jsonb DEFAULT '[]';
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS experiencias jsonb DEFAULT '[]';
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS sobre text;
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS anos_experiencia int;
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS dados_completos jsonb;
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS ultima_atualizacao timestamptz DEFAULT now();
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS fonte text DEFAULT 'apify';
+ALTER TABLE linkedin_profiles ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+CREATE INDEX IF NOT EXISTS idx_linkedin_profiles_url ON linkedin_profiles(linkedin_url);
 
 
 -- ==========================================

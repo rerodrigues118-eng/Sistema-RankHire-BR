@@ -89,6 +89,9 @@ export interface Agent {
   filtrosIa?: AgentFilterSet;
   metrics?: AgentSummaryMetric;
   latestRun?: AgentRun | null;
+  categoria?: string;
+  nivelAcesso?: 'compartilhado' | 'privado';
+  colaboradores?: string[];
 }
 
 export interface Candidate {

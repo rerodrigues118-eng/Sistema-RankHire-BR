@@ -9,6 +9,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 type VagaRow = {
   id: string;
   title: string | null;
+  titulo?: string | null;
 };
 
 type AgentRow = {
@@ -26,6 +27,9 @@ type AgentRow = {
   created_at: string | null;
   criterios_ia: AgentCriterion[] | null;
   filtros_ia: AgentFilterSet | null;
+  categoria?: string;
+  nivel_acesso?: 'compartilhado' | 'privado';
+  colaboradores?: string[];
 };
 
 type RunRow = {
@@ -184,6 +188,9 @@ function formatAgent(
           executadoEm: latestRun.executado_em || new Date().toISOString(),
         }
       : null,
+    categoria: row.categoria,
+    nivelAcesso: row.nivel_acesso,
+    colaboradores: row.colaboradores,
   };
 }
 
@@ -200,10 +207,10 @@ export async function GET() {
     }
 
     const [vagasRes, agentesRes] = await Promise.all([
-      admin.from("vagas").select("id,title").eq("empresa_id", usuario.empresa_id).order("created_at", { ascending: false }),
+      admin.from("vagas").select("id,title,titulo").eq("empresa_id", usuario.empresa_id).order("created_at", { ascending: false }),
       admin
         .from("agentes_ia")
-        .select("id,empresa_id,vaga_id,nome,briefing,status,frequencia,score_minimo_notificacao,calibracoes_realizadas,ultima_busca,proxima_busca,created_at,criterios_ia,filtros_ia")
+        .select("id,empresa_id,vaga_id,nome,briefing,status,frequencia,score_minimo_notificacao,calibracoes_realizadas,ultima_busca,proxima_busca,created_at,criterios_ia,filtros_ia,categoria,nivel_acesso,colaboradores")
         .eq("empresa_id", usuario.empresa_id)
         .order("created_at", { ascending: false }),
     ]);
@@ -269,7 +276,7 @@ export async function GET() {
     }
 
     const vagas = (vagasRes.data || []) as VagaRow[];
-    const vagasMap = new Map(vagas.map((vaga) => [vaga.id, vaga.title || "Vaga vinculada"]));
+    const vagasMap = new Map(vagas.map((vaga) => [vaga.id, vaga.title || vaga.titulo || "Vaga vinculada"]));
 
     const formattedAgents = agentes.map((agent) => formatAgent(agent, vagasMap.get(agent.vaga_id) || null, runs, candidates));
     const formattedCandidates = candidates.map((candidate, index) => {
@@ -344,6 +351,9 @@ export async function POST(req: Request) {
       briefing?: string;
       frequencia?: Agent["frequencia"];
       scoreMinimoNotificacao?: number;
+      categoria?: string;
+      nivel_acesso?: 'compartilhado' | 'privado';
+      colaboradores?: string[];
     };
 
     const { data: usuario } = await _supabase.from("usuarios").select("empresa_id").eq("id", userId).single();
@@ -357,7 +367,7 @@ export async function POST(req: Request) {
 
     const { data: vaga } = await admin
       .from("vagas")
-      .select("id,title")
+      .select("id,title,titulo")
       .eq("id", body.vagaId)
       .eq("empresa_id", usuario.empresa_id)
       .single();
@@ -366,8 +376,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Vaga nao encontrada" }, { status: 404 });
     }
 
+    const safeVagaTitle = vaga.title || vaga.titulo || "Vaga";
     let criterios: AgentCriterion[] = fallbackCriteria(body.briefing);
-    let filtros: AgentFilterSet = fallbackFilters(body.briefing, vaga.title);
+    let filtros: AgentFilterSet = fallbackFilters(body.briefing, safeVagaTitle);
 
     try {
       const systemPrompt =
@@ -426,8 +437,11 @@ Retorne exatamente este JSON:
         criterios_ia: criterios,
         filtros_ia: filtros,
         calibracoes_realizadas: 0,
+        categoria: body.categoria || "Geral",
+        nivel_acesso: body.nivel_acesso || "privado",
+        colaboradores: body.colaboradores || [],
       })
-      .select("id,empresa_id,vaga_id,nome,briefing,status,frequencia,score_minimo_notificacao,calibracoes_realizadas,ultima_busca,proxima_busca,created_at,criterios_ia,filtros_ia")
+      .select("id,empresa_id,vaga_id,nome,briefing,status,frequencia,score_minimo_notificacao,calibracoes_realizadas,ultima_busca,proxima_busca,created_at,criterios_ia,filtros_ia,categoria,nivel_acesso,colaboradores")
       .single();
 
     if (agentError) {

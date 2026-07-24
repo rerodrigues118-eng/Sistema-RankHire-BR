@@ -65,13 +65,15 @@ export async function POST(req: Request) {
     // ── Verifica se a vaga pertence à empresa ───────────────────────
     const { data: vaga } = await admin
       .from("vagas")
-      .select("id, empresa_id, title")
+      .select("id, empresa_id, title, titulo")
       .eq("id", body.vaga_id)
       .single();
 
     if (!vaga || vaga.empresa_id !== usuario.empresa_id) {
       return NextResponse.json({ error: "Vaga não encontrada ou não pertence à sua empresa" }, { status: 404 });
     }
+
+    const vagaTitle = vaga.title || vaga.titulo || "Vaga";
 
     // ── Busca o perfil no linkedin_profiles ─────────────────────────
     const { data: perfil } = await admin
@@ -126,7 +128,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       pipeline_entry_id: pipelineEntry.id,
-      message: `Candidato vinculado à vaga "${vaga.title}" com sucesso.`,
+      message: `Candidato vinculado à vaga "${vagaTitle}" com sucesso.`,
     });
   } catch (error: unknown) {
     return handleApiError(error);

@@ -104,11 +104,25 @@ async function processLinkedinJob(job: Job) {
     const profileData = await fetchLinkedinProfile(linkedinUrl, candidateName);
     const profileDataString = JSON.stringify(profileData);
 
-    await supabaseAdmin.from("profiles_cache").upsert({
-      linkedin_url: linkedinUrl,
-      dados: profileData,
-      expires_at: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
-    });
+    await supabaseAdmin.from("linkedin_profiles").upsert(
+      {
+        linkedin_url: linkedinUrl,
+        nome: profileData.name || profileData.nome || null,
+        cargo_atual: profileData.headline || profileData.cargo_atual || null,
+        empresa_atual: profileData.company || profileData.empresa_atual || null,
+        cidade: profileData.location || profileData.cidade || null,
+        skills: Array.isArray(profileData.skills) ? profileData.skills : profileData.skills ? [profileData.skills] : [],
+        idiomas: Array.isArray(profileData.idiomas) ? profileData.idiomas : profileData.idiomas ? [profileData.idiomas] : [],
+        formacao: Array.isArray(profileData.educations) ? profileData.educations : profileData.formacao || [],
+        experiencias: Array.isArray(profileData.experiences) ? profileData.experiences : profileData.experiencias || [],
+        sobre: profileData.summary || profileData.about || null,
+        anos_experiencia: typeof profileData.experienceYears === "number" ? profileData.experienceYears : null,
+        dados_completos: profileData,
+        ultima_atualizacao: new Date().toISOString(),
+        fonte: "apify",
+      },
+      { onConflict: "linkedin_url" }
+    );
 
     const { data: vaga } = await supabaseAdmin
       .from("vagas")

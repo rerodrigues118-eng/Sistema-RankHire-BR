@@ -107,9 +107,15 @@ Regras:
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("JSON não encontrado");
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    type GeneratedCriterion = {
+      nome?: string | null;
+      peso?: number | string | null;
+      descricao?: string | null;
+    };
+
+    const parsed = JSON.parse(jsonMatch[0]) as { criterios?: GeneratedCriterion[] };
     return NextResponse.json({
-      criteria: parsed.criterios.map((c: any) => ({
+      criteria: (parsed.criterios || []).map((c) => ({
         nome: c.nome,
         peso: Math.max(1, Math.min(5, Number(c.peso) || 3)),
         descricao: c.descricao,

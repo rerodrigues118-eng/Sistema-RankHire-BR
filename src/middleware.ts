@@ -60,6 +60,13 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set('redirect', pathname)
       return NextResponse.redirect(loginUrl)
     }
+
+    if (user && !isPublicRoute(pathname) && !pathname.startsWith('/api/') && !pathname.startsWith('/onboarding')) {
+      const onboardingCompleted = user.user_metadata?.onboarding_completed ?? false
+      if (!onboardingCompleted) {
+        return NextResponse.redirect(new URL('/onboarding', request.url))
+      }
+    }
   }
 
   // Adiciona headers de segurança

@@ -29,9 +29,16 @@ const OnboardingJobSchema = z.object({
   briefing: z.string().optional(),
 });
 
+const OnboardingTelemetrySchema = z.object({
+  step: z.literal("telemetry"),
+  origem: z.string().min(1, "Origem é obrigatória."),
+  objetivo: z.string().min(1, "Objetivo é obrigatório."),
+});
+
 const OnboardingSchema = z.discriminatedUnion("step", [
   OnboardingCompanySchema,
   OnboardingJobSchema,
+  OnboardingTelemetrySchema,
 ]);
 
 type OnboardingBody = z.infer<typeof OnboardingSchema>;
@@ -151,6 +158,29 @@ export async function POST(req: Request) {
       });
     }
 
+    if (body.step === "telemetry") {
+      const telemetryBody = body;
+      const metadata = {
+        origem: telemetryBody.origem,
+        objetivo: telemetryBody.objetivo,
+        completado_em: new Date().toISOString(),
+      };
+
+      await admin
+        .from("usuarios")
+        .update({
+          onboarding_completed: true,
+          onboarding_metadata: metadata,
+        })
+        .eq("id", user.id);
+
+      await authSupabase.auth.updateUser({
+        data: { onboarding_completed: true },
+      });
+
+      return NextResponse.json({ success: true, metadata });
+    }
+
     const { data: usuario, error: usuarioError } = await admin
       .from("usuarios")
       .select("empresa_id")
@@ -187,13 +217,14 @@ export async function POST(req: Request) {
         empresa_id: usuario.empresa_id,
         criado_por: user.id,
         title: jobTitle,
+        titulo: jobTitle,
         area: body.area || "Geral",
         tipo_contrato: body.contract || "CLT",
         localizacao: body.location || "",
         briefing: body.briefing || "",
         status: "ativa",
       })
-      .select("id,title,area,tipo_contrato,localizacao,briefing,status,created_at")
+      .select("id,title,titulo,area,tipo_contrato,localizacao,briefing,status,created_at")
       .single();
 
     if (vagaError || !vaga) {
@@ -201,6 +232,38 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ vaga });
+  } catch (error: unknown) {
+    return handleApiError(error);
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const { userId, supabase: authSupabase } = await requireAuth();
+    if (!userId) return new Response("Unauthorized", { status: 401 });
+
+    const body = await req.json();
+    const admin = createSupabaseAdminClient();
+
+    const metadata = {
+      origem: body.origem || "Não informado",
+      objetivo: body.objetivo || "Não informado",
+      completado_em: new Date().toISOString(),
+    };
+
+    await admin
+      .from("usuarios")
+      .update({
+        onboarding_completed: true,
+        onboarding_metadata: metadata,
+      })
+      .eq("id", userId);
+
+    await authSupabase.auth.updateUser({
+      data: { onboarding_completed: true },
+    });
+
+    return NextResponse.json({ success: true, metadata });
   } catch (error: unknown) {
     return handleApiError(error);
   }

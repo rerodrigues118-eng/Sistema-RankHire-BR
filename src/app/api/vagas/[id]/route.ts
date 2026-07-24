@@ -21,8 +21,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: "Empresa nao encontrada" }, { status: 404 });
     }
 
-    const update = {
-      title: body.title,
+    const update: Record<string, unknown> = {
+      ...(body.title?.trim() ? { title: body.title.trim(), titulo: body.title.trim() } : {}),
       area: body.area,
       tipo_contrato: body.contract,
       localizacao: body.location,
@@ -38,14 +38,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .update(cleanUpdate)
       .eq("id", id)
       .eq("empresa_id", usuario.empresa_id)
-      .select("id,title,area,tipo_contrato,localizacao,briefing,status,created_at")
+      .select("id,title,titulo,area,tipo_contrato,localizacao,briefing,status,created_at")
       .single();
+
+    const vaga = data ? { ...data, title: data.title || data.titulo } : null;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ vaga: data });
+    return NextResponse.json({ vaga });
   } catch (error: unknown) {
     return handleApiError(error);
   }

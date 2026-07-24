@@ -20,6 +20,9 @@ type DraftAgent = {
   briefing: string;
   frequencia: AgentFrequency;
   scoreMinimoNotificacao: number;
+  categoria: string;
+  nivelAcesso: 'compartilhado' | 'privado';
+  colaboradores: string[];
 };
 
 type AgentNotification = {
@@ -201,7 +204,12 @@ export default function AgenteIAPage() {
     briefing: "",
     frequencia: "diaria",
     scoreMinimoNotificacao: 4,
+    categoria: "Geral",
+    nivelAcesso: "privado",
+    colaboradores: [],
   });
+  const [colabQuery, setColabQuery] = useState("");
+  const availableColabs = ["carlos.recrutador@company.com", "fernanda.rh@company.com", "andre.diretor@company.com", "julia.coordenadora@company.com"];
 
   const calibrationProfiles = useMemo(() => {
     return candidates.slice(0, 8).map((c) => ({
@@ -371,6 +379,9 @@ export default function AgenteIAPage() {
           briefing: draft.briefing,
           frequencia: draft.frequencia,
           scoreMinimoNotificacao: draft.scoreMinimoNotificacao,
+          categoria: draft.categoria,
+          nivel_acesso: draft.nivelAcesso,
+          colaboradores: draft.colaboradores,
         }),
       });
 
@@ -645,69 +656,195 @@ export default function AgenteIAPage() {
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <label className="space-y-2 md:col-span-1">
-                  <span className="text-[13px] font-semibold text-slate-700">Nome do agente</span>
-                  <input
-                    value={draft.nome}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, nome: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
-                    placeholder="Ex: Agente Designer Email"
-                  />
-                </label>
+                <div className="md:col-span-2 grid gap-4 md:grid-cols-3">
+                  <label className="space-y-2 md:col-span-2">
+                    <span className="text-[13px] font-semibold text-slate-700">Nome do agente</span>
+                    <input
+                      value={draft.nome}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, nome: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                      placeholder="Ex: Agente Designer Email"
+                    />
+                  </label>
 
-                <label className="space-y-2 md:col-span-1">
-                  <span className="text-[13px] font-semibold text-slate-700">Vaga vinculada</span>
-                  <select
-                    value={draft.vagaId}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, vagaId: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
-                    disabled={jobs.length === 0}
-                  >
-                    {jobs.length === 0 ? (
-                      <option value="">Nenhuma vaga cadastrada</option>
-                    ) : (
-                      jobs.map((job) => (
+                  <label className="space-y-2 md:col-span-1">
+                    <span className="text-[13px] font-semibold text-slate-700">Categoria</span>
+                    <select
+                      value={draft.categoria}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, categoria: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                    >
+                      <option value="Geral">Geral</option>
+                      <option value="Engenharia">Engenharia</option>
+                      <option value="Design">Design</option>
+                      <option value="Vendas">Vendas</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Suporte">Suporte</option>
+                      <option value="Produto">Produto</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2 md:col-span-1">
+                    <span className="text-[13px] font-semibold text-slate-700">Vaga vinculada</span>
+                    <select
+                      value={draft.vagaId}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, vagaId: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                      disabled={jobs.length === 0}
+                    >
+                      <option value="">Selecione uma vaga...</option>
+                      {jobs.map((job) => (
                         <option key={job.id} value={job.id}>
                           {job.title}
                         </option>
-                      ))
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="space-y-2 md:col-span-1">
+                    <span className="text-[13px] font-semibold text-slate-700">Frequência</span>
+                    <select
+                      value={draft.frequencia}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, frequencia: event.target.value as AgentFrequency }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                    >
+                      <option value="diaria">Diária</option>
+                      <option value="semanal">Semanal</option>
+                      <option value="manual">Manual</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="md:col-span-2 space-y-4">
+                  <div className="space-y-2">
+                    <span className="text-[13px] font-semibold text-slate-700 block">Nível de acesso</span>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
+                        draft.nivelAcesso === 'compartilhado' ? 'border-[#1B4FD8] bg-blue-50/20' : 'border-slate-200 hover:border-slate-300'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="nivelAcesso"
+                          value="compartilhado"
+                          checked={draft.nivelAcesso === 'compartilhado'}
+                          onChange={() => setDraft(prev => ({ ...prev, nivelAcesso: 'compartilhado' }))}
+                          className="mt-1 text-[#1B4FD8] focus:ring-[#1B4FD8]"
+                        />
+                        <div>
+                          <span className="text-[14px] font-semibold text-slate-900 block">Compartilhado</span>
+                          <span className="text-[11.5px] text-slate-500">Visível para todos na sua organização.</span>
+                        </div>
+                      </label>
+                      <label className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
+                        draft.nivelAcesso === 'privado' ? 'border-[#1B4FD8] bg-blue-50/20' : 'border-slate-200 hover:border-slate-300'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="nivelAcesso"
+                          value="privado"
+                          checked={draft.nivelAcesso === 'privado'}
+                          onChange={() => setDraft(prev => ({ ...prev, nivelAcesso: 'privado' }))}
+                          className="mt-1 text-[#1B4FD8] focus:ring-[#1B4FD8]"
+                        />
+                        <div>
+                          <span className="text-[14px] font-semibold text-slate-900 block">Privado</span>
+                          <span className="text-[11.5px] text-slate-500">Visível apenas para você, colaboradores e administradores.</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-[13px] font-semibold text-slate-700 block">Colaboradores (opcional)</span>
+                    <span className="text-[11.5px] text-slate-500 block">Adicione membros da equipe ou gerentes de contratação que terão acesso a este projeto.</span>
+                    
+                    <div className="relative">
+                      <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
+                      <input
+                        value={colabQuery}
+                        onChange={(e) => setColabQuery(e.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                        placeholder="Pesquisar por nome ou e-mail..."
+                      />
+                      
+                      {colabQuery.trim() && (
+                        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg max-h-48 overflow-y-auto p-1">
+                          {availableColabs
+                            .filter(email => email.toLowerCase().includes(colabQuery.toLowerCase()) && !draft.colaboradores.includes(email))
+                            .map(email => (
+                              <button
+                                key={email}
+                                type="button"
+                                onClick={() => {
+                                  setDraft(prev => ({ ...prev, colaboradores: [...prev.colaboradores, email] }));
+                                  setColabQuery("");
+                                }}
+                                className="w-full text-left px-4 py-2 hover:bg-slate-50 rounded-xl text-[13px] text-slate-700"
+                              >
+                                {email}
+                              </button>
+                            ))}
+                          {availableColabs.filter(email => email.toLowerCase().includes(colabQuery.toLowerCase()) && !draft.colaboradores.includes(email)).length === 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDraft(prev => ({ ...prev, colaboradores: [...prev.colaboradores, colabQuery.trim()] }));
+                                setColabQuery("");
+                              }}
+                              className="w-full text-left px-4 py-2 hover:bg-slate-50 rounded-xl text-[13px] text-indigo-600 font-semibold"
+                            >
+                              Adicionar "{colabQuery.trim()}"
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Selected collaborators list */}
+                    {draft.colaboradores.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {draft.colaboradores.map(email => (
+                          <span
+                            key={email}
+                            className="inline-flex items-center gap-1 bg-slate-100 text-slate-800 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-slate-200"
+                          >
+                            {email}
+                            <button
+                              type="button"
+                              onClick={() => setDraft(prev => ({ ...prev, colaboradores: prev.colaboradores.filter(c => c !== email) }))}
+                              className="text-slate-400 hover:text-slate-600 ml-0.5 text-[10px] font-bold"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
                     )}
-                  </select>
-                </label>
+                  </div>
+                </div>
 
                 <label className="space-y-2 md:col-span-2">
                   <span className="text-[13px] font-semibold text-slate-700">Briefing livre</span>
                   <textarea
                     value={draft.briefing}
                     onChange={(event) => setDraft((prev) => ({ ...prev, briefing: event.target.value }))}
-                    rows={6}
+                    rows={5}
                     className="w-full rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
-                    placeholder="Descreva o perfil ideal, diferenciais, senioridade, stack, empresas-alvo e qualquer restricao importante."
+                    placeholder="Descreva o perfil ideal, diferenciais, senioridade, stack, empresas-alvo e qualquer restrição importante."
                   />
                 </label>
 
-                <label className="space-y-2">
-                  <span className="text-[13px] font-semibold text-slate-700">Frequencia</span>
-                  <select
-                    value={draft.frequencia}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, frequencia: event.target.value as AgentFrequency }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
-                  >
-                    <option value="diaria">Diaria</option>
-                    <option value="semanal">Semanal</option>
-                    <option value="manual">Manual</option>
-                  </select>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-[13px] font-semibold text-slate-700">Score minimo para notificar</span>
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[13px] font-semibold text-slate-700">Score mínimo para notificar</span>
                   <select
                     value={draft.scoreMinimoNotificacao.toFixed(1)}
                     onChange={(event) => setDraft((prev) => ({ ...prev, scoreMinimoNotificacao: Number(event.target.value) }))}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
                   >
                     <option value="3.5">3.5+</option>
-                    <option value="4.0">4.0+ (padrao)</option>
+                    <option value="4.0">4.0+ (padrão)</option>
                     <option value="4.3">4.3+</option>
                     <option value="4.5">4.5+</option>
                   </select>
@@ -738,6 +875,9 @@ export default function AgenteIAPage() {
                         "Procuro um perfil forte em Figma, HTML/CSS para email, CRM e automacao. Precisa entender campanhas e colaborar com marketing.",
                       frequencia: "diaria",
                       scoreMinimoNotificacao: 4,
+                      categoria: "Design",
+                      nivelAcesso: "compartilhado",
+                      colaboradores: [],
                     });
                   }}
                   className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"

@@ -11,7 +11,7 @@ const CriterioSchema = z.object({
 
 const SaveSchema = z.object({
   vaga_id: z.string().uuid("vaga_id inválido"),
-  criterios: z.array(CriterioSchema).min(1, "Mínimo 1 critério").max(5),
+  criterios: z.array(CriterioSchema).min(1, "Mínimo 1 critério").max(20),
 });
 
 type RawCrit = {

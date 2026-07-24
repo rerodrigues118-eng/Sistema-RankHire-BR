@@ -3,6 +3,19 @@ import { requireAuth } from "@/lib/auth-guard";
 import { createSupabaseAdminClient } from "@/lib/admin";
 import { NextResponse } from "next/server";
 
+type VagaSelectRow = {
+  id: string;
+  title?: string | null;
+  titulo?: string | null;
+  area?: string | null;
+  tipo_contrato?: string | null;
+  localizacao?: string | null;
+  briefing?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 export async function GET() {
   try {
     const { userId, supabase } = await requireAuth();
@@ -13,7 +26,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("vagas")
-      .select("id,title,area,tipo_contrato,localizacao,briefing,status,created_at,updated_at")
+      .select("id,title,titulo,area,tipo_contrato,localizacao,briefing,status,created_at,updated_at")
       .eq("empresa_id", usuario.empresa_id)
       .eq("status", "ativa")
       .order("created_at", { ascending: false });
@@ -22,7 +35,13 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ vagas: data || [] });
+    const vagas = ((data || []) as VagaSelectRow[]).map((vaga) => ({
+      ...vaga,
+      title: vaga.title || vaga.titulo || "",
+      titulo: vaga.titulo || vaga.title || "",
+    }));
+
+    return NextResponse.json({ vagas });
   } catch (error: unknown) {
     return handleApiError(error);
   }
@@ -80,6 +99,7 @@ export async function POST(req: Request) {
       .insert({
         empresa_id: usuario.empresa_id,
         criado_por: userId,
+        titulo: title.trim(),
         title: title.trim(),
         area: area || "Geral",
         tipo_contrato: contract || "CLT",
@@ -87,7 +107,7 @@ export async function POST(req: Request) {
         briefing: briefing || "",
         status: status === "completed" ? "completed" : "ativa",
       })
-      .select("id,title,area,tipo_contrato,localizacao,briefing,status,created_at")
+      .select("id,title,titulo,area,tipo_contrato,localizacao,briefing,status,created_at")
       .single();
 
     if (error) {

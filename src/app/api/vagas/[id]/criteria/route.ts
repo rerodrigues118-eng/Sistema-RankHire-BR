@@ -1,7 +1,6 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type RawCrit = { id: string; nome?: string | null; peso?: number | null; description?: string | null; weight?: number | null };
 

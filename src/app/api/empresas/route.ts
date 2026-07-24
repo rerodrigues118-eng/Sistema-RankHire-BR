@@ -47,7 +47,9 @@ export async function GET() {
 
     const { data: empresa, error } = await supabase
       .from("empresas")
-      .select("id,nome,cnpj,tamanho,segmento,plano,subscription_status,trial_expires_at,limite_pdfs_mes")
+      .select(
+        "id,nome,cnpj,tamanho,segmento,plano,subscription_status,trial_expires_at,limite_pdfs_mes,limite_buscas_linkedin,creditos_pdfs_usados,creditos_buscas_usados"
+      )
       .eq("id", usuario.empresa_id)
       .maybeSingle();
 

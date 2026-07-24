@@ -16,6 +16,7 @@ import {
   Users,
   Search as SearchIcon,
   LogOut,
+  Lock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { clearCachedProfile, getCachedProfile, setCachedProfile } from "@/lib/profile-cache";
@@ -65,6 +66,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [planoBadge, setPlanoBadge] = useState<{ label: string; color: string }>({ label: "TRIAL", color: "gray" });
+  const [isTrial, setIsTrial] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -118,6 +120,11 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
             const empresaData = await empresaRes.json();
             const badge = getPlanoBadge(empresaData.empresa || {});
             setPlanoBadge(badge);
+            const plano = (empresaData.empresa?.plano || 'trial').toLowerCase();
+            const subStatus = empresaData.empresa?.subscription_status || '';
+            const isAdmin = ['admin', 'superadmin'].includes((empresaData.empresa?.role || '').toLowerCase());
+            const isTrialPlan = plano === 'trial' || plano === 'trial_starter';
+            setIsTrial(isTrialPlan && !isAdmin && subStatus !== 'active');
           }
         } catch {
           // ignore
@@ -195,19 +202,26 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = activePage === item.id;
-                
+                const isLocked = isTrial && (item.id === "candidatos" || item.id === "agente-ia");
+
                 return (
                   <li key={item.id} className="w-full">
                     <button
-                      onClick={() => onNavigate(item.id)}
+                      onClick={() => !isLocked && onNavigate(item.id)}
+                      title={isLocked ? `${item.label} — disponível nos planos pagos` : item.label}
                       className={
                         isActive
                           ? "flex items-center gap-2.5 w-full text-left transition-colors text-[13px] bg-[var(--green-bg)] text-[#059669] font-medium border-l-2 border-[var(--green)] py-2 pr-3 pl-[10px] ml-1.5 rounded-r-[6px]"
+                          : isLocked
+                          ? "flex items-center gap-2.5 w-full text-left transition-colors text-[13px] text-[var(--text-muted)] opacity-70 py-2 px-3 mx-2 rounded-[6px] w-[calc(100%-16px)]"
                           : "flex items-center gap-2.5 w-full text-left transition-colors text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[#374151] py-2 px-3 mx-2 rounded-[6px] w-[calc(100%-16px)]"
                       }
                     >
                       <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate flex-1">{item.label}</span>
+                      {isLocked && (
+                        <Lock size={12} className="flex-shrink-0 text-amber-500 ml-auto" />
+                      )}
                     </button>
                   </li>
                 );

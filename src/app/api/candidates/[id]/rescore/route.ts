@@ -1,7 +1,7 @@
 import { handleApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth-guard";
 import { callAI } from "@/lib/ai-client";
-import { buildScoringPrompt } from "@/lib/scoring-prompt";
+import { buildScoringPrompt, matchCriteriaAndCalculateScore, type RawAiCriterion } from "@/lib/scoring-prompt";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Redis from "ioredis";
@@ -164,9 +164,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .replace(/```/g, "")
       .trim();
 
-    let result: ScoringResult;
+    let result: Record<string, unknown>;
     try {
-      result = JSON.parse(cleanJsonString) as ScoringResult;
+      result = JSON.parse(cleanJsonString);
     } catch {
       return NextResponse.json(
         { error: "O analisador de IA retornou uma resposta em formato inválido." },
@@ -174,38 +174,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    if (!Array.isArray(result.criterios)) {
-      return NextResponse.json(
-        { error: "A resposta da IA está com a lista de critérios ausente ou corrompida." },
-        { status: 500 }
-      );
-    }
+    const rawCriterios = (result.criterios || result.criteria || []) as RawAiCriterion[];
 
-    // 8. Clamp & validate scores to [1.0, 5.0] (score logic 5)
-    const sanitizedCriteria = result.criterios.map((c) => ({
-      ...c,
-      nota: Math.max(1.0, Math.min(5.0, Number(c.nota || 1.0))),
+    // 8. Match criteria & calculate weighted average score deterministically
+    const matched = matchCriteriaAndCalculateScore(formattedCriteria, rawCriterios);
+    const finalScore = matched.scoreFinal;
+
+    const evaluationsToInsert = matched.evaluations.map((ev) => ({
+      candidate_id: candidate.id,
+      criteria_id: ev.criteria_id,
+      nota: ev.nota,
+      justificativa: ev.justificativa,
     }));
 
     // 9. Synchronize candidate evaluations in DB
-    // First, clear old ones
     await admin
       .from("candidate_evaluations")
       .delete()
       .eq("candidate_id", candidate.id);
-
-    // Insert new ones
-    const evaluationsToInsert = sanitizedCriteria
-      .map((c) => {
-        const dbCrit = criteria.find((x) => x.nome === c.nome);
-        return {
-          candidate_id: candidate.id,
-          criteria_id: dbCrit?.id,
-          nota: c.nota,
-          justificativa: c.justificativa || "",
-        };
-      })
-      .filter((ev) => ev.criteria_id);
 
     if (evaluationsToInsert.length > 0) {
       const { error: insertError } = await admin
@@ -217,25 +203,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     }
 
-    // 10. Recalculate Final Score using Weighted Average (score logic 3)
-    let sumWeightedScores = 0;
-    let sumWeights = 0;
-
-    for (const c of criteria) {
-      const evaluation = evaluationsToInsert.find((ev) => ev.criteria_id === c.id);
-      const notaIa = evaluation ? evaluation.nota : 1.0;
-      // As it's a fresh rescore, there is no manual score initially.
-      const notaEfetiva = notaIa;
-
-      sumWeightedScores += (notaEfetiva * c.peso);
-      sumWeights += c.peso;
-    }
-
-    const calculatedScoreFinal = sumWeights > 0 ? (sumWeightedScores / sumWeights) : 1.0;
-    const finalScore = Math.max(1.0, Math.min(5.0, calculatedScoreFinal));
-
     // Update candidate final score and name in pdf_candidates
-    const candidatoNome = result.nome || "Candidato sem nome";
+    const candidatoNome = String(result.nome || result.name || "Candidato sem nome");
     const { error: updateError } = await admin
       .from("pdf_candidates")
       .update({

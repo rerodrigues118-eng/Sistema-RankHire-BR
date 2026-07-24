@@ -8,6 +8,7 @@ import type { EmpresaSimples } from "@/lib/planos";
 type JobRow = {
   id: string;
   title: string | null;
+  titulo?: string | null;
   area: string | null;
   status: string | null;
   created_at: string | null;
@@ -59,7 +60,7 @@ export async function GET() {
     const [jobsRes, candidatesRes, empresaRes] = await Promise.all([
       supabase
         .from("vagas")
-        .select("id,title,area,status,created_at")
+        .select("id,title,titulo,area,status,created_at")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false }),
       supabase
@@ -151,7 +152,7 @@ export async function GET() {
 
       return {
         id: job.id,
-        title: job.title || "Vaga sem titulo",
+        title: job.title || job.titulo || "Vaga sem titulo",
         department: job.area || "Geral",
         candidatesCount: jobCandidates.length,
         averageScore: Math.round(jobAvgScoreValue * 10) / 10,

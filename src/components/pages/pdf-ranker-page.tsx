@@ -43,6 +43,11 @@ interface PdfRankerPageProps {
   } | null;
 }
 
+type SaveCriteriaResult = {
+  ok: boolean;
+  vaga: string;
+};
+
 /* ── Status helpers ──────────────────────────────────────── */
 function statusLabel(status: UploadFile["status"]) {
   switch (status) {
@@ -166,7 +171,7 @@ export default function PdfRankerPage({
         if (!res.ok) return;
         const data = await res.json();
         if (data?.quota && mounted) setLocalQuota(data.quota);
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -194,11 +199,11 @@ export default function PdfRankerPage({
     );
   };
 
-  async function saveCriteriaList(inputCriteria: PdfCriterion[]) {
+  async function saveCriteriaList(inputCriteria: PdfCriterion[]): Promise<SaveCriteriaResult> {
     const valid = inputCriteria.filter((c) => c.nome && c.nome.trim());
     if (valid.length === 0) {
       showToast("error", "Adicione pelo menos um critério antes de salvar.");
-      return { ok: false, vaga: activeJob.title };
+      return { ok: false, vaga: activeJob.title || "" };
     }
 
     setIsSavingCriteria(true);
@@ -226,13 +231,13 @@ export default function PdfRankerPage({
             peso: c.peso ?? 3,
           }))
         );
-        return { ok: true, vaga: data.vaga || activeJob.title };
+        return { ok: true, vaga: typeof data.vaga === "string" ? data.vaga : activeJob.title || "" };
       }
       showToast("error", data.error || "Erro ao salvar critérios.");
-      return { ok: false, vaga: activeJob.title };
+      return { ok: false, vaga: activeJob.title || "" };
     } catch {
       showToast("error", "Falha de conexão ao salvar critérios.");
-      return { ok: false, vaga: activeJob.title };
+      return { ok: false, vaga: activeJob.title || "" };
     } finally {
       setIsSavingCriteria(false);
     }
@@ -416,7 +421,7 @@ export default function PdfRankerPage({
               </div>
             )}
             {/* ── Processing queue ──────────────────── */}
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[16px] font-semibold text-[#111827] flex items-center gap-2">
                   Fila de Processamento
@@ -429,7 +434,7 @@ export default function PdfRankerPage({
                 </span>
               </div>
 
-              <div className="bg-[#FFFFFF] rounded-[12px] p-5 flex-1" style={{ border: "1px solid #E5E7EB" }}>
+              <div className="bg-[#FFFFFF] rounded-[12px] p-5 flex-1 min-w-0 overflow-hidden" style={{ border: "1px solid #E5E7EB" }}>
                 {uploads.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-[#9CA3AF] text-[13px] py-10">
                     Nenhum upload em andamento
@@ -473,12 +478,12 @@ export default function PdfRankerPage({
             </div>
 
             {/* ── Results preview ───────────────────── */}
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <h2 className="text-[16px] font-semibold text-[#111827] mb-4">
                 Resultados da Triagem
               </h2>
 
-              <div className="bg-[#FFFFFF] rounded-[12px] p-5 flex-1" style={{ border: "1px solid #E5E7EB" }}>
+              <div className="bg-[#FFFFFF] rounded-[12px] p-5 flex-1 min-w-0 overflow-hidden" style={{ border: "1px solid #E5E7EB" }}>
                 {topCandidates.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-[#9CA3AF] text-[13px] py-10">
                     Os candidatos aparecerão aqui
@@ -488,7 +493,7 @@ export default function PdfRankerPage({
                     {topCandidates.map((c) => {
                       const firstTag = c.confirmedTags[0] || c.partialTags[0] || c.otherTags[0];
                       return (
-                        <div key={c.id} className="flex items-center gap-2 group">
+                        <div key={c.id} className="flex items-center gap-2 group w-full min-w-0">
                           {/* Star button outside the card */}
                           <button
                             type="button"
@@ -508,7 +513,7 @@ export default function PdfRankerPage({
 
                           <div
                             onClick={() => onSelectCandidate(c)}
-                            className="flex-1 flex items-center justify-between p-3 rounded-[8px] hover:bg-[#F9FAFB] transition-colors cursor-pointer border border-[#E5E7EB]"
+                            className="flex-1 min-w-0 flex items-center justify-between p-3 rounded-[8px] hover:bg-[#F9FAFB] transition-colors cursor-pointer border border-[#E5E7EB]"
                           >
                             <div className="flex items-center gap-3 min-w-0">
                               <div
@@ -522,18 +527,18 @@ export default function PdfRankerPage({
                                   {c.name}
                                 </p>
                                 <p className="text-[12px] text-[#6B7280] truncate">
-                                  {c.role} · {c.company}
+                                  {c.role || "Candidato"} {c.company ? `· ${c.company}` : ""}
                                 </p>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                               {firstTag && (
-                                <span className="bg-[#F3F4F6] text-[#4B5563] px-2 py-0.5 rounded-[4px] text-[11px] font-medium">
+                                <span className="bg-[#F3F4F6] text-[#4B5563] px-2 py-0.5 rounded-[4px] text-[11px] font-medium truncate max-w-[110px]">
                                   {firstTag}
                                 </span>
                               )}
-                              <div className="inline-flex items-center bg-[#FEF9C3] px-2 py-0.5 rounded border border-[#FEF08A]">
+                              <div className="inline-flex items-center bg-[#FEF9C3] px-2 py-0.5 rounded border border-[#FEF08A] flex-shrink-0">
                                 <span className="text-[13px] font-semibold text-[#854D0E]">
                                   {c.score > 0 ? c.score.toFixed(1) : "—"}
                                 </span>

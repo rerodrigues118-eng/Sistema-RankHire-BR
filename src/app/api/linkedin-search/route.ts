@@ -105,10 +105,11 @@ async function persistLinkedinSearchArtifacts({
   const warnings: string[] = [];
 
   try {
+    const normalizedQuery = normalizeSearchQuery(searchQuery);
     const { error } = await supabase.from("linkedin_searches").insert({
       empresa_id: empresaId,
       vaga_id: vagaId ?? null,
-      query: searchQuery,
+      query: normalizedQuery || searchQuery,
       filtros,
       resultados: results,
       expires_at: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -150,6 +151,147 @@ async function persistLinkedinSearchArtifacts({
   }
 
   return warnings;
+}
+
+async function persistLinkedinSearchSessionOnly({
+  supabase,
+  empresaId,
+  vagaId,
+  userId,
+  searchQuery,
+  filtros,
+  totalResultados,
+}: {
+  supabase: SupabaseClient;
+  empresaId: string;
+  vagaId?: string | null;
+  userId: string;
+  searchQuery: string;
+  filtros: LinkedInSearchBody;
+  totalResultados: number;
+}) {
+  const warnings: string[] = [];
+  try {
+    const { error } = await supabase.from("linkedin_search_sessions").insert({
+      empresa_id: empresaId,
+      vaga_id: vagaId ?? null,
+      criado_por: userId,
+      descricao_livre: searchQuery || "Busca de perfis no LinkedIn",
+      criterios: filtros.criterios || [],
+      filtros_aplicados: filtros,
+      total_resultados: totalResultados,
+    });
+
+    if (error) throw error;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro desconhecido";
+    logger.error("[linkedin-search] Falha ao salvar linkedin_search_sessions", {
+      userId,
+      empresaId,
+      vagaId,
+      message,
+    });
+    warnings.push(`linkedin_search_sessions: ${message}`);
+  }
+  return warnings;
+}
+
+function normalizeSearchQuery(query: string) {
+  return query.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+async function findCachedLinkedinSearch(
+  supabase: SupabaseClient,
+  empresaId: string,
+  searchQuery: string,
+  vagaId: string | null,
+  maxCandidatos: number
+): Promise<LinkedinProfile[] | null> {
+  const normalized = normalizeSearchQuery(searchQuery);
+  if (!normalized) return null;
+
+  const { data, error } = await supabase
+    .from("linkedin_searches")
+    .select("resultados")
+    .eq("empresa_id", empresaId)
+    .eq("query", normalized)
+    .eq("vaga_id", vagaId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data || !Array.isArray(data.resultados)) {
+    return null;
+  }
+
+  return data.resultados.slice(0, maxCandidatos) as LinkedinProfile[];
+}
+
+function buildLinkedinProfileCacheQuery(
+  searchQuery: string,
+  job_titles: string[],
+  keywords: string[],
+  location: string
+) {
+  const terms = [searchQuery, ...job_titles, ...keywords]
+    .filter(Boolean)
+    .join(" ")
+    .split(/\s+/)
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const conditions = terms.flatMap((term) => [
+    `nome.ilike.%${term}%`,
+    `cargo_atual.ilike.%${term}%`,
+    `empresa_atual.ilike.%${term}%`,
+    `cidade.ilike.%${term}%`,
+  ]);
+
+  if (!conditions.length) return null;
+  return conditions.join(",");
+}
+
+async function searchLinkedinProfileCache(
+  supabase: SupabaseClient,
+  searchQuery: string,
+  job_titles: string[],
+  keywords: string[],
+  location: string,
+  maxCandidatos: number
+): Promise<LinkedinProfile[]> {
+  const orCondition = buildLinkedinProfileCacheQuery(searchQuery, job_titles, keywords, location);
+  if (!orCondition) return [];
+
+  const { data, error } = await supabase
+    .from("linkedin_profiles")
+    .select(
+      "linkedin_url, nome, cargo_atual, empresa_atual, cidade, skills, idiomas, sobre, anos_experiencia"
+    )
+    .or(orCondition)
+    .limit(maxCandidatos);
+
+  if (error || !data) return [];
+
+  return (data as Array<Record<string, unknown>>)
+    .map((item, i) => ({
+      id: String(item.linkedin_url || `cache-${i}`),
+      name: String(item.nome || item.name || "Sem Nome"),
+      headline: String(item.cargo_atual || item.headline || ""),
+      company: String(item.empresa_atual || item.company || ""),
+      location: String(item.cidade || item.location || ""),
+      linkedinUrl: String(item.linkedin_url || "#"),
+      avatarUrl: null,
+      fit: 0,
+      resumo: String(item.sobre || ""),
+      experiencia_anos: Number(item.anos_experiencia || 0),
+      skills: Array.isArray(item.skills) ? item.skills.map(String) : [],
+      experiencias: [],
+      formacao: "",
+      idiomas: Array.isArray(item.idiomas) ? item.idiomas.map(String) : [],
+      sobre: String(item.sobre || ""),
+    }))
+    .slice(0, maxCandidatos);
 }
 
 export async function POST(req: Request) {
@@ -206,10 +348,8 @@ export async function POST(req: Request) {
       !["admin", "superadmin"].includes(userRole || "") &&
       (empresa?.plano === "trial" || empresa?.subscription_status === "trialing");
 
-    const maxCandidatos = Math.min(
-      body.max_candidatos || 20,
-      getMaxCandidatosApi(empresa?.plano)
-    );
+    const requestedMax = body.max_candidatos ? Number(body.max_candidatos) : getMaxCandidatosApi(empresa?.plano);
+    const maxCandidatos = Math.min(Math.max(requestedMax, 1), getMaxCandidatosApi(empresa?.plano));
 
     const {
       title,
@@ -270,6 +410,70 @@ export async function POST(req: Request) {
 
     const searchQuery = queryParts.filter(Boolean).join(" ");
     let results: LinkedinProfile[] = [];
+    const vagaIdNormalized = vagaId || vaga_id || null;
+
+    const cachedResults = await findCachedLinkedinSearch(
+      admin,
+      usuario.empresa_id,
+      searchQuery,
+      vagaIdNormalized,
+      maxCandidatos
+    );
+
+    if (cachedResults && cachedResults.length > 0) {
+      const warnings = await persistLinkedinSearchSessionOnly({
+        supabase: admin,
+        empresaId: usuario.empresa_id,
+        vagaId: vagaId || vaga_id || null,
+        userId,
+        searchQuery,
+        filtros: body,
+        totalResultados: cachedResults.length,
+      });
+
+      return NextResponse.json({
+        success: true,
+        results: cachedResults,
+        source: "cache",
+        cached: true,
+        warnings,
+        total_analisado: cachedResults.length,
+        total_retornado: cachedResults.length,
+        creditos_restantes: limiteBusca.limite - limiteBusca.usado,
+      });
+    }
+
+    const localCacheResults = await searchLinkedinProfileCache(
+      admin,
+      searchQuery,
+      job_titles,
+      keywords,
+      locationStr,
+      maxCandidatos
+    );
+
+    if (localCacheResults.length >= maxCandidatos) {
+      const warnings = await persistLinkedinSearchSessionOnly({
+        supabase: admin,
+        empresaId: usuario.empresa_id,
+        vagaId: vagaId || vaga_id || null,
+        userId,
+        searchQuery,
+        filtros: body,
+        totalResultados: localCacheResults.length,
+      });
+
+      return NextResponse.json({
+        success: true,
+        results: localCacheResults,
+        source: "local_cache",
+        cached: true,
+        warnings,
+        total_analisado: localCacheResults.length,
+        total_retornado: localCacheResults.length,
+        creditos_restantes: limiteBusca.limite - limiteBusca.usado,
+      });
+    }
 
     if (!apiKey) {
       return NextResponse.json(

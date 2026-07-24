@@ -7,7 +7,7 @@ import { logger } from "@/lib/logger";
 import { getPlanAccessState } from "@/lib/planos";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { callAI } from "@/lib/ai-client";
-import { buildScoringPrompt } from "@/lib/scoring-prompt";
+import { buildScoringPrompt, matchCriteriaAndCalculateScore, type RawAiCriterion } from "@/lib/scoring-prompt";
 
 // IMPORTANT: Allow up to 5 minutes for PDF processing on Vercel (Pro plan)
 export const maxDuration = 300;
@@ -112,7 +112,7 @@ async function processCandidate(
     let scoreFinal = 3.0;
     let candidatoNome = "Candidato sem nome";
     const extraFields: Record<string, unknown> = {};
-    let criteriosForSave: { nome: string; nota: number; justificativa?: string }[] = [];
+    let evaluationsToInsert: Array<{ candidate_id: string; criteria_id: string; nota: number; justificativa: string }> = [];
 
     // Build prompt based on whether criteria exist
     const hasCriteria = !critError && formattedCriteria.length > 0;
@@ -155,27 +155,17 @@ Retorne EXATAMENTE este JSON (preencha com null se não encontrar):
       // Extract name (flexible: accept any string field)
       candidatoNome = String(aiResult.nome || aiResult.name || aiResult.nome_completo || "Candidato sem nome");
       
-      // Extract score (flexible: accept string or number)
+      // Extract criteria scores & calculate score_final deterministically
       if (hasCriteria) {
-        const rawScore = aiResult.score_final ?? aiResult.score ?? aiResult.nota_final;
-        if (rawScore !== null && rawScore !== undefined) {
-          const parsed = Number(rawScore);
-          if (!isNaN(parsed)) {
-            scoreFinal = Math.max(1.0, Math.min(5.0, parsed));
-          }
-        }
-
-        // Extract criteria scores
-        const rawCriterios = aiResult.criterios || aiResult.criteria || [];
-        if (Array.isArray(rawCriterios)) {
-          criteriosForSave = rawCriterios
-            .map((c: Record<string, unknown>) => ({
-              nome: String(c.nome || c.name || c.criterio || ""),
-              nota: Math.max(1.0, Math.min(5.0, Number(c.nota || c.score || c.note || 3))),
-              justificativa: String(c.justificativa || c.justification || c.observacao || ""),
-            }))
-            .filter((c: { nome: string }) => c.nome);
-        }
+        const rawCriterios = (aiResult.criterios || aiResult.criteria || []) as RawAiCriterion[];
+        const matched = matchCriteriaAndCalculateScore(formattedCriteria, rawCriterios);
+        scoreFinal = matched.scoreFinal;
+        evaluationsToInsert = matched.evaluations.map((ev) => ({
+          candidate_id: candidateId,
+          criteria_id: ev.criteria_id,
+          nota: ev.nota,
+          justificativa: ev.justificativa,
+        }));
       }
 
       // Extract extra fields
@@ -211,22 +201,8 @@ Retorne EXATAMENTE este JSON (preencha com null se não encontrar):
       })
       .eq("id", candidateId);
 
-    if (criteriosForSave.length > 0 && formattedCriteria.length > 0) {
-      const evaluations = criteriosForSave
-        .map((c) => {
-          const dbCrit = formattedCriteria.find((d) => d.name === c.nome);
-          return {
-            candidate_id: candidateId,
-            criteria_id: dbCrit?.id,
-            nota: c.nota,
-            justificativa: c.justificativa,
-          };
-        })
-        .filter((e) => e.criteria_id);
-
-      if (evaluations.length > 0) {
-        await admin.from("candidate_evaluations").insert(evaluations);
-      }
+    if (evaluationsToInsert.length > 0) {
+      await admin.from("candidate_evaluations").insert(evaluationsToInsert);
     }
 
     // Increment batch progress (ignore errors)

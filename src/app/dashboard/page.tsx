@@ -99,6 +99,10 @@ export default function Home() {
         const valid = data.jobs.find((j: Job) => j.id === restored);
         if (valid) {
           setSelectedJobId(restored);
+        } else if (data.jobs.length > 0) {
+          const defaultJobId = data.jobs[0].id;
+          setSelectedJobId(defaultJobId);
+          try { localStorage.setItem('rankhire_vaga_selecionada', defaultJobId); } catch { /* ignore */ }
         } else {
           setSelectedJobId("");
           try { localStorage.removeItem('rankhire_vaga_selecionada'); } catch { /* ignore */ }
@@ -623,6 +627,7 @@ export default function Home() {
                 onToggleShortlist={handleToggleShortlist}
                 onSelectCandidate={handleOpenDrawer}
                 onCreateProject={handleCreateProjectClick}
+                onNavigate={handleSetActivePage}
               />
             </div>
             <div className={activePage === "pdf-ranker" ? "block h-full" : "hidden"}>

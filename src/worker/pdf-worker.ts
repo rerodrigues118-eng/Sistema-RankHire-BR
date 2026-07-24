@@ -3,7 +3,7 @@ import "dotenv/config";
 import { fetchWithTimeout } from "../lib/api";
 import { callAI } from "../lib/ai-client";
 import { getRedisConnection } from "../lib/queue";
-import { buildScoringPrompt } from "../lib/scoring-prompt";
+import { buildScoringPrompt, matchCriteriaAndCalculateScore, type RawAiCriterion } from "../lib/scoring-prompt";
 import { createClient } from "@supabase/supabase-js";
 import { Job, Worker, type WorkerOptions, type ConnectionOptions } from "bullmq";
 
@@ -37,26 +37,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
-
-type ScoringResult = {
-  score_final: number;
-  nome?: string;
-  email?: string | null;
-  telefone?: string | null;
-  linkedin?: string | null;
-  cidade?: string | null;
-  cargo_atual?: string | null;
-  empresa_atual?: string | null;
-  pretensao_salarial?: string | null;
-  disponibilidade?: string | null;
-  regime_preferido?: string | null;
-  resumo?: string | null;
-  criterios: {
-    nome: string;
-    nota: number;
-    justificativa?: string;
-  }[];
-};
 
 function sanitizeText(raw: string): string {
   return raw
@@ -167,7 +147,7 @@ const processor = async (job: Job) => {
 
     let safeScoreFinal = 3.0;
     let candidatoNome = "Candidato sem nome";
-    let safeCriterios: { nome: string; nota: number; justificativa?: string }[] = [];
+    let evaluationsToInsert: Array<{ candidate_id: string; criteria_id: string; nota: number; justificativa: string }> = [];
     const extraFields: Record<string, string | null> = {};
 
     // Build unified prompt
@@ -211,21 +191,15 @@ Retorne EXATAMENTE este JSON (preencha com null se não encontrar):
       candidatoNome = String(aiResult.nome || aiResult.name || "Candidato sem nome");
 
       if (hasCriteria) {
-        const rawScore = aiResult.score_final ?? aiResult.score ?? aiResult.nota_final;
-        if (rawScore != null) {
-          const parsed = Number(rawScore);
-          if (!isNaN(parsed)) safeScoreFinal = Math.max(1.0, Math.min(5.0, parsed));
-        }
-        const rawCriterios = aiResult.criterios || aiResult.criteria || [];
-        if (Array.isArray(rawCriterios)) {
-          safeCriterios = rawCriterios
-            .map((c: Record<string, unknown>) => ({
-              nome: String(c.nome || c.name || ""),
-              nota: Math.max(1.0, Math.min(5.0, Number(c.nota || c.score || 3))),
-              justificativa: String(c.justificativa || c.justification || ""),
-            }))
-            .filter((c: { nome: string }) => c.nome);
-        }
+        const rawCriterios = (aiResult.criterios || aiResult.criteria || []) as RawAiCriterion[];
+        const matched = matchCriteriaAndCalculateScore(formattedCriteria, rawCriterios);
+        safeScoreFinal = matched.scoreFinal;
+        evaluationsToInsert = matched.evaluations.map((ev) => ({
+          candidate_id: candidateId,
+          criteria_id: ev.criteria_id,
+          nota: ev.nota,
+          justificativa: ev.justificativa,
+        }));
       }
 
       const fieldMap: [string, string][] = [
@@ -259,18 +233,6 @@ Retorne EXATAMENTE este JSON (preencha com null se não encontrar):
       .eq("id", candidateId);
 
     // ── PASSO 10: UPSERT candidate_evaluations ──────────────────────
-    const evaluationsToInsert = safeCriterios
-      .map((criteria) => {
-        const dbCrit = formattedCriteria.find((dbCriteria) => dbCriteria.name === criteria.nome);
-        return {
-          candidate_id: candidateId,
-          criteria_id: dbCrit?.id,
-          nota: criteria.nota,
-          justificativa: criteria.justificativa,
-        };
-      })
-      .filter((evaluation) => evaluation.criteria_id);
-
     if (evaluationsToInsert.length > 0) {
       await supabaseAdmin
         .from("candidate_evaluations")
