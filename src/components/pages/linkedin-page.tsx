@@ -198,9 +198,8 @@ function CriteriosInterativos({ msg, onRunSearch, isSearching }: {
       <div className="flex-1 max-w-[90%] space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-[13px] text-gray-600">
-            Identifiquei <strong className="text-gray-900">{crits.length} criterios</strong> e{" "}
-            <strong className="text-gray-900">{(filtros.job_titles?.length || 0) + (filtros.keywords?.length || 0)} filtros</strong>.{" "}
-            Edite abaixo antes de buscar.
+            Gerei <strong className="text-gray-900">{crits.length} critérios</strong> com base no seu perfil.{" "}
+            <span className="text-gray-500">Ajuste os pesos e filtros abaixo e clique em <strong className="text-indigo-600">Buscar</strong>.</span>
           </p>
           <button onClick={() => setExpanded(v => !v)} className="text-gray-400 hover:text-gray-600">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -407,8 +406,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
       setMessages(prev => prev.map(m =>
         m.id === loadingId ? { id: loadingId, type: "ai-criterios", criterios: novoCriterios, filtros: novosFiltros } : m
       ));
+      // NÃO dispara busca automaticamente — usuário edita os cards e clica em Buscar
       setIsAnalyzing(false);
-      await runSearch(novosFiltros, novoCriterios);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Erro ao analisar";
       setMessages(prev => prev.map(m =>
