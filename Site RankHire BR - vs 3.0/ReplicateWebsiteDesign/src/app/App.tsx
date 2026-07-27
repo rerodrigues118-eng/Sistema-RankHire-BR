@@ -62,12 +62,18 @@ function Navbar({ page, onNav }: { page: Page; onNav: (p: Page) => void }) {
         ))}
       </div>
 
-      <div className="hidden md:flex items-center">
+      <div className="hidden md:flex items-center gap-3">
         <button
-          onClick={() => onNav("contact")}
-          className="flex items-center gap-1.5 text-sm text-white border border-white/20 rounded-md px-3 py-1.5 hover:bg-white/5 transition-colors"
+          onClick={() => { window.location.href = "/login"; }}
+          className="text-sm text-zinc-300 hover:text-white px-3 py-1.5 transition-colors font-medium"
         >
-          Agendar Demo <ArrowRight size={13} />
+          Entrar
+        </button>
+        <button
+          onClick={() => { window.location.href = "/cadastro"; }}
+          className="flex items-center gap-1.5 text-sm text-black bg-white rounded-md px-3.5 py-1.5 font-semibold hover:bg-zinc-100 transition-colors shadow-sm"
+        >
+          Criar Conta <ArrowRight size={13} />
         </button>
       </div>
 
@@ -86,12 +92,21 @@ function Navbar({ page, onNav }: { page: Page; onNav: (p: Page) => void }) {
               {l.label}
             </button>
           ))}
-          <button
-            onClick={() => { onNav("contact"); setOpen(false); }}
-            className="text-sm text-white border border-white/20 rounded-md px-3 py-1.5 text-left"
-          >
-            Agendar Demo
-          </button>
+          <div className="flex flex-col gap-2 pt-2 border-t border-white/10">
+            <button
+              onClick={() => { window.location.href = "/login"; setOpen(false); }}
+              className="text-sm text-zinc-300 hover:text-white py-1.5 text-left font-medium"
+            >
+              Entrar
+            </button>
+            <button
+              onClick={() => { window.location.href = "/cadastro"; setOpen(false); }}
+              className="flex items-center justify-between text-sm text-black bg-white rounded-md px-3 py-2 font-semibold hover:bg-zinc-100 transition-colors"
+            >
+              <span>Criar Conta</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
         </div>
       )}
     </nav>
