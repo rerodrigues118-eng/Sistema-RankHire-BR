@@ -114,23 +114,33 @@ export default function PdfRankerPage({
   const [localQuota, setLocalQuota] = useState<typeof quota | null>(quota ?? null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearingResults, setIsClearingResults] = useState(false);
+  // Tracks IDs of shortlisted candidates hidden from results view (NOT deleted from DB - they stay in CRM/Pipeline)
+  const [hiddenFromResults, setHiddenFromResults] = useState<Set<string>>(new Set());
 
   const topCandidates = candidates
-    .filter((candidate) => candidate.vagaId === activeJob.id)
+    .filter((candidate) => candidate.vagaId === activeJob.id && !hiddenFromResults.has(candidate.id))
     .sort((a, b) => b.score - a.score);
   const hasCriteria = criteria.some((c) => c.nome && c.nome.trim().length > 0);
 
-  /* ── Clear non-favorited results ────────────────────────── */
+  /* ── Clear results: delete non-favorited from DB, hide favorited locally ───── */
   const handleClearResults = useCallback(async () => {
-    const toDelete = topCandidates.filter((c) => !c.shortlist);
-    if (toDelete.length === 0) {
-      showToast("info", "Nenhum candidato para remover. Os favoritos são mantidos no CRM/Pipeline.");
+    const allCandidatesForJob = candidates.filter(
+      (c) => c.vagaId === activeJob.id && !hiddenFromResults.has(c.id)
+    );
+    const toDelete = allCandidatesForJob.filter((c) => !c.shortlist);
+    const toHide = allCandidatesForJob.filter((c) => c.shortlist);
+
+    if (allCandidatesForJob.length === 0) {
+      showToast("info", "Nenhum candidato para remover.");
       setShowClearConfirm(false);
       return;
     }
+
     setIsClearingResults(true);
     const deletedIds: string[] = [];
     let failCount = 0;
+
+    // Delete non-favorited from DB
     await Promise.all(
       toDelete.map(async (c) => {
         try {
@@ -148,17 +158,35 @@ export default function PdfRankerPage({
         }
       })
     );
+
+    // Hide favorited candidates from the results view (they stay in DB for CRM/Pipeline)
+    if (toHide.length > 0) {
+      setHiddenFromResults((prev) => {
+        const next = new Set(prev);
+        toHide.forEach((c) => next.add(c.id));
+        return next;
+      });
+    }
+
     setIsClearingResults(false);
     setShowClearConfirm(false);
+
     if (deletedIds.length > 0) {
       onDeleteCandidates?.(deletedIds);
-      showToast("success", `${deletedIds.length} candidato(s) removido(s). Favoritos mantidos no CRM/Pipeline.`);
+    }
+    const totalRemoved = deletedIds.length + toHide.length;
+    if (totalRemoved > 0) {
+      const msg = toHide.length > 0
+        ? `${totalRemoved} candidato(s) removido(s) da triagem. ${toHide.length} favorito(s) mantido(s) no CRM/Pipeline.`
+        : `${totalRemoved} candidato(s) removido(s) da triagem.`;
+      showToast("success", msg);
     }
     if (failCount > 0) {
       showToast("error", `${failCount} candidato(s) não puderam ser removidos.`);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topCandidates, onDeleteCandidates]);
+  }, [candidates, activeJob.id, hiddenFromResults, onDeleteCandidates]);
+
 
   /* ── Toast helpers ────────────────────────── */
   const showToast = useCallback((type: ToastType, message: string) => {
@@ -622,15 +650,13 @@ export default function PdfRankerPage({
                 <Trash2 className="w-4 h-4 text-red-500" />
               </div>
               <div>
-                <h3 className="text-[15px] font-semibold text-[#111827]">Esvaziar Resultados</h3>
+                <h3 className="text-[15px] font-semibold text-[#111827]">Esvaziar Resultados da Triagem</h3>
                 <p className="text-[13px] text-[#6B7280] mt-1">
-                  Todos os candidatos <strong>não favoritados</strong> desta triagem serão removidos permanentemente.
+                  Todos os candidatos desta triagem serão removidos da lista de resultados.
                 </p>
-                {topCandidates.some((c) => c.shortlist) && (
-                  <p className="text-[12px] text-[#059669] bg-green-50 rounded-[6px] px-3 py-2 mt-2 border border-green-100">
-                    ✓ Os candidatos favoritados (⭐) serão mantidos no CRM e Pipeline.
-                  </p>
-                )}
+                <p className="text-[12px] text-[#059669] bg-green-50 rounded-[6px] px-3 py-2 mt-2 border border-green-100">
+                  ✓ Candidatos favoritados (⭐) serão mantidos no CRM e Pipeline — apenas removidos desta visualização.
+                </p>
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-5">

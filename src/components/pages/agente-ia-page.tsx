@@ -578,31 +578,35 @@ export default function AgenteIAPage() {
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-6 lg:px-8">
       <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,#081225_0%,#111827_55%,#1B4FD8_100%)] text-white shadow-[0_20px_60px_rgba(15,23,42,0.22)]">
-        <div className="flex flex-col gap-6 p-6 lg:p-8 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
+        <div className="flex flex-col gap-8 p-6 lg:p-8 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0 xl:max-w-[55%]">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">
               <Sparkles className="h-3.5 w-3.5" />
               Recrutador virtual autonomo
             </div>
-            <h1 className="text-[30px] font-semibold tracking-tight lg:text-[38px]">
-              Agente IA que trabalha sozinho, aprende com calibracao e avisa quando encontra candidatos fortes.
+            <h1 className="text-[26px] font-semibold leading-[1.25] tracking-tight lg:text-[34px]">
+              Agente IA que trabalha sozinho,{" "}
+              <span className="whitespace-nowrap">aprende com calibracao</span>{" "}
+              e avisa quando encontra{" "}
+              <span className="whitespace-nowrap">candidatos fortes.</span>
             </h1>
-            <p className="mt-3 max-w-2xl text-[14px] leading-6 text-white/72">
-              Crie um agente, calibre com 8 perfis reais, acompanhe o dashboard de execucoes e veja a fila de candidatos em ordem de descoberta.
+            <p className="mt-3 text-[13px] leading-6 text-white/70 lg:max-w-xl">
+              Crie um agente, calibre com 8 perfis reais, acompanhe o dashboard de execucoes
+              e veja a fila de candidatos em ordem de descoberta.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[430px]">
+          <div className="grid grid-cols-3 gap-3 xl:min-w-[380px] xl:max-w-[420px]">
             <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.12em] text-white/55">Agentes ativos</div>
+              <div className="text-[10px] uppercase tracking-[0.12em] text-white/55">Agentes ativos</div>
               <div className="mt-2 text-[28px] font-semibold">{agents.filter((agent) => agent.status === "ativo").length}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.12em] text-white/55">Score 4.0+</div>
+              <div className="text-[10px] uppercase tracking-[0.12em] text-white/55">Score 4.0+</div>
               <div className="mt-2 text-[28px] font-semibold">{agents.reduce((acc, agent) => acc + (agent.metrics?.scoreAlto || 0), 0)}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.12em] text-white/55">Notificacoes</div>
+              <div className="text-[10px] uppercase tracking-[0.12em] text-white/55">Notificacoes</div>
               <div className="mt-2 text-[28px] font-semibold">{unreadNotifications.length}</div>
             </div>
           </div>
