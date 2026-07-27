@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import type { Candidate, KanbanStatus } from "@/lib/types";
+import type { Candidate, Job, KanbanStatus } from "@/lib/types";
 import { getAvatarBg } from "@/lib/mock-data";
 import {
   X, ExternalLink, Star, ChevronDown, ChevronUp, MapPin, Building, Briefcase,
@@ -11,6 +11,7 @@ interface CandidateDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   candidate: Candidate | null;
+  activeJob?: Job | null;
   onToggleShortlist: (id: string) => void;
   onMoveCandidate: (id: string, newStatus: KanbanStatus) => void;
   onUpdateCandidate?: (updated: Candidate) => void;
@@ -115,6 +116,7 @@ export default function CandidateDrawer({
   isOpen,
   onClose,
   candidate,
+  activeJob,
   onToggleShortlist,
   onMoveCandidate,
   onUpdateCandidate,
@@ -526,71 +528,82 @@ export default function CandidateDrawer({
         <div className="flex-1 p-8 space-y-10">
 
           {/* SEÇÃO 2: SCORE E AÇÕES */}
-          <div className="flex flex-row items-center justify-between bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-center gap-5">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center relative shadow-inner bg-gray-50">
-                <svg className="absolute inset-0 w-full h-full drop-shadow-sm" viewBox="0 0 36 36" style={{ transform: "rotate(-90deg)" }}>
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#E8EEFB" strokeWidth="4" />
-                  <circle
-                    cx="18" cy="18" r="15.9"
-                    fill="none" stroke="#F5C000" strokeWidth="4"
-                    strokeDasharray="100"
-                    strokeDashoffset={100 - (100 * (localCandidate.score / 5))}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <span className="text-2xl font-black text-gray-900 relative z-10">{localCandidate.score.toFixed(1)}</span>
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            {/* Row 1: Score + Buttons */}
+            <div className="flex items-center justify-between gap-3">
+              {/* Score circle */}
+              <div className="flex items-center gap-4 flex-shrink-0">
+                <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center relative bg-gray-50 shadow-inner">
+                  <svg className="absolute inset-0 w-full h-full drop-shadow-sm" viewBox="0 0 36 36" style={{ transform: "rotate(-90deg)" }}>
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#E8EEFB" strokeWidth="4" />
+                    <circle
+                      cx="18" cy="18" r="15.9"
+                      fill="none" stroke="#F5C000" strokeWidth="4"
+                      strokeDasharray="100"
+                      strokeDashoffset={100 - (100 * (localCandidate.score / 5))}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span className="text-xl font-black text-gray-900 relative z-10">{localCandidate.score.toFixed(1)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Score Final</span>
+                  <span className={`text-[13px] font-semibold mt-0.5 ${compatibility.color}`}>{compatibility.text}</span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Score Final</span>
-                <span className={`text-base font-semibold ${compatibility.color}`}>{compatibility.text}</span>
-              </div>
-            </div>
 
-            <div className="flex flex-col gap-3 items-end">
-              <div className="flex gap-2">
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 <button
                   onClick={() => onToggleShortlist(localCandidate.id)}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${localCandidate.shortlist ? "bg-[#FFFBEA] text-[#C49500] border border-[#F5C000]/40 hover:bg-[#FEF6D8]" : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"}`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all border ${
+                    localCandidate.shortlist
+                      ? "bg-[#FFFBEA] text-[#C49500] border-[#F5C000]/40 hover:bg-[#FEF6D8]"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  }`}
                 >
-                  <Star className={`w-4 h-4 ${localCandidate.shortlist ? "fill-[#C49500]" : ""}`} />
+                  <Star className={`w-3.5 h-3.5 ${localCandidate.shortlist ? "fill-[#C49500]" : ""}`} />
                   {localCandidate.shortlist ? "Na Shortlist" : "Shortlist"}
                 </button>
                 <a
-                  href={localCandidate.linkedinUrl !== "#" ? localCandidate.linkedinUrl : "https://linkedin.com"}
+                  href={localCandidate.linkedinUrl && localCandidate.linkedinUrl !== "#" ? localCandidate.linkedinUrl : "https://linkedin.com"}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-[#E8EEFB] text-[#1B4FD8] hover:bg-[#1B4FD8] hover:text-white transition-all shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold bg-[#E8EEFB] text-[#1B4FD8] hover:bg-[#1B4FD8] hover:text-white transition-all border border-transparent"
                 >
-                  <ExternalLink className="w-4 h-4" /> LinkedIn
+                  <ExternalLink className="w-3.5 h-3.5" /> LinkedIn
                 </a>
                 <button
                   onClick={handleExportPdf}
                   disabled={isExporting}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-[#EFF6FF] text-[#1D4ED8] hover:bg-[#1D4ED8] hover:text-white disabled:opacity-60 transition-all shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold bg-[#EFF6FF] text-[#1D4ED8] hover:bg-[#1D4ED8] hover:text-white disabled:opacity-60 transition-all border border-transparent"
                 >
-                  {isExporting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <FileText className="w-4 h-4" />
-                  )}
+                  {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
                   Exportar PDF
                 </button>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 font-medium">Pipeline:</span>
-                <select
-                  value={localCandidate.status}
-                  onChange={(e) => onMoveCandidate(localCandidate.id, e.target.value as KanbanStatus)}
-                  className="text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#1B4FD8] focus:ring-1 focus:ring-[#1B4FD8]"
-                >
-                  <option value="triado">Triado</option>
-                  <option value="shortlist">Shortlist</option>
-                  <option value="entrevista">Entrevista</option>
-                  <option value="oferecido">Oferecido</option>
-                  <option value="contratado">Contratado</option>
-                </select>
-              </div>
+            </div>
+
+            {/* Row 2: Pipeline */}
+            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+              <span className="text-[12px] text-gray-500 font-semibold uppercase tracking-wide">Pipeline:</span>
+              <select
+                value={localCandidate.status}
+                onChange={(e) => {
+                  const newStatus = e.target.value as KanbanStatus;
+                  const updated = { ...localCandidate, status: newStatus };
+                  setLocalCandidate(updated);
+                  if (onUpdateCandidate) onUpdateCandidate(updated);
+                  onMoveCandidate(localCandidate.id, newStatus);
+                }}
+                className="text-[13px] font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#1B4FD8] focus:ring-1 focus:ring-[#1B4FD8] cursor-pointer"
+              >
+                <option value="triado">Triado</option>
+                <option value="shortlist">Shortlist</option>
+                <option value="entrevista">Entrevista</option>
+                <option value="oferecido">Oferecido</option>
+                <option value="contratado">Contratado</option>
+              </select>
             </div>
           </div>
 
@@ -816,30 +829,32 @@ export default function CandidateDrawer({
           </div>
 
           {/* SEÇÃO 7: VAGAS ASSOCIADAS */}
-          <div className="space-y-4 pb-8">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-gray-400" />
+          <div className="space-y-3 pb-8">
+            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Briefcase className="w-3.5 h-3.5" />
               Vagas Associadas
             </h3>
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-semibold border-b border-gray-200">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-4 py-3">Vaga</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3 text-right">Score</th>
+                    <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Vaga</th>
+                    <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                    <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide text-right">Score</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody>
                   <tr className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900">Email Designer BR — Figma</td>
+                    <td className="px-4 py-3 font-medium text-gray-900 text-[13px]">
+                      {activeJob?.title || localCandidate.vagaId || "—"}
+                    </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-1 text-[11px] font-semibold bg-blue-50 text-blue-700 rounded-md uppercase">
+                      <span className="inline-flex px-2 py-0.5 text-[11px] font-semibold bg-blue-50 text-blue-700 rounded-md uppercase tracking-wide">
                         {localCandidate.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-[#F5C000]">
-                      {localCandidate.score.toFixed(1)}
+                    <td className="px-4 py-3 text-right font-bold text-[#F5C000] text-[14px]">
+                      {localCandidate.score > 0 ? localCandidate.score.toFixed(1) : "—"}
                     </td>
                   </tr>
                 </tbody>

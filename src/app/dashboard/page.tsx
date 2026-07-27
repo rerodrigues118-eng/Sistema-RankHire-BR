@@ -756,6 +756,7 @@ export default function Home() {
         isOpen={Boolean(drawerCandidate)}
         onClose={handleCloseDrawer}
         candidate={drawerCandidate}
+        activeJob={activeJob}
         onToggleShortlist={handleToggleShortlist}
         onMoveCandidate={handleMoveCandidateStatus}
         onUpdateCandidate={handleUpdateCandidate}
