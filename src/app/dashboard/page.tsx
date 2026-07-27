@@ -600,15 +600,17 @@ export default function Home() {
 
   if (isBootstrapping) {
     return (
-      <div className="flex h-screen overflow-hidden bg-white">
-        <Sidebar activePage={activePage} onNavigate={handleSetActivePage} />
-        <div className="flex-1 flex items-center justify-center bg-[var(--bg-base)]">
-          <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-            <div className="h-4 w-48 rounded bg-slate-200 animate-pulse" />
-            <div className="mt-3 h-3 w-72 rounded bg-slate-100 animate-pulse" />
+      <NotificationProvider>
+        <div className="flex h-screen overflow-hidden bg-white">
+          <Sidebar activePage={activePage} onNavigate={handleSetActivePage} />
+          <div className="flex-1 flex items-center justify-center bg-[var(--bg-base)]">
+            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+              <div className="h-4 w-48 rounded bg-slate-200 animate-pulse" />
+              <div className="mt-3 h-3 w-72 rounded bg-slate-100 animate-pulse" />
+            </div>
           </div>
         </div>
-      </div>
+      </NotificationProvider>
     );
   }
 

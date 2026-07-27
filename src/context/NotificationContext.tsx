@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { CheckCircle2, AlertCircle, Info, X, Bell, Trash2, CheckCheck } from "lucide-react";
+import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 
 export interface AppNotification {
   id: string;
@@ -65,6 +65,20 @@ const DEFAULT_NOTIFICATIONS: AppNotification[] = [
     category: "pdf-ranker",
   },
 ];
+
+const DEFAULT_CONTEXT: NotificationContextType = {
+  notifications: DEFAULT_NOTIFICATIONS,
+  unreadCount: 1,
+  toasts: [],
+  addNotification: () => {},
+  markAsRead: () => {},
+  markAllAsRead: () => {},
+  clearNotifications: () => {},
+  dismissToast: () => {},
+  isSidebarCollapsed: false,
+  toggleSidebar: () => {},
+  setSidebarCollapsed: () => {},
+};
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -274,7 +288,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 export function useNotifications() {
   const context = useContext(NotificationContext);
   if (!context) {
-    throw new Error("useNotifications must be used within a NotificationProvider");
+    return DEFAULT_CONTEXT;
   }
   return context;
 }
