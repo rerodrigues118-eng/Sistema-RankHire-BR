@@ -8,10 +8,10 @@ export default async function LandingPage() {
     
     // Adjust asset paths to be absolute from /landing/
     htmlContent = htmlContent
-      .replace(/src="\.\/assets\//g, 'src="/landing/assets/')
-      .replace(/href="\.\/assets\//g, 'href="/landing/assets/')
-      .replace(/href="\.\/icon/g, 'href="/landing/icon')
-      .replace(/src="\.\/placeholder/g, 'src="/landing/placeholder');
+      .replace(/src="(\.\/|\/)assets\//g, 'src="/landing/assets/')
+      .replace(/href="(\.\/|\/)assets\//g, 'href="/landing/assets/')
+      .replace(/href="(\.\/|\/)icon/g, 'href="/landing/icon')
+      .replace(/src="(\.\/|\/)placeholder/g, 'src="/landing/placeholder');
 
     return (
       <div 
