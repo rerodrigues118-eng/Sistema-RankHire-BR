@@ -199,6 +199,10 @@ export default function Home() {
     setCandidates((prev) => prev.map((candidate) => (candidate.id === id ? { ...candidate, shortlist: !candidate.shortlist } : candidate)));
   }, [candidates]);
 
+  const handleDeleteCandidates = useCallback((ids: string[]) => {
+    setCandidates((prev) => prev.filter((c) => !ids.includes(c.id)));
+  }, []);
+
   const handleMoveCandidateStatus = useCallback((id: string, newStatus: KanbanStatus) => {
     fetch(`/api/candidates/${id}`, {
       method: "PATCH",
@@ -645,6 +649,7 @@ export default function Home() {
                   fileInputRef={fileInputRef}
                   onSelectCandidate={handleOpenDrawer}
                   onToggleShortlist={handleToggleShortlist}
+                  onDeleteCandidates={handleDeleteCandidates}
                   quota={quota}
                 />
               )}

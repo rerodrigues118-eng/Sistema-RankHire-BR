@@ -33,6 +33,7 @@ interface PdfRankerPageProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onSelectCandidate: (c: Candidate) => void;
   onToggleShortlist?: (id: string) => void;
+  onDeleteCandidates?: (ids: string[]) => void;
   quota?: {
     isAdmin: boolean;
     used: number;
@@ -99,6 +100,7 @@ export default function PdfRankerPage({
   fileInputRef,
   onSelectCandidate,
   onToggleShortlist,
+  onDeleteCandidates,
   quota,
 }: PdfRankerPageProps) {
   const [activeTab, setActiveTab] = useState<"triagem" | "funil">("triagem");
@@ -110,11 +112,53 @@ export default function PdfRankerPage({
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastIdRef = useRef(0);
   const [localQuota, setLocalQuota] = useState<typeof quota | null>(quota ?? null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isClearingResults, setIsClearingResults] = useState(false);
 
   const topCandidates = candidates
     .filter((candidate) => candidate.vagaId === activeJob.id)
     .sort((a, b) => b.score - a.score);
   const hasCriteria = criteria.some((c) => c.nome && c.nome.trim().length > 0);
+
+  /* ── Clear non-favorited results ────────────────────────── */
+  const handleClearResults = useCallback(async () => {
+    const toDelete = topCandidates.filter((c) => !c.shortlist);
+    if (toDelete.length === 0) {
+      showToast("info", "Nenhum candidato para remover. Os favoritos são mantidos no CRM/Pipeline.");
+      setShowClearConfirm(false);
+      return;
+    }
+    setIsClearingResults(true);
+    const deletedIds: string[] = [];
+    let failCount = 0;
+    await Promise.all(
+      toDelete.map(async (c) => {
+        try {
+          const res = await fetch(`/api/candidates/${c.id}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          if (res.ok) {
+            deletedIds.push(c.id);
+          } else {
+            failCount++;
+          }
+        } catch {
+          failCount++;
+        }
+      })
+    );
+    setIsClearingResults(false);
+    setShowClearConfirm(false);
+    if (deletedIds.length > 0) {
+      onDeleteCandidates?.(deletedIds);
+      showToast("success", `${deletedIds.length} candidato(s) removido(s). Favoritos mantidos no CRM/Pipeline.`);
+    }
+    if (failCount > 0) {
+      showToast("error", `${failCount} candidato(s) não puderam ser removidos.`);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topCandidates, onDeleteCandidates]);
 
   /* ── Toast helpers ────────────────────────── */
   const showToast = useCallback((type: ToastType, message: string) => {
@@ -479,9 +523,22 @@ export default function PdfRankerPage({
 
             {/* ── Results preview ───────────────────── */}
             <div className="flex flex-col min-w-0">
-              <h2 className="text-[16px] font-semibold text-[#111827] mb-4">
-                Resultados da Triagem
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[16px] font-semibold text-[#111827]">
+                  Resultados da Triagem
+                </h2>
+                {topCandidates.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowClearConfirm(true)}
+                    title="Esvaziar resultados (favoritos permanecem no CRM/Pipeline)"
+                    className="flex items-center gap-1.5 text-[12px] text-[#6B7280] hover:text-red-500 border border-[#E5E7EB] hover:border-red-300 hover:bg-red-50 rounded-[6px] px-2.5 py-1.5 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Esvaziar</span>
+                  </button>
+                )}
+              </div>
 
               <div className="bg-[#FFFFFF] rounded-[12px] p-5 flex-1 min-w-0 overflow-hidden" style={{ border: "1px solid #E5E7EB" }}>
                 {topCandidates.length === 0 ? (
@@ -554,6 +611,58 @@ export default function PdfRankerPage({
             </div>
           </div>
         </>
+      )}
+
+      {/* ── Clear Results Confirmation Modal ─────────── */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+          <div className="bg-white rounded-[16px] shadow-xl p-6 w-[380px] max-w-[calc(100vw-32px)]" style={{ border: "1px solid #E5E7EB" }}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold text-[#111827]">Esvaziar Resultados</h3>
+                <p className="text-[13px] text-[#6B7280] mt-1">
+                  Todos os candidatos <strong>não favoritados</strong> desta triagem serão removidos permanentemente.
+                </p>
+                {topCandidates.some((c) => c.shortlist) && (
+                  <p className="text-[12px] text-[#059669] bg-green-50 rounded-[6px] px-3 py-2 mt-2 border border-green-100">
+                    ✓ Os candidatos favoritados (⭐) serão mantidos no CRM e Pipeline.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end mt-5">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                disabled={isClearingResults}
+                className="text-[13px] text-[#374151] border border-[#E5E7EB] rounded-[8px] px-4 py-2 hover:bg-[#F9FAFB] transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleClearResults}
+                disabled={isClearingResults}
+                className="flex items-center gap-1.5 text-[13px] font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 rounded-[8px] px-4 py-2 transition-colors"
+              >
+                {isClearingResults ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Removendo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Confirmar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ══════════════════════════════════════════════ */}
