@@ -623,7 +623,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     return null;
   }
   if (!hasStarted) return (
-    <div className="relative flex min-h-[calc(100vh-120px)] flex-col items-center justify-center px-4">
+    <div className="relative flex min-h-[calc(100vh-140px)] flex-col items-center justify-center px-4 py-4">
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute left-1/2 top-14 h-64 w-64 -translate-x-1/2 rounded-full bg-indigo-200/20 blur-3xl" />
         <div className="absolute right-12 top-24 h-48 w-48 rounded-full bg-violet-200/20 blur-3xl" />
@@ -688,9 +688,9 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] relative">
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[900px] mx-auto px-4 pt-6 pb-4">
+    <div className="flex flex-col h-[calc(100vh-140px)] max-h-[calc(100vh-140px)] relative overflow-hidden">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="max-w-[900px] mx-auto px-4 pt-4 pb-4">
           {messages.map(renderMessage)}
           {isScoring && (
             <div className="flex items-center gap-2 text-[12px] text-indigo-600 mb-4 pl-11">
@@ -701,15 +701,15 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         </div>
       </div>
 
-      <div className="border-t border-gray-100 bg-white/95 backdrop-blur-sm px-4 py-3">
+      <div className="border-t border-gray-100 bg-white/95 backdrop-blur-sm px-4 pt-3 pb-2 flex-shrink-0 shadow-md">
         <div className="max-w-[900px] mx-auto">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-md overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden ring-1 ring-black/5">
             <textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
               placeholder="Refine a busca ou descreva outro perfil..."
-              rows={1} disabled={isAnalyzing || isSearching}
-              className="w-full px-4 pt-3 pb-2 text-[14px] text-gray-900 resize-none outline-none placeholder:text-gray-400 bg-transparent leading-relaxed disabled:opacity-50" />
-            <div className="flex items-center justify-between px-3 pb-2.5 border-t border-gray-100 pt-2">
+              rows={2} disabled={isAnalyzing || isSearching}
+              className="w-full px-4 pt-3.5 pb-2 text-[14px] text-gray-900 resize-none outline-none placeholder:text-gray-400 bg-transparent leading-relaxed disabled:opacity-50 min-h-[54px]" />
+            <div className="flex items-center justify-between px-3 pb-2.5 border-t border-gray-100 pt-2 bg-gray-50/50">
               <button onClick={() => setIsFiltersOpen(true)}
                 className={`flex items-center gap-2 border rounded-xl font-medium transition-all text-[11px] px-2.5 py-1.5 ${hasActiveFilters(activeFilters) ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700"}`}>
                 <SlidersHorizontal className="w-3 h-3" />Filtros avancados
@@ -725,7 +725,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
               </button>
             </div>
           </div>
-          <p className="text-center text-[11px] text-gray-300 mt-2">A IA pode cometer erros - verifique informacoes importantes.</p>
+          <p className="text-center text-[11px] text-gray-400 mt-1.5">A IA pode cometer erros - verifique informacoes importantes.</p>
         </div>
       </div>
 
