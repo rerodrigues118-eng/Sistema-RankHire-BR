@@ -15,6 +15,7 @@ import {
   Loader2,
   Star,
 } from "lucide-react";
+import { useNotifications } from "@/context/NotificationContext";
 
 
 interface PdfCriterion {
@@ -117,6 +118,8 @@ export default function PdfRankerPage({
   // Tracks IDs of shortlisted candidates hidden from results view (NOT deleted from DB - they stay in CRM/Pipeline)
   const [hiddenFromResults, setHiddenFromResults] = useState<Set<string>>(new Set());
 
+  const { addNotification } = useNotifications();
+
   const topCandidates = candidates
     .filter((candidate) => candidate.vagaId === activeJob.id && !hiddenFromResults.has(candidate.id))
     .sort((a, b) => b.score - a.score);
@@ -192,10 +195,16 @@ export default function PdfRankerPage({
   const showToast = useCallback((type: ToastType, message: string) => {
     const id = ++toastIdRef.current;
     setToasts((prev) => [...prev, { id, type, message }]);
+    addNotification({
+      type,
+      title: type === "success" ? "PDF Ranker" : type === "error" ? "Erro na Triagem" : "Informação",
+      message,
+      category: "pdf-ranker",
+    });
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4500);
-  }, []);
+  }, [addNotification]);
 
   /* ── Load criteria when switching to Funil tab ── */
   async function fetchCriteria() {

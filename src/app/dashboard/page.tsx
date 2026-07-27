@@ -16,6 +16,7 @@ import CandidatosPage from "@/components/pages/candidatos-page";
 import CandidateDrawer from "@/components/CandidateDrawer";
 import TrialBanner from "@/components/TrialBanner";
 import { createClient } from "@/lib/supabase/client";
+import { NotificationProvider } from "@/context/NotificationContext";
 
 export default function Home() {
   const [activePage, setActivePage] = useState<PageId>(() => {
@@ -612,167 +613,169 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
-      <Sidebar activePage={activePage} onNavigate={handleSetActivePage} />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[var(--bg-base)]">
-        <main className="flex-1 overflow-y-auto p-6 text-[var(--text-primary)]">
-          <TrialBanner />
-          {bootstrapError && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              {bootstrapError}
-            </div>
-          )}
-          <div className="w-full h-full relative">
-            <div className={activePage === "dashboard" ? "block h-full" : "hidden"}>
-              <DashboardPage
-                activeJob={activeJob}
-                jobs={jobs}
-                candidates={candidates}
-                onToggleShortlist={handleToggleShortlist}
-                onSelectCandidate={handleOpenDrawer}
-                onCreateProject={handleCreateProjectClick}
-                onNavigate={handleSetActivePage}
-              />
-            </div>
-            <div className={activePage === "pdf-ranker" ? "block h-full" : "hidden"}>
-              {!activeJob ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
-                  Crie ou selecione uma vaga para usar o PDF Ranker.
-                </div>
-              ) : (
-                <PdfRankerPage
+    <NotificationProvider>
+      <div className="flex h-screen bg-[var(--bg-page)] overflow-hidden font-sans">
+        <Sidebar activePage={activePage} onNavigate={handleSetActivePage} />
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[var(--bg-base)]">
+          <main className="flex-1 overflow-y-auto p-6 text-[var(--text-primary)]">
+            <TrialBanner />
+            {bootstrapError && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                {bootstrapError}
+              </div>
+            )}
+            <div className="w-full h-full relative">
+              <div className={activePage === "dashboard" ? "block h-full" : "hidden"}>
+                <DashboardPage
                   activeJob={activeJob}
+                  jobs={jobs}
                   candidates={candidates}
-                  uploads={uploads}
-                  isUploading={isUploading}
-                  onFileUpload={handleFileUpload}
-                  fileInputRef={fileInputRef}
-                  onSelectCandidate={handleOpenDrawer}
                   onToggleShortlist={handleToggleShortlist}
-                  onDeleteCandidates={handleDeleteCandidates}
-                  quota={quota}
+                  onSelectCandidate={handleOpenDrawer}
+                  onCreateProject={handleCreateProjectClick}
+                  onNavigate={handleSetActivePage}
                 />
-              )}
-            </div>
-            <div className={activePage === "linkedin" ? "block h-full" : "hidden"}>
-              {!activeJob ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
-                  Crie ou selecione uma vaga para buscar candidatos no LinkedIn.
-                </div>
-              ) : (
-                <LinkedinPage activeJob={activeJob} onImportCandidate={handleImportCandidate} />
-              )}
-            </div>
-            <div className={activePage === "pipeline" ? "block h-full" : "hidden"}>
-              <PipelinePage
-                candidates={candidates}
-                onMoveCandidate={handleMoveCandidateStatus}
-                onResetPipeline={handleResetPipeline}
-                onSelectCandidate={handleOpenDrawer}
-              />
-            </div>
-            <div className={activePage === "analytics" ? "block h-full" : "hidden"}>
-              <AnalyticsPage jobs={jobs} candidates={candidates} quota={quota} />
-            </div>
-            <div className={activePage === "settings" ? "block h-full" : "hidden"}>
-              <SettingsPage />
-            </div>
-            <div className={activePage === "agente-ia" ? "block h-full" : "hidden"}>
-              <AgenteIAPage />
-            </div>
-            <div className={activePage === "candidatos" ? "block h-full" : "hidden"}>
-              <CandidatosPage candidates={candidates} onSelectCandidate={handleOpenDrawer} />
-            </div>
-            <div className={activePage === "vagas" ? "block h-full" : "hidden"}>
-              <VagasPage
-                jobs={jobs}
-                selectedJobId={selectedJobId}
-                isActive={activePage === "vagas"}
-                isCreateModalOpen={pendingOpenCreateModal}
-                onCreateModalOpened={() => setPendingOpenCreateModal(false)}
-                onCreateJob={async (newJob) => {
-                  const res = await fetch("/api/vagas", {
-                    method: "POST",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      title: newJob.title,
-                      area: newJob.department,
-                      contract: newJob.contract,
-                      location: newJob.location,
-                      briefing: newJob.briefing,
-                      status: newJob.status,
-                    }),
-                  });
-                  const data = await res.json();
+              </div>
+              <div className={activePage === "pdf-ranker" ? "block h-full" : "hidden"}>
+                {!activeJob ? (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
+                    Crie ou selecione uma vaga para usar o PDF Ranker.
+                  </div>
+                ) : (
+                  <PdfRankerPage
+                    activeJob={activeJob}
+                    candidates={candidates}
+                    uploads={uploads}
+                    isUploading={isUploading}
+                    onFileUpload={handleFileUpload}
+                    fileInputRef={fileInputRef}
+                    onSelectCandidate={handleOpenDrawer}
+                    onToggleShortlist={handleToggleShortlist}
+                    onDeleteCandidates={handleDeleteCandidates}
+                    quota={quota}
+                  />
+                )}
+              </div>
+              <div className={activePage === "linkedin" ? "block h-full" : "hidden"}>
+                {!activeJob ? (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
+                    Crie ou selecione uma vaga para buscar candidatos no LinkedIn.
+                  </div>
+                ) : (
+                  <LinkedinPage activeJob={activeJob} onImportCandidate={handleImportCandidate} />
+                )}
+              </div>
+              <div className={activePage === "pipeline" ? "block h-full" : "hidden"}>
+                <PipelinePage
+                  candidates={candidates}
+                  onMoveCandidate={handleMoveCandidateStatus}
+                  onResetPipeline={handleResetPipeline}
+                  onSelectCandidate={handleOpenDrawer}
+                />
+              </div>
+              <div className={activePage === "analytics" ? "block h-full" : "hidden"}>
+                <AnalyticsPage jobs={jobs} candidates={candidates} quota={quota} />
+              </div>
+              <div className={activePage === "settings" ? "block h-full" : "hidden"}>
+                <SettingsPage />
+              </div>
+              <div className={activePage === "agente-ia" ? "block h-full" : "hidden"}>
+                <AgenteIAPage />
+              </div>
+              <div className={activePage === "candidatos" ? "block h-full" : "hidden"}>
+                <CandidatosPage candidates={candidates} onSelectCandidate={handleOpenDrawer} />
+              </div>
+              <div className={activePage === "vagas" ? "block h-full" : "hidden"}>
+                <VagasPage
+                  jobs={jobs}
+                  selectedJobId={selectedJobId}
+                  isActive={activePage === "vagas"}
+                  isCreateModalOpen={pendingOpenCreateModal}
+                  onCreateModalOpened={() => setPendingOpenCreateModal(false)}
+                  onCreateJob={async (newJob) => {
+                    const res = await fetch("/api/vagas", {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        title: newJob.title,
+                        area: newJob.department,
+                        contract: newJob.contract,
+                        location: newJob.location,
+                        briefing: newJob.briefing,
+                        status: newJob.status,
+                      }),
+                    });
+                    const data = await res.json();
 
-                  if (!res.ok) {
-                    throw new Error(data.error || "Falha ao criar a vaga.");
-                  }
+                    if (!res.ok) {
+                      throw new Error(data.error || "Falha ao criar a vaga.");
+                    }
 
-                  const createdJob: Job = {
-                    ...newJob,
-                    id: data.vaga.id,
-                    createdDate: new Date(data.vaga.created_at).toLocaleDateString("pt-BR"),
-                    createdAt: data.vaga.created_at,
-                  };
-                  setJobs((prev) => [createdJob, ...prev]);
-                  handleSetSelectedJobId(createdJob.id);
-                  setActivePage("vagas");
-                }}
-                onUpdateJob={async (updatedJob) => {
-                  const res = await fetch(`/api/vagas/${updatedJob.id}`, {
-                    method: "PATCH",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      title: updatedJob.title,
-                      area: updatedJob.department,
-                      contract: updatedJob.contract,
-                      location: updatedJob.location,
-                      briefing: updatedJob.briefing,
-                      status: updatedJob.status,
-                    }),
-                  });
-                  const data = await res.json();
+                    const createdJob: Job = {
+                      ...newJob,
+                      id: data.vaga.id,
+                      createdDate: new Date(data.vaga.created_at).toLocaleDateString("pt-BR"),
+                      createdAt: data.vaga.created_at,
+                    };
+                    setJobs((prev) => [createdJob, ...prev]);
+                    handleSetSelectedJobId(createdJob.id);
+                    setActivePage("vagas");
+                  }}
+                  onUpdateJob={async (updatedJob) => {
+                    const res = await fetch(`/api/vagas/${updatedJob.id}`, {
+                      method: "PATCH",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        title: updatedJob.title,
+                        area: updatedJob.department,
+                        contract: updatedJob.contract,
+                        location: updatedJob.location,
+                        briefing: updatedJob.briefing,
+                        status: updatedJob.status,
+                      }),
+                    });
+                    const data = await res.json();
 
-                  if (!res.ok) {
-                    throw new Error(data.error || "Falha ao atualizar a vaga.");
-                  }
+                    if (!res.ok) {
+                      throw new Error(data.error || "Falha ao atualizar a vaga.");
+                    }
 
-                  setJobs((prev) => prev.map((job) => (job.id === updatedJob.id ? updatedJob : job)));
-                }}
-                onOpenJob={handleSetSelectedJobId}
-                onSelectJob={handleSetSelectedJobId}
-                onChangeJobStatus={handleChangeJobStatus}
-                onDeleteJob={handleDeleteJob}
-              />
+                    setJobs((prev) => prev.map((job) => (job.id === updatedJob.id ? updatedJob : job)));
+                  }}
+                  onOpenJob={handleSetSelectedJobId}
+                  onSelectJob={handleSetSelectedJobId}
+                  onChangeJobStatus={handleChangeJobStatus}
+                  onDeleteJob={handleDeleteJob}
+                />
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
+
+        <CandidateDrawer
+          isOpen={Boolean(drawerCandidate)}
+          onClose={handleCloseDrawer}
+          candidate={drawerCandidate}
+          activeJob={activeJob}
+          onToggleShortlist={handleToggleShortlist}
+          onMoveCandidate={handleMoveCandidateStatus}
+          onUpdateCandidate={handleUpdateCandidate}
+          quota={quota}
+          onExportSuccess={() => {
+            setQuota((prev) => {
+              if (!prev) return null;
+              if (prev.isAdmin || prev.limit === null) return prev;
+              return {
+                ...prev,
+                used: prev.used + 1,
+                remaining: prev.remaining !== null ? Math.max(0, prev.remaining - 1) : null,
+              };
+            });
+          }}
+        />
       </div>
-
-      <CandidateDrawer
-        isOpen={Boolean(drawerCandidate)}
-        onClose={handleCloseDrawer}
-        candidate={drawerCandidate}
-        activeJob={activeJob}
-        onToggleShortlist={handleToggleShortlist}
-        onMoveCandidate={handleMoveCandidateStatus}
-        onUpdateCandidate={handleUpdateCandidate}
-        quota={quota}
-        onExportSuccess={() => {
-          setQuota((prev) => {
-            if (!prev) return null;
-            if (prev.isAdmin || prev.limit === null) return prev;
-            return {
-              ...prev,
-              used: prev.used + 1,
-              remaining: prev.remaining !== null ? Math.max(0, prev.remaining - 1) : null,
-            };
-          });
-        }}
-      />
-    </div>
+    </NotificationProvider>
   );
 }

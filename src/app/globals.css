@@ -266,6 +266,37 @@ body {
   background: #2b2b3f;
 }
 
+/* ── Toast Animations ── */
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%) scale(0.95);
+    opacity: 0;
+  }
+}
+
+.toast-enter {
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast-exit {
+  animation: toastSlideOut 0.25s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
 /* ── Printing Styles ── */
 @media print {
   body * {
