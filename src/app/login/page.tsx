@@ -1,5 +1,4 @@
 import LoginForm from "./login-form";
-import SignupInlineCta from "./signup-inline-cta";
 
 export const metadata = {
   title: "RankHire BR | Entrar",
@@ -15,65 +14,79 @@ export default async function LoginPage({
   const showResetSuccess = resolvedParams?.reset === "1";
   const plan = resolvedParams?.plan;
   const source = resolvedParams?.source;
-  const planLabel = plan === "starter"
-    ? "Starter"
-    : plan === "pro"
+  const planLabel =
+    plan === "starter"
+      ? "Starter"
+      : plan === "pro"
       ? "Pro"
       : plan === "agencia"
-        ? "Agência"
-        : plan === "trial"
-          ? "Trial"
-          : null;
+      ? "Agência"
+      : plan === "trial"
+      ? "Trial"
+      : null;
 
   return (
-    <div className="landing-dark min-h-screen flex bg-[#030307] font-sans text-white relative overflow-hidden select-none">
-      {/* Background glowing backlights */}
-      <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-amber-500/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="min-h-screen flex bg-white font-sans text-slate-900 select-none">
+      {/* Left Column: Visual & Branding (Desktop only) */}
+      <div className="hidden lg:flex flex-1 flex-col justify-between bg-slate-950 text-white relative overflow-hidden p-12 lg:p-16 border-r border-slate-800">
+        {/* Ambient glow light effect */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-gradient-to-tr from-blue-600/30 via-indigo-500/20 to-sky-400/10 blur-3xl rounded-full pointer-events-none -z-0 animate-pulse-slow" />
 
-      {/* Left Column: Visual & Promo (Desktop only) */}
-      <div className="hidden lg:flex flex-1 flex-col justify-center items-center bg-zinc-950/20 border-r border-white/5 relative overflow-hidden px-16">
-        <div className="relative z-10 flex flex-col items-center text-center max-w-lg">
-          <div className="w-16 h-16 bg-gradient-to-tr from-[#2563EB] to-[#D4AF37] flex items-center justify-center rounded-full shadow-lg mb-8">
-            <span className="text-white font-extrabold text-2xl">R</span>
+        {/* Top Header Logo */}
+        <div className="relative z-10 flex items-center gap-2.5">
+          <div className="w-7 h-7 border border-white/20 rounded-md bg-white/10 flex items-center justify-center backdrop-blur-sm shadow-sm">
+            <div className="w-2.5 h-2.5 bg-blue-500 rounded-[1px]" />
           </div>
-          <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight mb-4">
+          <span className="text-white font-bold text-base tracking-tight">RankHire BR</span>
+        </div>
+
+        {/* Hero Branding Content */}
+        <div className="relative z-10 my-auto max-w-lg text-left">
+          <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-3.5 py-1.5 mb-6 text-xs text-blue-300 font-medium backdrop-blur-sm">
+            <span>✨ +500.000 currículos processados com precisão semântica</span>
+          </div>
+          <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight leading-[1.15] mb-4">
             A forma mais inteligente de recrutar.
           </h1>
-          <p className="text-sm text-zinc-400 leading-relaxed mb-6">
-            Nossa inteligência artificial analisa currículos em segundos, encontra os melhores perfis no LinkedIn e acelera o fechamento de vagas de ponta a ponta.
+          <p className="text-base text-slate-400 leading-relaxed font-normal">
+            Nossa inteligência artificial analisa currículos em segundos e acelera o fechamento de vagas de ponta a ponta.
           </p>
-          <SignupInlineCta plan={plan} source={source} />
+        </div>
+
+        {/* Footer Credit */}
+        <div className="relative z-10 text-xs text-slate-500 font-medium">
+          © 2026 RankHire BR. Plataforma de recrutamento semântico autônomo.
         </div>
       </div>
 
-      {/* Right Column: Login Form */}
-      <div className="flex-1 flex flex-col justify-center items-center p-8 sm:p-12 lg:p-20 relative z-10">
-        <div className="w-full max-w-[360px]">
+      {/* Right Column: Clean Light Mode Login Form */}
+      <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 lg:p-20 bg-white relative z-10">
+        <div className="w-full max-w-[380px]">
           {/* Logo (Mobile only) */}
-          <div className="mb-8 lg:hidden flex flex-col items-center text-center">
-            <div className="w-12 h-12 bg-gradient-to-tr from-[#2563EB] to-[#D4AF37] flex items-center justify-center rounded-full shadow-md mb-3">
-              <span className="text-white font-extrabold text-xl">R</span>
+          <div className="mb-8 lg:hidden flex items-center gap-2.5 justify-center">
+            <div className="w-7 h-7 border border-slate-300 rounded-md bg-slate-100 flex items-center justify-center shadow-sm">
+              <div className="w-2.5 h-2.5 bg-blue-600 rounded-[1px]" />
             </div>
-            <h1 className="text-lg font-bold text-white tracking-tight">RankHire BR</h1>
+            <span className="text-slate-900 font-bold text-lg tracking-tight">RankHire BR</span>
           </div>
 
-          <div className="mb-8 text-center lg:text-left">
-            <h2 className="text-2xl font-bold text-white tracking-tight mb-2">Bem-vindo de volta</h2>
-            <p className="text-zinc-500 text-xs">Acesse sua conta para continuar gerenciando suas vagas.</p>
+          {/* Form Header */}
+          <div className="mb-8 text-left">
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-1.5">Bem-vindo de volta</h2>
+            <p className="text-slate-500 text-sm">Acesse sua conta para continuar gerenciando suas vagas.</p>
           </div>
 
-          {showResetSuccess ? (
-            <div className="mb-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+          {showResetSuccess && (
+            <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800 font-medium">
               Sua senha foi redefinida com sucesso. Faça login novamente.
             </div>
-          ) : null}
+          )}
 
-          {planLabel ? (
-            <div className="mb-6 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-100">
-              Você chegou aqui via landing page para o plano {planLabel}. Faça login ou crie sua conta para continuar.
+          {planLabel && (
+            <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-3.5 text-xs text-blue-800 font-medium">
+              Você chegou aqui via landing page para o plano <strong>{planLabel}</strong>. Faça login ou crie sua conta para continuar.
             </div>
-          ) : null}
+          )}
 
           <LoginForm plan={plan} source={source} />
         </div>
