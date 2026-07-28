@@ -562,7 +562,7 @@ function HomePage({ onNav }: { onNav: (p: Page) => void }) {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-gradient-to-b from-blue-100/60 via-indigo-50/30 to-transparent blur-3xl pointer-events-none -z-10" />
         
         {/* Spotlight / Ambient glow behind H1 */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[800px] h-[350px] bg-gradient-to-tr from-blue-600/20 via-indigo-500/20 to-sky-400/15 blur-[120px] rounded-full pointer-events-none -z-10 animate-pulse-slow"></div>
+        <div className="absolute top-36 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[800px] h-[350px] bg-gradient-to-tr from-blue-600/30 via-indigo-500/25 to-sky-400/20 blur-[100px] rounded-full pointer-events-none -z-10 animate-pulse-slow"></div>
 
         <div className="relative max-w-4xl mx-auto">
           <motion.div {...fadeUp} className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-full px-3 py-1.5 mb-6 text-xs font-semibold">
