@@ -1114,9 +1114,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   />
                   <span className="text-[11px] text-slate-600 font-semibold">Ocultar filtros inativos</span>
                 </label>
-              </div>
-
-              {/* R                {activeFilterCategory === "Geral" && (
+              <div className="flex-1 p-6 overflow-y-auto space-y-6">
+                {activeFilterCategory === "Geral" && (
                   <>
                     {/* Experiencia */}
                     <div className="grid grid-cols-2 gap-4">
