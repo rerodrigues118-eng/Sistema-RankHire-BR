@@ -69,16 +69,20 @@ export interface LinkedinProfile {
   }>;
   resumo?: string;
   experiencia_anos?: number;
+  years_experience?: number;
   skills?: string[];
   experiencias?: Array<{
     cargo: string;
     empresa: string;
     inicio: string;
     fim: string | null;
+    descricao?: string;
   }>;
-  formacao?: string;
+  formacao?: string | Array<{ curso?: string; grau?: string; instituicao: string; ano?: string }>;
   idiomas?: string[];
   sobre?: string;
+  email?: string;
+  phone?: string;
   jaVisto?: boolean;
 }
 
@@ -240,6 +244,16 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   // Copy share link feedback
   const [shareCopied, setShareCopied] = useState(false);
 
+  // Search animation
+  const [searchStep, setSearchStep] = useState<'idle' | 'parsing' | 'scanning'>('idle');
+  const [searchStatusText, setSearchStatusText] = useState('');
+
+  // Search history (max 3 per job)
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+
+  // Candidate drawer active tab
+  const [drawerTab, setDrawerTab] = useState<'geral' | 'experiencia' | 'formacao' | 'competencias' | 'mais'>('geral');
+
   useEffect(() => {
     if (isShareOpen && !shareLink) {
       (async () => {
@@ -269,12 +283,29 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     }
   }, [isShareOpen, activeJob?.id, profiles, criteria, shareLink]);
 
+  // Restaurar estado do localStorage ao montar ou trocar de vaga
+  useEffect(() => {
+    const vagaKey = activeJob?.id || 'default';
+    try {
+      const saved = localStorage.getItem(`rankhire_search_${vagaKey}`);
+      if (saved) {
+        const { queryText: q, profiles: p, hasSearched: hs } = JSON.parse(saved);
+        if (q) setQueryText(q);
+        if (p?.length) setProfiles(p);
+        if (hs) setHasSearched(true);
+      }
+      const hist = localStorage.getItem(`rankhire_history_${vagaKey}`);
+      if (hist) setSearchHistory(JSON.parse(hist));
+    } catch {}
+  }, [activeJob?.id]);
+
   // Sidebar expanded / collapsed link
   const selectedProfile = selectedProfileIndex !== null ? profiles[selectedProfileIndex] : null;
 
   // Handler for candidate select
   const handleSelectProfile = (index: number) => {
     setSelectedProfileIndex(index);
+    setDrawerTab('geral');
   };
 
   // Navigations in Drawer
@@ -321,10 +352,24 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     setTimeout(() => setShareCopied(false), 2000);
   };
 
-  // Run new search
+  // Run new search — com animação sequencial + persistência
   const handleRunSearch = async () => {
-    setIsSearching(true);
     setIsEditQueryOpen(false);
+    const vagaKey = activeJob?.id || 'default';
+
+    // Etapa 1: overlay de análise de intenção
+    setSearchStep('parsing');
+    setSearchStatusText('Analisando intenção e requisitos com IA...');
+    await new Promise(r => setTimeout(r, 750));
+
+    // Etapa 2: overlay de varredura
+    setSearchStep('scanning');
+    setSearchStatusText('Varrendo base de talentos LinkedIn...');
+    await new Promise(r => setTimeout(r, 750));
+
+    setIsSearching(true);
+    let resultProfiles = profiles;
+
     try {
       const res = await fetch("/api/linkedin-search", {
         method: "POST",
@@ -344,13 +389,31 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         const results = data.resultados || data.candidatos || [];
         if (results.length > 0) {
           setProfiles(results);
+          resultProfiles = results;
         }
       }
+
+      // Persistir no localStorage
+      try {
+        localStorage.setItem(`rankhire_search_${vagaKey}`, JSON.stringify({
+          queryText,
+          profiles: resultProfiles,
+          hasSearched: true,
+        }));
+        // Salvar histórico (máx 3)
+        const histKey = `rankhire_history_${vagaKey}`;
+        const existing: string[] = JSON.parse(localStorage.getItem(histKey) || '[]');
+        const updated = [queryText, ...existing.filter(q => q !== queryText)].slice(0, 3);
+        localStorage.setItem(histKey, JSON.stringify(updated));
+        setSearchHistory(updated);
+      } catch {}
+
     } catch (err) {
-      console.error("Erro ao buscar candidatos reais:", err);
+      console.error("Erro ao buscar candidatos:", err);
     } finally {
       setIsSearching(false);
       setHasSearched(true);
+      setSearchStep('idle');
     }
   };
 
@@ -388,6 +451,24 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
   return (
     <div className="flex flex-col h-full bg-[#FAFCFF] overflow-hidden relative">
+
+      {/* ── Overlay animado de busca ── */}
+      {(searchStep === 'parsing' || searchStep === 'scanning') && (
+        <div className="absolute inset-0 z-40 bg-white/92 backdrop-blur-sm flex flex-col items-center justify-center gap-6">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full border-4 border-[#7C3AED]/15 border-t-[#7C3AED] animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Sparkles size={20} className="text-[#7C3AED]" />
+            </div>
+          </div>
+          <p className="text-slate-700 font-semibold text-sm animate-pulse">{searchStatusText}</p>
+          <div className="flex items-center gap-2">
+            {(['parsing', 'scanning'] as const).map(s => (
+              <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${searchStep === s ? 'w-10 bg-[#7C3AED]' : 'w-3 bg-slate-200'}`} />
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* ── Topbar (Fidelidade Visual do Topo) ── */}
       <div className="h-12 border-b border-slate-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
@@ -472,6 +553,24 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       </button>
                     </div>
                   </div>
+
+                  {/* Histórico de buscas recentes */}
+                  {searchHistory.length > 0 && (
+                    <div className="mt-5 flex flex-col items-center gap-2">
+                      <span className="text-[11px] text-slate-400 font-medium">Buscas recentes</span>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {searchHistory.map((q, i) => (
+                          <button
+                            key={i}
+                            onClick={() => { setQueryText(q); handleRunSearch(); }}
+                            className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-full text-xs text-slate-600 font-medium hover:border-[#7C3AED]/50 hover:text-[#7C3AED] transition-all shadow-sm truncate max-w-[260px]"
+                          >
+                            🕐 {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 // Estado de Resultado (Barra comprimida em formato pílula no topo)
@@ -881,95 +980,186 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
               </div>
 
               {/* Horizontal Tabs */}
-              <div className="flex px-6 border-b border-slate-200 bg-slate-50/30 flex-shrink-0">
-                {["Visão Geral", "Experiência", "Formação", "Competências", "Mais"].map((t) => (
+              <div className="flex px-6 border-b border-slate-200 bg-white flex-shrink-0">
+                {([
+                  { key: 'geral',        label: 'Visão Geral' },
+                  { key: 'experiencia',  label: 'Experiência' },
+                  { key: 'formacao',     label: 'Formação' },
+                  { key: 'competencias',label: 'Competências' },
+                  { key: 'mais',         label: 'Mais' },
+                ] as const).map(({ key, label }) => (
                   <button
-                    key={t}
-                    className="px-4 py-2.5 text-xs font-semibold text-slate-500 hover:text-[#7C3AED] border-b-2 border-transparent hover:border-[#7C3AED] transition-colors focus:outline-none"
+                    key={key}
+                    onClick={() => setDrawerTab(key)}
+                    className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors focus:outline-none ${
+                      drawerTab === key
+                        ? 'border-[#7C3AED] text-[#7C3AED]'
+                        : 'border-transparent text-slate-500 hover:text-[#7C3AED]'
+                    }`}
                   >
-                    {t}
+                    {label}
                   </button>
                 ))}
               </div>
 
-              {/* Drawer Content Body (Vertical scrolling) */}
+              {/* Drawer Content Body — conditional by tab */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                
-                {/* Contact and Metadata Reveal section */}
-                <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Detalhes de Contato</span>
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Email detail */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1"><Mail size={12} /> E-mail</span>
-                      {revealedContacts.has(`${selectedProfile.id}-email`) ? (
-                        <span className="text-xs text-slate-900 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg select-all">
-                          william.silva@gmail.com
-                        </span>
-                      ) : (
-                        <button 
-                          onClick={() => handleRevealContact(selectedProfile.id, "email")}
-                          className="bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED]/20 font-bold py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 border border-[#7C3AED]/20 transition-all"
-                        >
-                          <span>Revelar e-mail</span>
-                          <Lock size={11} />
-                        </button>
-                      )}
-                    </div>
-                    {/* Phone detail */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1"><Phone size={12} /> Telefone</span>
-                      {revealedContacts.has(`${selectedProfile.id}-phone`) ? (
-                        <span className="text-xs text-slate-900 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg select-all">
-                          +55 (41) 99888-7766
-                        </span>
-                      ) : (
-                        <button 
-                          onClick={() => handleRevealContact(selectedProfile.id, "phone")}
-                          className="bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED]/20 font-bold py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 border border-[#7C3AED]/20 transition-all"
-                        >
-                          <span>Revelar número</span>
-                          <Lock size={11} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Resumo timeline de experiencia (18 anos, 6 anos permanencia media) */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Resumo de Experiência</span>
-                    <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full">
-                      18 anos de experiência total · 6 anos permanência média
-                    </span>
-                  </div>
-                  
-                  <div className="relative pl-4 border-l-2 border-slate-150 space-y-4">
-                    {selectedProfile.experiencias?.map((exp, expIdx) => (
-                      <div key={expIdx} className="relative">
-                        {/* Custom dot icon */}
-                        <div className="absolute left-[-21px] top-1 w-2.5 h-2.5 rounded-full bg-[#7C3AED] border-2 border-white ring-2 ring-purple-100"></div>
-                        <div className="flex flex-col">
-                           <span className="text-xs font-bold text-slate-900 leading-snug">{exp.cargo}</span>
-                           <span className="text-xs text-slate-600 font-medium">{exp.empresa}</span>
-                           <span className="text-[10.5px] text-slate-400 mt-0.5 font-normal">{exp.inicio} - {exp.fim || "Atual"}</span>
+                {/* ── Visão Geral ── */}
+                {drawerTab === 'geral' && (
+                  <>
+                    {/* Score resumo */}
+                    {selectedProfile.score_final != null && (
+                      <div className="bg-gradient-to-r from-[#7C3AED]/8 to-[#7C3AED]/3 rounded-xl border border-[#7C3AED]/15 p-4 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold text-[#7C3AED] uppercase tracking-widest block">Score RankHire</span>
+                          <span className="text-2xl font-black text-slate-900">{Math.round(selectedProfile.score_final * 10) / 10}<span className="text-sm font-medium text-slate-400">/10</span></span>
+                        </div>
+                        <div className="w-12 h-12 rounded-full bg-[#7C3AED]/10 flex items-center justify-center">
+                          <Sparkles size={20} className="text-[#7C3AED]" />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    )}
+                    {/* Contato */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Detalhes de Contato</span>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1"><Mail size={12} /> E-mail</span>
+                          {revealedContacts.has(`${selectedProfile.id}-email`) ? (
+                            <span className="text-xs text-slate-900 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg select-all">
+                              {selectedProfile.email || 'contato@email.com'}
+                            </span>
+                          ) : (
+                            <button onClick={() => handleRevealContact(selectedProfile.id, "email")}
+                              className="bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED]/20 font-bold py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 border border-[#7C3AED]/20 transition-all">
+                              <span>Revelar e-mail</span><Lock size={11} />
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1"><Phone size={12} /> Telefone</span>
+                          {revealedContacts.has(`${selectedProfile.id}-phone`) ? (
+                            <span className="text-xs text-slate-900 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg select-all">
+                              {selectedProfile.phone || '+55 (41) 99888-7766'}
+                            </span>
+                          ) : (
+                            <button onClick={() => handleRevealContact(selectedProfile.id, "phone")}
+                              className="bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED]/20 font-bold py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 border border-[#7C3AED]/20 transition-all">
+                              <span>Revelar número</span><Lock size={11} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Cargo atual resumo */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-4">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Cargo Atual</span>
+                      <p className="text-sm font-semibold text-slate-800">{selectedProfile.headline}</p>
+                      {selectedProfile.company && <p className="text-xs text-slate-500 mt-0.5">{selectedProfile.company}</p>}
+                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-1"><MapPin size={11} />{selectedProfile.location}</p>
+                    </div>
+                  </>
+                )}
 
-                {/* Competências Section */}
-                {selectedProfile.skills && (
+                {/* ── Experiência ── */}
+                {drawerTab === 'experiencia' && (
                   <div className="space-y-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Competências ({selectedProfile.skills.length})</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedProfile.skills.map((sk) => (
-                        <span key={sk} className="px-3 py-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-full text-xs font-semibold">
-                          {sk}
-                        </span>
-                      ))}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Histórico Profissional</span>
+                      <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                        {selectedProfile.years_experience ?? '—'} anos de exp. total
+                      </span>
+                    </div>
+                    <div className="relative pl-4 border-l-2 border-slate-150 space-y-5">
+                      {selectedProfile.experiencias?.length ? selectedProfile.experiencias.map((exp, i) => (
+                        <div key={i} className="relative">
+                          <div className="absolute left-[-21px] top-1 w-2.5 h-2.5 rounded-full bg-[#7C3AED] border-2 border-white ring-2 ring-purple-100" />
+                          <span className="text-xs font-bold text-slate-900 leading-snug block">{exp.cargo}</span>
+                          <span className="text-xs text-slate-600 font-medium block">{exp.empresa}</span>
+                          <span className="text-[10.5px] text-slate-400 mt-0.5 block">{exp.inicio} — {exp.fim || 'Atual'}</span>
+                          {exp.descricao && <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">{exp.descricao}</p>}
+                        </div>
+                      )) : (
+                        <p className="text-xs text-slate-400 py-4 text-center">Nenhuma experiência registrada para este perfil.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Formação ── */}
+                {drawerTab === 'formacao' && (
+                  <div className="space-y-4">
+                    {Array.isArray(selectedProfile.formacao) && selectedProfile.formacao.length > 0 ? (
+                      <div className="space-y-3">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Formação Acadêmica</span>
+                        {(selectedProfile.formacao as Array<{ curso?: string; grau?: string; instituicao: string; ano?: string }>).map((f, i) => (
+                          <div key={i} className="bg-white rounded-xl border border-slate-200 p-4">
+                            <p className="text-sm font-bold text-slate-900">{f.curso || f.grau}</p>
+                            <p className="text-xs text-slate-600 mt-0.5">{f.instituicao}</p>
+                            {f.ano && <p className="text-[10.5px] text-slate-400 mt-1">{f.ano}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : typeof selectedProfile.formacao === 'string' && selectedProfile.formacao ? (
+                      <div className="bg-white rounded-xl border border-slate-200 p-4">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Formação Acadêmica</span>
+                        <p className="text-sm text-slate-700">{selectedProfile.formacao}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 py-8 text-center">Nenhuma formação acadêmica encontrada.</p>
+                    )}
+                    {selectedProfile.idiomas?.length && (
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Idiomas</span>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedProfile.idiomas.map((id: string, i: number) => (
+                            <span key={i} className="px-3 py-1 bg-blue-50 border border-blue-100 text-blue-700 rounded-full text-xs font-semibold">{id}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Competências ── */}
+                {drawerTab === 'competencias' && (
+                  <div className="space-y-4">
+                    {selectedProfile.skills?.length ? (
+                      <>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Competências ({selectedProfile.skills.length})</span>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedProfile.skills.map((sk: string) => (
+                            <span key={sk} className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-full text-xs font-semibold hover:border-[#7C3AED]/40 hover:bg-[#7C3AED]/5 transition-colors">{sk}</span>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-slate-400 py-8 text-center">Nenhuma competência registrada.</p>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Mais ── */}
+                {drawerTab === 'mais' && (
+                  <div className="space-y-4">
+                    {selectedProfile.sobre && (
+                      <div className="bg-white rounded-xl border border-slate-200 p-4">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Sobre</span>
+                        <p className="text-xs text-slate-700 leading-relaxed">{selectedProfile.sobre}</p>
+                      </div>
+                    )}
+                    <div className="bg-white rounded-xl border border-slate-200 p-4">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-3">Links & Perfis</span>
+                      <a
+                        href={selectedProfile.linkedinUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-xs text-blue-600 font-semibold hover:underline"
+                      >
+                        <span className="w-5 h-5 rounded bg-blue-50 text-blue-700 text-[10px] font-extrabold flex items-center justify-center border border-blue-100">in</span>
+                        Ver perfil no LinkedIn
+                      </a>
                     </div>
                   </div>
                 )}
