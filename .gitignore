@@ -57,3 +57,5 @@ rankhire-landing/README.md
 scratch-test.js
 painel-admin/eslint-config-debug.txt
 
+# MCP local configuration
+.agents/rules/mcp_config.json

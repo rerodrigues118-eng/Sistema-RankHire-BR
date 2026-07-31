@@ -1,9 +1,10 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from "react";
 import type { Candidate, Job, PageId } from "@/lib/types";
 import { Users, FileText, CheckCircle, Briefcase, Sparkles, Bot, ArrowRight, Loader2, Award, Check } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { createClient } from "@/lib/supabase/client";
 
 interface DashboardPageProps {
   activeJob: Job | null;
@@ -21,6 +22,8 @@ type ChecklistItem = {
   done: boolean;
 };
 
+const COLORS = ["#4F46E5", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
+
 export default function DashboardPage({
   activeJob,
   jobs,
@@ -36,10 +39,38 @@ export default function DashboardPage({
   }).format(new Date());
 
   const [isLoading, setIsLoading] = useState(true);
+  const [userName, setUserName] = useState<string>("Recrutador");
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [checklistDone, setChecklistDone] = useState(0);
   const [activityData, setActivityData] = useState<any[]>([]);
   const [funnelData, setFunnelData] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data } = await supabase
+            .from("usuarios")
+            .select("nome")
+            .eq("id", user.id)
+            .single();
+
+          if (data?.nome) {
+            setUserName(data.nome.split(" ")[0]);
+          } else if (user.user_metadata?.nome) {
+            setUserName(user.user_metadata.nome.split(" ")[0]);
+          } else if (user.user_metadata?.full_name) {
+            setUserName(user.user_metadata.full_name.split(" ")[0]);
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao carregar usuário no dashboard:", err);
+      }
+    }
+    loadUser();
+  }, []);
 
   useEffect(() => {
     async function fetchOverview() {
@@ -124,7 +155,10 @@ export default function DashboardPage({
           <h1 className="text-[28px] font-bold text-gray-900 tracking-tight">
             Painel principal
           </h1>
-          <p className="text-[13px] text-[#6B7280] mt-0.5">
+          <p className="text-[14px] font-medium text-indigo-600 mt-1">
+            👋 Bem-vindo de volta, {userName}
+          </p>
+          <p className="text-[12px] text-[#6B7280] mt-0.5">
             {today}
           </p>
         </div>
@@ -243,22 +277,32 @@ export default function DashboardPage({
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={funnelData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorFunnel" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.01}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                    <XAxis dataKey="stage" stroke="#9CA3AF" fontSize={11} />
-                    <YAxis stroke="#9CA3AF" fontSize={11} allowDecimals={false} />
+                  <PieChart>
+                    <Pie
+                      data={funnelData}
+                      dataKey="count"
+                      nameKey="stage"
+                      cx="40%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={4}
+                    >
+                      {funnelData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
                     <Tooltip
                       formatter={(value) => [`${value} candidatos`, "Total"]}
                       contentStyle={{ background: "#1F2937", border: "none", borderRadius: "8px", color: "#fff", fontSize: "12px" }}
                     />
-                    <Area type="monotone" dataKey="count" stroke="#10B981" fillOpacity={1} fill="url(#colorFunnel)" strokeWidth={2.5} />
-                  </AreaChart>
+                    <Legend
+                      layout="vertical"
+                      verticalAlign="middle"
+                      align="right"
+                      wrapperStyle={{ fontSize: "12px", color: "#374151" }}
+                    />
+                  </PieChart>
                 </ResponsiveContainer>
               )}
             </div>

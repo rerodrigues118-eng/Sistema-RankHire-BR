@@ -33,6 +33,7 @@ export interface PlanoInfo {
   nome: string;
   preco?: number;
   pagarme_plan_id?: string;
+  stripe_price_id?: string;
   limite_pdfs_mes: number;
   limite_buscas_linkedin: number;
   limite_vagas: number;
@@ -48,7 +49,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
     limite_pdfs_mes: 15,
     limite_buscas_linkedin: 3,
     limite_vagas: 1,
-    duracao_dias: 14,
+    duracao_dias: 3,
     linkedin_bloqueado: false,
     agente_ia_bloqueado: true,
   },
@@ -56,6 +57,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
     nome: 'Starter',
     preco: 149,
     pagarme_plan_id: process.env.PAGARME_PLAN_STARTER,
+    stripe_price_id: process.env.STRIPE_PRICE_STARTER || 'price_starter_mock',
     limite_pdfs_mes: 100,
     limite_buscas_linkedin: 50,
     limite_vagas: 5,
@@ -66,6 +68,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
     nome: 'Pro',
     preco: 299,
     pagarme_plan_id: process.env.PAGARME_PLAN_PRO,
+    stripe_price_id: process.env.STRIPE_PRICE_PRO || 'price_pro_mock',
     limite_pdfs_mes: 500,
     limite_buscas_linkedin: 200,
     limite_vagas: 999,
@@ -77,6 +80,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
     nome: 'Agência',
     preco: 599,
     pagarme_plan_id: process.env.PAGARME_PLAN_AGENCIA,
+    stripe_price_id: process.env.STRIPE_PRICE_AGENCIA || 'price_agencia_mock',
     limite_pdfs_mes: 9999,
     limite_buscas_linkedin: 9999,
     limite_vagas: 999,

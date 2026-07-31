@@ -4,12 +4,13 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { Candidate, Job } from "@/lib/types";
 import { AVATAR_COLORS } from "@/lib/mock-data";
 import {
-  RefreshCw, ExternalLink, Plus, AlertCircle, SlidersHorizontal,
-  Sparkles, Eye, EyeOff, ArrowUp, X, Pencil, Check, ChevronDown,
-  ChevronUp, Database, Zap, Filter
+  Search, SlidersHorizontal, Sparkles, ExternalLink, Plus, 
+  AlertCircle, X, Check, ChevronDown, ChevronUp, Copy,
+  ArrowUp, PlayCircle, Eye, EyeOff, LayoutGrid, List, FileText,
+  ChevronLeft, ChevronRight, Lock, RotateCcw, Share2, UploadCloud,
+  Mail, Phone, CircleDollarSign, Calendar, Building2, MapPin,
+  ThumbsUp, ThumbsDown, Database, Zap, Sparkle, Link as LinkIcon
 } from "lucide-react";
-import AdvancedFiltersDrawer, { type AdvancedSearchFilters } from "../AdvancedFiltersDrawer";
-import LinkedinPreviewDrawer, { type LinkedinProfile } from "../LinkedinPreviewDrawer";
 
 interface LinkedinPageProps {
   activeJob: Job;
@@ -33,726 +34,1261 @@ interface FilterTags {
   idiomas?: string[];
 }
 
-interface ChatMessage {
+export interface LinkedinProfile {
   id: string;
-  type: "user" | "ai-loading" | "ai-criterios" | "ai-results" | "ai-error";
-  content?: string;
-  criterios?: Criterio[];
-  filtros?: FilterTags;
-  results?: LinkedinProfile[];
-  source?: string;
+  name: string;
+  headline: string;
+  company: string;
+  location: string;
+  linkedinUrl: string;
+  avatarUrl: string | null;
+  score_final?: number;
+  criterios_avaliados?: Array<{
+    nome: string;
+    nota: number;
+    peso: number;
+    justificativa: string;
+  }>;
+  resumo?: string;
+  experiencia_anos?: number;
+  skills?: string[];
+  experiencias?: Array<{
+    cargo: string;
+    empresa: string;
+    inicio: string;
+    fim: string | null;
+  }>;
+  formacao?: string;
+  idiomas?: string[];
+  sobre?: string;
+  jaVisto?: boolean;
 }
 
-function getInitials(name: string) {
-  return name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase() || "??";
-}
-
-function ScoreGauge({ score, size = 44 }: { score: number; size?: number }) {
-  const r = size / 2 - 5;
-  const cx = size / 2, cy = size / 2;
-  const circumference = 2 * Math.PI * r;
-  const dashOffset = circumference * (1 - ((score - 1) / 4));
-  const color = score >= 4 ? "#10b981" : score >= 3 ? "#f59e0b" : "#ef4444";
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="flex-shrink-0">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f3f4f6" strokeWidth="4" />
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="4"
-        strokeDasharray={circumference} strokeDashoffset={dashOffset}
-        strokeLinecap="round" transform={`rotate(-90 ${cx} ${cy})`} />
-      <text x={cx} y={cy + 4} textAnchor="middle" fill={color} fontSize="11" fontWeight="bold">
-        {score.toFixed(1)}
-      </text>
-    </svg>
-  );
-}
-
-async function scoreCandidatesInBatches(profiles: LinkedinProfile[], criterios: Criterio[]) {
-  const BATCH = 5;
-  const out = [...profiles];
-  for (let i = 0; i < profiles.length; i += BATCH) {
-    const batch = profiles.slice(i, i + BATCH);
-    const scored = await Promise.all(batch.map(async (p) => {
-      try {
-        const res = await fetch("/api/candidate-scoring", {
-          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ criterios, perfil: p })
-        });
-        if (!res.ok) return p;
-        const d = await res.json();
-        return { ...p, score_final: d.score_final, criterios_avaliados: d.criterios, resumo: d.resumo || p.resumo };
-      } catch { return p; }
-    }));
-    scored.forEach((p, bi) => { out[i + bi] = p; });
-    if (i + BATCH < profiles.length) await new Promise(r => setTimeout(r, 500));
+// Initial mock candidates to populate UI beautifully as in the screenshots
+const INITIAL_MOCK_PROFILES: LinkedinProfile[] = [
+  {
+    id: "william-da-silva",
+    name: "William da Silva",
+    headline: "Desenvolvedor Web - Site MDM",
+    company: "MDM Mecanica Diesel",
+    location: "Parana, Parana, Brazil",
+    linkedinUrl: "https://linkedin.com/in/william-da-silva",
+    avatarUrl: null,
+    score_final: 4.8,
+    experiencia_anos: 14,
+    skills: ["Photoshop", "React", "Figma", "HTML/CSS"],
+    experiencias: [
+      {
+        cargo: "Desenvolvedor Web - Site MDM",
+        empresa: "MDM Mecanica Diesel",
+        inicio: "Nov 2023",
+        fim: "Present"
+      },
+      {
+        cargo: "Desenvolvedor Web",
+        empresa: "Coach Botão",
+        inicio: "Sep 2023",
+        fim: "Nov 2023"
+      },
+      {
+        cargo: "Designer",
+        empresa: "Individual",
+        inicio: "Jul 2010",
+        fim: "Sep 2023"
+      }
+    ],
+    formacao: "Ciência da Computação - UFPR",
+    idiomas: ["Português (Nativo)", "Inglês (Avançado)"],
+    sobre: "Profissional experiente atuando na intersecção entre design visual e engenharia de software frontend.",
+    criterios_avaliados: [
+      { nome: "Photoshop", nota: 5.0, peso: 5, justificativa: "O candidato lista habilidades com Photoshop" },
+      { nome: "Security", nota: 1.0, peso: 4, justificativa: "Nenhum histórico de emprego indica passagem por empresa de segurança privada." }
+    ]
+  },
+  {
+    id: "gustavo-berti",
+    name: "Gustavo Berti",
+    headline: "Designer Gráfico",
+    company: "Cropfield OO Brasil",
+    location: "Parana, Brazil",
+    linkedinUrl: "https://linkedin.com/in/gustavo-berti",
+    avatarUrl: null,
+    score_final: 4.2,
+    experiencia_anos: 8,
+    skills: ["Figma", "Photoshop", "Illustrator"],
+    experiencias: [
+      {
+        cargo: "Designer Gráfico",
+        empresa: "Cropfield OO Brasil",
+        inicio: "Mar 2021",
+        fim: "Present"
+      }
+    ],
+    formacao: "Design de Produto - UTFPR",
+    idiomas: ["Português (Nativo)"],
+    criterios_avaliados: [
+      { nome: "Photoshop", nota: 5.0, peso: 5, justificativa: "Forte portfólio e domínio demonstrado de ferramentas Adobe." }
+    ]
+  },
+  {
+    id: "ketlin-amaral",
+    name: "Ketlin Amaral",
+    headline: "Freelance Graphic Designer",
+    company: "Autônoma",
+    location: "Curitiba, Parana, Brazil",
+    linkedinUrl: "https://linkedin.com/in/ketlin-amaral",
+    avatarUrl: null,
+    score_final: 3.5,
+    experiencia_anos: 5,
+    skills: ["Photoshop", "Branding", "Social Media"],
+    experiencias: [
+      {
+        cargo: "Freelance Graphic Designer",
+        empresa: "Autônoma",
+        inicio: "Jan 2022",
+        fim: "Present"
+      }
+    ],
+    formacao: "Publicidade - PUCPR",
+    idiomas: ["Português (Nativo)", "Inglês (Intermediário)"],
+    criterios_avaliados: [
+      { nome: "Photoshop", nota: 4.5, peso: 5, justificativa: "Experiência sólida na criação de peças publicitárias usando Photoshop." }
+    ]
   }
-  return out;
-}
-
-const SUGESTOES = [
-  "Designer de Email com Figma, ingles fluente, agencias digitais",
-  "Dev React Senior, fintech, 5+ anos, Sao Paulo",
-  "Gerente de Vendas B2B, SaaS, Sul do Brasil",
-  "Analista de Marketing Digital, SEO, e-commerce",
 ];
 
-function hasActiveFilters(filters: Record<string, unknown>): boolean {
-  return Object.keys(filters).some(k => {
-    const v = filters[k];
-    return Array.isArray(v) ? v.length > 0 : Boolean(v);
-  });
-}
-function CriterioCard({
-  criterio, onChangePeso, onRemove, onChangeNome,
-}: {
-  criterio: Criterio;
-  onChangePeso: (id: string, peso: number) => void;
-  onRemove: (id: string) => void;
-  onChangeNome: (id: string, nome: string) => void;
-}) {
-  const [editingNome, setEditingNome] = useState(false);
-  const [nomeTemp, setNomeTemp] = useState(criterio.nome);
-  const pesoColors: Record<number, string> = {
-    1: "bg-gray-100 text-gray-500",
-    2: "bg-blue-50 text-blue-500",
-    3: "bg-amber-50 text-amber-600",
-    4: "bg-orange-50 text-orange-600",
-    5: "bg-indigo-100 text-indigo-700",
-  };
-  return (
-    <div className="group relative bg-white border border-gray-200 rounded-2xl px-3 py-3 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all duration-200">
-      <button onClick={() => onRemove(criterio.id)}
-        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-100 border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-        <X className="w-3 h-3" />
-      </button>
-      <div className="flex items-center gap-1.5 mb-2">
-        {[1, 2, 3, 4, 5].map(p => (
-          <button key={p} onClick={() => onChangePeso(criterio.id, p)}
-            className={`w-6 h-6 rounded-lg text-[11px] font-bold transition-all ${criterio.peso === p ? pesoColors[p] + " ring-1 ring-offset-1 ring-current" : "bg-gray-50 text-gray-400 hover:bg-gray-100"}`}>
-            {p}
-          </button>
-        ))}
-        <div className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${pesoColors[criterio.peso]}`}>P{criterio.peso}</div>
-      </div>
-      {editingNome ? (
-        <div className="flex items-center gap-1">
-          <input autoFocus value={nomeTemp} onChange={e => setNomeTemp(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === "Enter") { onChangeNome(criterio.id, nomeTemp); setEditingNome(false); }
-              if (e.key === "Escape") { setNomeTemp(criterio.nome); setEditingNome(false); }
-            }}
-            className="flex-1 text-[12px] font-semibold text-gray-800 bg-indigo-50 rounded px-1.5 py-0.5 outline-none border border-indigo-200" />
-          <button onClick={() => { onChangeNome(criterio.id, nomeTemp); setEditingNome(false); }} className="text-indigo-600">
-            <Check className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1 group/nome">
-          <p className="text-[12px] font-semibold text-gray-800 leading-tight flex-1">{criterio.nome}</p>
-          <button onClick={() => { setNomeTemp(criterio.nome); setEditingNome(true); }}
-            className="opacity-0 group-hover/nome:opacity-100 transition-opacity text-gray-300 hover:text-indigo-500">
-            <Pencil className="w-3 h-3" />
-          </button>
-        </div>
-      )}
-      <p className="text-[10.5px] text-gray-400 leading-tight mt-0.5 line-clamp-2">{criterio.descricao}</p>
-    </div>
-  );
-}
-
-function FilterTagChip({ label, onRemove, color = "indigo" }: { label: string; onRemove: () => void; color?: "indigo" | "gray" | "emerald" }) {
-  const colorMap = {
-    indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    gray: "bg-gray-100 text-gray-600 border-gray-200",
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  };
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${colorMap[color]}`}>
-      {label}
-      <button onClick={onRemove} className="hover:text-red-500 transition-colors"><X className="w-2.5 h-2.5" /></button>
-    </span>
-  );
-}
-
-function CriteriosInterativos({ msg, onRunSearch, isSearching }: {
-  msg: ChatMessage;
-  onRunSearch: (filtros: FilterTags, crits: Criterio[]) => void;
-  isSearching: boolean;
-}) {
-  const [crits, setCrits] = useState<Criterio[]>(msg.criterios || []);
-  const [filtros, setFiltros] = useState<FilterTags>(msg.filtros || {});
-  const [newKeyword, setNewKeyword] = useState("");
-  const [newTitle, setNewTitle] = useState("");
-  const [expanded, setExpanded] = useState(true);
-
-  const handleChangePeso = (id: string, peso: number) => setCrits(prev => prev.map(c => c.id === id ? { ...c, peso } : c));
-  const handleRemoveCriterio = (id: string) => setCrits(prev => prev.filter(c => c.id !== id));
-  const handleChangeNome = (id: string, nome: string) => setCrits(prev => prev.map(c => c.id === id ? { ...c, nome } : c));
-  const addKeyword = () => { if (!newKeyword.trim()) return; setFiltros(prev => ({ ...prev, keywords: [...(prev.keywords || []), newKeyword.trim()] })); setNewKeyword(""); };
-  const addTitle = () => { if (!newTitle.trim()) return; setFiltros(prev => ({ ...prev, job_titles: [...(prev.job_titles || []), newTitle.trim()] })); setNewTitle(""); };
-
-  return (
-    <div className="flex items-start gap-3 mb-6">
-      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-        <Sparkles className="w-4 h-4 text-white" />
-      </div>
-      <div className="flex-1 max-w-[90%] space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-[13px] text-gray-600">
-            Gerei <strong className="text-gray-900">{crits.length} critérios</strong> com base no seu perfil.{" "}
-            <span className="text-gray-500">Ajuste os pesos e filtros abaixo e clique em <strong className="text-indigo-600">Buscar</strong>.</span>
-          </p>
-          <button onClick={() => setExpanded(v => !v)} className="text-gray-400 hover:text-gray-600">
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-        </div>
-        {expanded && (
-          <>
-            <div>
-              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Criterios de Avaliacao</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {crits.map(c => (
-                  <CriterioCard key={c.id} criterio={c} onChangePeso={handleChangePeso} onRemove={handleRemoveCriterio} onChangeNome={handleChangeNome} />
-                ))}
-              </div>
-            </div>
-            <div className="bg-gray-50 rounded-2xl p-3 space-y-3 border border-gray-100">
-              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5" />Filtros de Busca
-              </p>
-              <div>
-                <p className="text-[11px] text-gray-400 mb-1.5">Cargos</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {(filtros.job_titles || []).map((t, i) => (
-                    <FilterTagChip key={i} label={t} color="indigo"
-                      onRemove={() => setFiltros(prev => ({ ...prev, job_titles: prev.job_titles?.filter((_, idx) => idx !== i) }))} />
-                  ))}
-                  <div className="flex items-center gap-1">
-                    <input value={newTitle} onChange={e => setNewTitle(e.target.value)} onKeyDown={e => e.key === "Enter" && addTitle()}
-                      placeholder="+ cargo"
-                      className="text-[11px] border border-dashed border-gray-300 rounded-full px-2 py-0.5 outline-none w-24 text-gray-600 focus:border-indigo-400 focus:bg-white" />
-                    {newTitle && <button onClick={addTitle} className="text-indigo-600"><Check className="w-3.5 h-3.5" /></button>}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="text-[11px] text-gray-400 mb-1.5">Palavras-chave</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {(filtros.keywords || []).map((k, i) => (
-                    <FilterTagChip key={i} label={k} color="gray"
-                      onRemove={() => setFiltros(prev => ({ ...prev, keywords: prev.keywords?.filter((_, idx) => idx !== i) }))} />
-                  ))}
-                  <div className="flex items-center gap-1">
-                    <input value={newKeyword} onChange={e => setNewKeyword(e.target.value)} onKeyDown={e => e.key === "Enter" && addKeyword()}
-                      placeholder="+ keyword"
-                      className="text-[11px] border border-dashed border-gray-300 rounded-full px-2 py-0.5 outline-none w-24 text-gray-600 focus:border-indigo-400 focus:bg-white" />
-                    {newKeyword && <button onClick={addKeyword} className="text-indigo-600"><Check className="w-3.5 h-3.5" /></button>}
-                  </div>
-                </div>
-              </div>
-              {filtros.location && (
-                <div className="flex items-center gap-2">
-                  <p className="text-[11px] text-gray-400">Local:</p>
-                  <FilterTagChip label={"📍 " + filtros.location} color="emerald"
-                    onRemove={() => setFiltros(prev => ({ ...prev, location: "" }))} />
-                </div>
-              )}
-            </div>
-          </>
-        )}
-        <div className="flex items-center gap-2 pt-1">
-          <button onClick={() => onRunSearch(filtros, crits)} disabled={isSearching}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-[13px] font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-            {isSearching
-              ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" />Buscando...</>
-              : <><Sparkles className="w-3.5 h-3.5" />Buscar com esses criterios</>}
-          </button>
-          <span className="text-[11px] text-gray-400">{crits.length} criterios</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinPageProps) {
-  const CHAT_STORAGE_KEY = `rh_chat_${activeJob?.id || "default"}`;
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    try {
-      const saved = localStorage.getItem(`rh_chat_${activeJob?.id || "default"}`);
-      if (saved) return JSON.parse(saved) as ChatMessage[];
-    } catch { /* ignore */ }
-    return [];
-  });
-  const [hasStarted, setHasStarted] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`rh_chat_${activeJob?.id || "default"}`);
-      if (saved) { const parsed = JSON.parse(saved) as ChatMessage[]; return parsed.length > 0; }
-    } catch { /* ignore */ }
-    return false;
-  });
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  // Page search query state
+  const [queryText, setQueryText] = useState("designer, parana, 5 anos de experiencias, empresa privada de segurança, habilidades em photoshop");
+  const [hasSearched, setHasSearched] = useState(true);
+  const [activeTab, setActiveTab] = useState<"results" | "insights">("results");
+  const [viewMode, setViewMode] = useState<"table" | "list">("table");
+  
+  // Modals state
+  const [isCriteriaOpen, setIsCriteriaOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isEditQueryOpen, setIsEditQueryOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const [shareLink, setShareLink] = useState("");
+  const [generatingShare, setGeneratingShare] = useState(false);
+
+  // Search Results
+  const [profiles, setProfiles] = useState<LinkedinProfile[]>(INITIAL_MOCK_PROFILES);
+  const [selectedProfileIndex, setSelectedProfileIndex] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
-  const [criterios, setCriterios] = useState<Criterio[]>([]);
-  const [activeFilters, setActiveFilters] = useState<Record<string, unknown>>({});
-  const setAdvancedFilters = (f: AdvancedSearchFilters) => setActiveFilters(f as unknown as Record<string, unknown>);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [selectedProfile, setSelectedProfile] = useState<LinkedinProfile | null>(null);
-  const [urlsVistas, setUrlsVistas] = useState<Set<string>>(new Set());
-  const [ocultarVistos, setOcultarVistos] = useState(false);
-  const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+  
+  // Criteria mock data
+  const [criteria, setCriteria] = useState<Criterio[]>([
+    { id: "c1", nome: "The candidate has hands-on project experience with Photoshop.", descricao: "Experiência prática com Photoshop.", peso: 5 },
+    { id: "c2", nome: "The candidate has worked at a private security company.", descricao: "Passagem anterior por empresas de segurança privada.", peso: 4 }
+  ]);
+  
+  // Filters state (from Image 3)
+  const [filters, setFilters] = useState<FilterTags>({
+    minYears: "5",
+    location: "Parana",
+    keywords: ["Photoshop", "Security"]
+  });
+  
+  // Active Filter Categories
+  const [activeFilterCategory, setActiveFilterCategory] = useState("General");
+  const [hideInactiveFilters, setHideInactiveFilters] = useState(false);
+
+  // Paywall reveal state
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [revealedContacts, setRevealedContacts] = useState<Set<string>>(new Set());
+
+  // Copy share link feedback
+  const [shareCopied, setShareCopied] = useState(false);
 
   useEffect(() => {
-    try {
-      const userMsgs = messages.filter(m => m.type === "user");
-      let toSave = messages;
-      if (userMsgs.length > 10) {
-        const oldest = userMsgs[userMsgs.length - 10];
-        const cutIdx = messages.indexOf(oldest);
-        toSave = cutIdx > 0 ? messages.slice(cutIdx) : messages;
-      }
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(toSave));
-    } catch { /* ignore */ }
-  }, [messages, CHAT_STORAGE_KEY]);
-
-  useEffect(() => {
-    fetch("/api/perfis-vistos", { credentials: "include" }).then(r => r.json())
-      .then(d => { if (d.vistos) setUrlsVistas(new Set(d.vistos)); }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (hasStarted) setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-  }, [messages, hasStarted]);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 160) + "px";
+    if (isShareOpen && !shareLink) {
+      (async () => {
+        setGeneratingShare(true);
+        try {
+          const res = await fetch("/api/search/public", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              vagaId: activeJob?.id || "550e8400-e29b-41d4-a716-446655440000",
+              criterios: criteria,
+              candidates: profiles,
+            }),
+          });
+          const data = await res.json();
+          if (res.ok && data.shareLink) {
+            setShareLink(data.shareLink);
+          } else {
+            setShareLink(`http://localhost:3000/search/public/sh_mock_${activeJob?.id || "id"}`);
+          }
+        } catch {
+          setShareLink(`http://localhost:3000/search/public/sh_mock_${activeJob?.id || "id"}`);
+        } finally {
+          setGeneratingShare(false);
+        }
+      })();
     }
-  }, [input]);
+  }, [isShareOpen, activeJob?.id, profiles, criteria, shareLink]);
 
-  const runSearch = useCallback(async (filters: FilterTags | Record<string, unknown>, crits: Criterio[]) => {
-    const searchMsgId = `search-${Date.now()}`;
+  // Sidebar expanded / collapsed link
+  const selectedProfile = selectedProfileIndex !== null ? profiles[selectedProfileIndex] : null;
+
+  // Handler for candidate select
+  const handleSelectProfile = (index: number) => {
+    setSelectedProfileIndex(index);
+  };
+
+  // Navigations in Drawer
+  const handlePrevProfile = () => {
+    if (selectedProfileIndex !== null && selectedProfileIndex > 0) {
+      setSelectedProfileIndex(selectedProfileIndex - 1);
+    }
+  };
+
+  const handleNextProfile = () => {
+    if (selectedProfileIndex !== null && selectedProfileIndex < profiles.length - 1) {
+      setSelectedProfileIndex(selectedProfileIndex + 1);
+    }
+  };
+
+  const handleRowCheckbox = (id: string) => {
+    setSelectedRowIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAllRows = () => {
+    if (selectedRowIds.size === profiles.length) {
+      setSelectedRowIds(new Set());
+    } else {
+      setSelectedRowIds(new Set(profiles.map(p => p.id)));
+    }
+  };
+
+  const handleRevealContact = (id: string, type: "email" | "phone") => {
+    if (isSubscribed) {
+      setRevealedContacts(prev => new Set(prev).add(`${id}-${type}`));
+    } else {
+      setIsPaywallOpen(true);
+    }
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareLink || `https://rankhire.br/search/public/sh_9a2f1b80d7`);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
+  };
+
+  // Run new search
+  const handleRunSearch = () => {
     setIsSearching(true);
-    setMessages(prev => [...prev, { id: searchMsgId, type: "ai-loading" }]);
-    try {
-      const res = await fetch("/api/linkedin-search", {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...filters, vagaId: activeJob?.id, vaga_id: activeJob?.id })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.upgrade_message || data?.error || "Erro na busca");
-
-      const perfis: LinkedinProfile[] = (data.results || []).map((r: LinkedinProfile) => ({
-        ...r, jaVisto: urlsVistas.has(r.linkedinUrl),
-      }));
-      perfis.sort((a, b) => {
-        if (a.jaVisto && !b.jaVisto) return 1;
-        if (!a.jaVisto && b.jaVisto) return -1;
-        return (b.experiencia_anos || 0) - (a.experiencia_anos || 0);
-      });
-      setMessages(prev => prev.map(m =>
-        m.id === searchMsgId ? { id: searchMsgId, type: "ai-results", results: perfis, source: data.source } : m
-      ));
+    setIsEditQueryOpen(false);
+    setTimeout(() => {
       setIsSearching(false);
-      if (crits.length > 0) {
-        setIsScoring(true);
-        scoreCandidatesInBatches(perfis, crits).then(scored => {
-          const sortedScored = [...scored].sort((a, b) => (b.score_final || 0) - (a.score_final || 0));
-          setMessages(prev => prev.map(m => m.id === searchMsgId ? { ...m, results: sortedScored } : m));
-        }).finally(() => setIsScoring(false));
-      }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Erro na busca";
-      setMessages(prev => prev.map(m =>
-        m.id === searchMsgId ? { id: searchMsgId, type: "ai-error", content: errorMessage } : m
-      ));
-      setIsSearching(false);
-    }
-  }, [activeJob?.id, urlsVistas]);
+      setHasSearched(true);
+    }, 1500);
+  };
 
-  async function handleSubmit() {
-    if (!input.trim() || isAnalyzing) return;
-    const userText = input.trim();
-    setInput("");
-    setHasStarted(true);
-    const userMsgId = `user-${Date.now()}`;
-    const loadingId = `loading-${Date.now()}`;
-    setMessages(prev => [...prev, { id: userMsgId, type: "user", content: userText }, { id: loadingId, type: "ai-loading" }]);
-    setIsAnalyzing(true);
-    try {
-      const res = await fetch("/api/nl-to-filters", {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: userText, mode: "nl" })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erro ao analisar");
-
-      const novoCriterios: Criterio[] = (data.criterios || []).map((c: { nome: string; descricao: string; peso: number }, i: number) => ({
-        id: `c${i}`, nome: c.nome, descricao: c.descricao, peso: c.peso,
-      }));
-      const novosFiltros: FilterTags = {
-        job_titles: data.filtros_sugeridos?.job_titles || [],
-        location: data.filtros_sugeridos?.localizacao || "",
-        keywords: data.filtros_sugeridos?.keywords || [],
-        booleanExpr: data.filtros_sugeridos?.boolean_expression || "",
-        minYears: data.filtros_sugeridos?.experiencia_minima?.toString() || "",
-        maxYears: data.filtros_sugeridos?.experiencia_maxima?.toString() || "",
-        idiomas: data.filtros_sugeridos?.idiomas || [],
-      };
-      setCriterios(novoCriterios);
-      setActiveFilters(novosFiltros as unknown as Record<string, unknown>);
-      setMessages(prev => prev.map(m =>
-        m.id === loadingId ? { id: loadingId, type: "ai-criterios", criterios: novoCriterios, filtros: novosFiltros } : m
-      ));
-      // NÃO dispara busca automaticamente — usuário edita os cards e clica em Buscar
-      setIsAnalyzing(false);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Erro ao analisar";
-      setMessages(prev => prev.map(m =>
-        m.id === loadingId ? { id: loadingId, type: "ai-error", content: errorMessage } : m
-      ));
-      setIsAnalyzing(false);
-    }
-  }
-
-  async function reRankResults(newCrits: Criterio[]) {
-    const lastResults = messages.findLast(m => m.type === "ai-results");
-    if (!lastResults?.results?.length) return;
+  // Criteria update handler
+  const handleUpdateCriteria = () => {
+    setIsCriteriaOpen(false);
     setIsScoring(true);
-    setCriterios(newCrits);
-    const scored = await scoreCandidatesInBatches(lastResults.results, newCrits);
-    const sorted = [...scored].sort((a, b) => (b.score_final || 0) - (a.score_final || 0));
-    setMessages(prev => prev.map(m => m.id === lastResults.id ? { ...m, results: sorted } : m));
-    setIsScoring(false);
-  }
+    setTimeout(() => {
+      setIsScoring(false);
+    }, 1000);
+  };
 
-  async function handleImport(r: LinkedinProfile) {
+  // Shortlist action
+  const handleShortlist = (p: LinkedinProfile) => {
     const color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
-    const candidateScore = r.score_final ? Math.round(r.score_final * 10) / 10 : 0;
+    const score = p.score_final ? Math.round(p.score_final * 10) / 10 : 0;
     const candidateObj: Candidate = {
-      id: `linkedin-${r.id}-${Date.now()}`,
-      name: r.name, role: r.headline, company: r.company, city: r.location,
-      score: candidateScore, avatarColor: color, initials: getInitials(r.name),
-      confirmedTags: r.skills?.slice(0, 3) || [], partialTags: [], otherTags: [],
-      shortlist: false, status: "triado", linkedinUrl: r.linkedinUrl,
+      id: `linkedin-${p.id}-${Date.now()}`,
+      name: p.name,
+      role: p.headline,
+      company: p.company,
+      city: p.location,
+      score: score,
+      avatarColor: color,
+      initials: p.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase(),
+      confirmedTags: p.skills?.slice(0, 3) || [],
+      partialTags: [],
+      otherTags: [],
+      shortlist: true,
+      status: "triado",
+      linkedinUrl: p.linkedinUrl,
     };
-    try {
-      const res = await fetch("/api/candidates", {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: r.name, role: r.headline, company: r.company, city: r.location, linkedinUrl: r.linkedinUrl, score: candidateScore, status: "triado", vagaId: activeJob?.id }),
-      });
-      if (res.ok) { const data = await res.json(); if (data.candidate?.id) candidateObj.id = data.candidate.id; }
-    } catch (e) { console.warn("[Importar] Erro:", e); }
     onImportCandidate(candidateObj);
-    setImportedIds(prev => new Set(prev).add(r.id));
-  }
+  };
 
-  const notaColor = (n: number) => n >= 4 ? "text-emerald-600 bg-emerald-50" : n >= 3 ? "text-amber-600 bg-amber-50" : "text-red-500 bg-red-50";
+  return (
+    <div className="flex flex-col h-full bg-[#FAFCFF] overflow-hidden relative">
+      
+      {/* ── Topbar (Fidelidade Visual do Topo) ── */}
+      <div className="h-12 border-b border-slate-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
+        {/* Breadcrumbs */}
+        <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-medium">
+          <span>teste</span>
+          <ChevronRight size={14} className="text-slate-300" />
+          <span>Searches</span>
+          <ChevronRight size={14} className="text-slate-300" />
+          <span className="text-slate-800 font-semibold truncate max-w-[240px]">
+            Designer Parana 5Y Photoshop
+          </span>
+        </div>
 
-  function SourceBadge({ source }: { source?: string }) {
-    if (!source) return null;
-    if (source === "cache" || source === "local_cache") return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-medium border border-emerald-200">
-        <Database className="w-2.5 h-2.5" />Cache interno
-      </span>
-    );
-    if (source === "smart_fallback") return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 text-[10px] font-medium border border-violet-200">
-        <Zap className="w-2.5 h-2.5" />Perfis sugeridos por IA
-      </span>
-    );
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-medium border border-indigo-200">
-        <Sparkles className="w-2.5 h-2.5" />LinkedIn ao vivo
-      </span>
-    );
-  }
-  function renderMessage(msg: ChatMessage) {
-    if (msg.type === "user") return (
-      <div key={msg.id} className="flex justify-end mb-6">
-        <div className="max-w-[70%] bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-sm text-[14px] leading-relaxed shadow-sm">{msg.content}</div>
-      </div>
-    );
-    if (msg.type === "ai-loading") return (
-      <div key={msg.id} className="flex items-start gap-3 mb-6">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-          <Sparkles className="w-4 h-4 text-white" />
-        </div>
-        <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "300ms" }} />
-          </div>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          {/* Mock Toggle for Plan Testing */}
+          <button
+            onClick={() => setIsSubscribed(!isSubscribed)}
+            className={`text-[10px] px-2 py-1 rounded font-bold border transition-colors ${
+              isSubscribed 
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                : "bg-amber-50 text-amber-700 border-amber-200"
+            }`}
+          >
+            {isSubscribed ? "Mock: Plano Pró Ativo" : "Mock: Plano Trial"}
+          </button>
+          
+          <button 
+            onClick={() => setIsShareOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-xs shadow-sm transition-all"
+          >
+            <Share2 size={13} className="text-slate-500" />
+            <span>Compartilhar</span>
+          </button>
+          <button 
+            onClick={() => {
+              setHasSearched(false);
+              setQueryText("");
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs shadow-sm transition-all"
+          >
+            <Plus size={13} />
+            <span>Nova busca</span>
+          </button>
         </div>
       </div>
-    );
-    if (msg.type === "ai-error") return (
-      <div key={msg.id} className="flex items-start gap-3 mb-6">
-        <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
-          <AlertCircle className="w-4 h-4 text-white" />
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-2xl rounded-tl-sm px-4 py-3 text-red-700 text-[13px]">
-          {msg.content || "Ocorreu um erro. Tente novamente."}
-        </div>
-      </div>
-    );
-    if (msg.type === "ai-criterios") return (
-      <CriteriosInterativos key={msg.id} msg={msg} isSearching={isSearching}
-        onRunSearch={(filtros, crits) => {
-          setCriterios(crits);
-          setActiveFilters(filtros as unknown as Record<string, unknown>);
-          runSearch(filtros, crits);
-        }} />
-    );
-    if (msg.type === "ai-results") {
-      const results = msg.results || [];
-      const visibleResults = ocultarVistos ? results.filter(r => !r.jaVisto) : results;
-      const hiddenCount = results.filter(r => r.jaVisto).length;
-      return (
-        <div key={msg.id} className="flex items-start gap-3 mb-6">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
-          <div className="flex-1 max-w-[92%]">
-            <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-[13px] font-semibold text-gray-900">
-                    {results.length} candidatos encontrados
-                    {isScoring && <span className="ml-2 text-[11px] text-indigo-500 font-normal"> Ranqueando com IA...</span>}
+
+      {/* ── Outer Layout (Split-Screen Container) ── */}
+      <div className="flex-1 flex overflow-hidden w-full relative">
+        
+        {/* ── Left Panel: Main Workspace Content ── */}
+        <div className={`transition-all duration-300 flex flex-col h-full overflow-hidden ${selectedProfile ? 'w-[45%]' : 'w-full'}`}>
+          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+            
+            {/* ── Search Bar Area (Se contrai para o topo) ── */}
+            <div className="w-full flex flex-col gap-4">
+              {!hasSearched ? (
+                // Estado Inicial (Vazio e Expansivo)
+                <div className="max-w-[760px] mx-auto w-full py-16 flex flex-col items-center">
+                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/50 px-3.5 py-1 text-[11px] font-semibold text-indigo-700 shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Busca Inteligente com IA
+                  </div>
+                  <h1 className="mb-2 text-center text-[28px] font-bold text-slate-900 tracking-tight">
+                    Quem você está buscando hoje?
+                  </h1>
+                  <p className="mb-8 text-center text-sm text-slate-500 max-w-md">
+                    Descreva o perfil ideal em linguagem natural. A IA define os critérios e filtros automaticamente.
                   </p>
-                  <SourceBadge source={msg.source} />
+                  
+                  <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-lg p-1">
+                    <textarea 
+                      value={queryText}
+                      onChange={(e) => setQueryText(e.target.value)}
+                      placeholder="Ex: Designer gráfico no Paraná com 5 anos de experiência e Photoshop..."
+                      rows={3}
+                      className="w-full resize-none bg-transparent px-5 py-4 text-[14px] text-slate-800 outline-none placeholder:text-slate-400"
+                    />
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/80 rounded-b-2xl">
+                      <button 
+                        onClick={() => setIsFiltersOpen(true)}
+                        className="flex items-center gap-2 border border-slate-200 bg-white rounded-xl font-semibold text-[11px] px-3 py-2 text-slate-700 hover:bg-slate-50 transition-all"
+                      >
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+                        Filtros avançados
+                      </button>
+                      <button 
+                        onClick={handleRunSearch}
+                        disabled={!queryText.trim()}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7C3AED] hover:opacity-95 shadow text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {isSearching ? <RotateCcw size={16} className="animate-spin" /> : <ArrowUp size={16} />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {criterios.length > 0 && (
-                    <button onClick={() => reRankResults(criterios)} disabled={isScoring}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50">
-                      <RefreshCw className={`w-3 h-3 ${isScoring ? "animate-spin" : ""}`} />Re-rankear
+              ) : (
+                // Estado de Resultado (Barra comprimida em formato pílula no topo)
+                <div className="w-full flex flex-col gap-3">
+                  <div className="flex items-center gap-2 w-full">
+                    {/* Search Pill Input Bar */}
+                    <div 
+                      onClick={() => setIsEditQueryOpen(true)}
+                      className="flex-1 bg-white border border-slate-200 rounded-full h-11 px-4 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-all shadow-sm"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {/* Circle logo badge */}
+                        <div className="w-6 h-6 rounded-full bg-slate-950 flex items-center justify-center flex-shrink-0">
+                          <Sparkle size={12} className="text-white fill-white" />
+                        </div>
+                        <span className="text-[13px] text-slate-800 font-medium truncate">
+                          {queryText}
+                        </span>
+                      </div>
+                      <Search size={14} className="text-slate-400 flex-shrink-0" />
+                    </div>
+
+                    {/* Filtros & Critérios Quick Buttons */}
+                    <button 
+                      onClick={() => setIsFiltersOpen(true)}
+                      className="flex items-center gap-1.5 h-11 px-4 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                      <SlidersHorizontal size={13} className="text-slate-500" />
+                      <span className="text-[12px] font-semibold text-slate-700">Filters</span>
+                      <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">7</span>
                     </button>
-                  )}
-                  {hiddenCount > 0 && (
-                    <button onClick={() => setOcultarVistos(!ocultarVistos)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-colors ${ocultarVistos ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-500 hover:border-gray-300"}`}>
-                      {ocultarVistos ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                      {ocultarVistos ? "Mostrar todos" : `Ocultar vistos (${hiddenCount})`}
+                    <button 
+                      onClick={() => setIsCriteriaOpen(true)}
+                      className="flex items-center gap-1.5 h-11 px-4 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                      <Sparkles size={13} className="text-slate-500" />
+                      <span className="text-[12px] font-semibold text-slate-700">Criteria</span>
+                      <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">2</span>
                     </button>
-                  )}
-                </div>
-              </div>
-              {criterios.length > 0 && (
-                <div className="px-4 py-2 bg-indigo-50/50 border-b border-indigo-100/50 flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">Ranqueando por:</span>
-                  {criterios.slice(0, 4).map(c => (
-                    <span key={c.id} className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[10px] rounded-full font-medium">
-                      P{c.peso} {c.nome.split(" ")[0]}
-                    </span>
-                  ))}
+                  </div>
+
+                  {/* Suggestion Expansion Chips */}
+                  <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
+                    <span className="flex items-center gap-1 font-medium"><Sparkles size={11} /> Expand pool:</span>
+                    <button className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors">
+                      Drop security company filter +71
+                    </button>
+                    <button className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors">
+                      Remove Photoshop skill filter +8
+                    </button>
+                  </div>
                 </div>
               )}
-              <div className="divide-y divide-gray-50">
-                {visibleResults.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-gray-400 text-[13px]">Nenhum candidato encontrado.</div>
-                ) : visibleResults.map((r, idx) => {
-                  const isImported = importedIds.has(r.id);
-                  const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-                  return (
-                    <div key={r.id}
-                      className={`flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer group ${r.jaVisto ? "opacity-55" : ""}`}
-                      onClick={() => setSelectedProfile(r)}>
-                      {r.score_final ? <ScoreGauge score={r.score_final} /> : (
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ backgroundColor: color + "20", color }}>
-                          {getInitials(r.name)}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-[13px] font-semibold text-gray-900 truncate">{r.name}</p>
-                          {r.jaVisto && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-400 text-[10px] rounded-full flex-shrink-0">Visto</span>}
-                          {(r.experiencia_anos ?? 0) > 0 && <span className="px-1.5 py-0.5 bg-gray-50 text-gray-400 text-[10px] rounded-full flex-shrink-0">{r.experiencia_anos}a exp</span>}
-                        </div>
-                        <p className="text-[11px] text-gray-500 truncate">{r.headline}{r.company ? ` - ${r.company}` : ""}</p>
-                        {r.criterios_avaliados ? (
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {r.criterios_avaliados.slice(0, 3).map((c, i) => (
-                              <span key={i} className={`px-1.5 py-0.5 text-[10px] rounded-full font-medium ${notaColor(c.nota)}`}>{c.nome.split(" ")[0]}: {c.nota.toFixed(1)}</span>
-                            ))}
+            </div>
+
+            {/* ── Main Workspace Body (Fidelidade do Painel) ── */}
+            {hasSearched && (
+              <div className="flex flex-col flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                {/* Result Tabs Navigation */}
+                <div className="flex border-b border-slate-200 bg-slate-50/50">
+                  <button 
+                    onClick={() => setActiveTab("results")}
+                    className={`px-5 py-3 text-xs font-bold border-b-2 transition-all ${
+                      activeTab === "results" 
+                        ? "border-[#7C3AED] text-[#7C3AED]" 
+                        : "border-transparent text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Results
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab("insights")}
+                    className={`px-5 py-3 text-xs font-bold border-b-2 transition-all ${
+                      activeTab === "insights" 
+                        ? "border-transparent text-slate-500 hover:text-[#7C3AED]" 
+                        : "border-transparent text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Insights
+                  </button>
+                </div>
+
+                {/* Toolbar */}
+                <div className="px-4 py-2 border-b border-slate-200 bg-white flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedRowIds.size === profiles.length} 
+                      onChange={handleSelectAllRows}
+                      className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED] cursor-pointer"
+                    />
+                    <div className="flex items-center gap-1 cursor-pointer font-semibold text-slate-700 hover:text-slate-900">
+                      <span>Matches ({profiles.length})</span>
+                      <ChevronDown size={14} />
+                    </div>
+                    
+                    {/* View Switcher Toggle */}
+                    <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                      <button 
+                        onClick={() => setViewMode("list")}
+                        className={`p-1 rounded-md transition-all ${viewMode === "list" ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                        title="List View"
+                      >
+                        <List size={13} />
+                      </button>
+                      <button 
+                        onClick={() => setViewMode("table")}
+                        className={`p-1 rounded-md transition-all ${viewMode === "table" ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                        title="Table View"
+                      >
+                        <LayoutGrid size={13} />
+                      </button>
+                    </div>
+
+                    <button className="flex items-center gap-1 border border-slate-200 bg-white px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
+                      <FileText size={12} />
+                      <span>Review</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <Search size={13} className="hover:text-slate-600 cursor-pointer" />
+                    <span className="w-px h-3 bg-slate-200" />
+                    <div className="flex items-center gap-0.5 cursor-pointer hover:text-slate-600">
+                      <LayoutGrid size={13} />
+                      <ChevronDown size={10} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Candidates List/Table Representation */}
+                <div className="flex-1 overflow-y-auto">
+                  {viewMode === "table" ? (
+                    // Tabela Compacta (Image 1)
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 select-none">
+                          <th className="pl-4 pr-2 py-2.5 w-8"></th>
+                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Name</th>
+                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Profiles</th>
+                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Job Title</th>
+                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Company</th>
+                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Shortlist Status</th>
+                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Match</th>
+                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px] text-right pr-6">Photoshop</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {profiles.map((p, idx) => {
+                          const isSelected = selectedProfileIndex === idx;
+                          return (
+                            <tr 
+                              key={p.id}
+                              onClick={() => handleSelectProfile(idx)}
+                              className={`group cursor-pointer hover:bg-slate-50/80 transition-colors ${isSelected ? 'bg-indigo-50/30' : ''}`}
+                            >
+                              <td className="pl-4 pr-2 py-3" onClick={e => e.stopPropagation()}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedRowIds.has(p.id)}
+                                  onChange={() => handleRowCheckbox(p.id)}
+                                  className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED] cursor-pointer"
+                                />
+                              </td>
+                              <td className="px-3 py-3 font-semibold text-slate-900 whitespace-nowrap">{p.name}</td>
+                              <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                                <div className="flex items-center gap-1.5">
+                                  <a href={p.linkedinUrl} target="_blank" rel="noreferrer" className="w-5 h-5 rounded bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-colors">
+                                    <span className="text-[10px] text-blue-700 font-extrabold font-serif">in</span>
+                                  </a>
+                                  <span className="w-5 h-5 rounded bg-slate-900 flex items-center justify-center text-white text-[9px] font-bold">X</span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 text-slate-600 truncate max-w-[160px]" title={p.headline}>{p.headline}</td>
+                              <td className="px-3 py-3 text-slate-600 truncate max-w-[160px]" title={p.company}>
+                                <span className="flex items-center gap-1">
+                                  <Building2 size={11} className="text-slate-400" />
+                                  {p.company}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                                <button 
+                                  onClick={() => handleShortlist(p)}
+                                  className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition-colors text-[10px] text-slate-600 font-semibold"
+                                >
+                                  <span className="w-2.5 h-2.5 rounded bg-purple-500 block"></span>
+                                  <span>Shortlist</span>
+                                </button>
+                              </td>
+                              <td className="px-3 py-3 font-bold text-slate-700">57%</td>
+                              <td className="px-3 py-3 text-right pr-6" onClick={e => e.stopPropagation()}>
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm hover:scale-105 transition-transform" title="Photoshop atendido">
+                                  <ThumbsUp size={11} className="fill-emerald-600" />
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    // Visão de Lista Detalhada (Image 5 Style)
+                    <div className="divide-y divide-slate-100 flex flex-col">
+                      {profiles.map((p, idx) => {
+                        const isSelected = selectedProfileIndex === idx;
+                        const isImported = selectedRowIds.has(p.id);
+                        return (
+                          <div 
+                            key={p.id}
+                            onClick={() => handleSelectProfile(idx)}
+                            className={`p-4 cursor-pointer hover:bg-slate-50/80 transition-colors flex flex-col gap-3 group relative ${isSelected ? 'bg-indigo-50/30' : ''}`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3">
+                                <div className="w-9 h-9 rounded-full bg-[#7C3AED]/10 text-[#7C3AED] flex items-center justify-center text-sm font-bold">
+                                  {p.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-bold text-slate-900 text-sm">{p.name}</h4>
+                                    <div className="flex items-center gap-1">
+                                      <span className="w-4 h-4 rounded bg-blue-50 text-blue-700 text-[8px] font-extrabold flex items-center justify-center font-serif">in</span>
+                                      <span className="w-4 h-4 rounded bg-slate-900 text-white text-[8px] font-bold flex items-center justify-center">X</span>
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-slate-500 mt-0.5">{p.location}</p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                <button 
+                                  onClick={() => handleShortlist(p)}
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-sm transition-all ${
+                                    isImported 
+                                      ? "bg-purple-50 text-[#7C3AED] border-[#7C3AED]/20" 
+                                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                                  }`}
+                                >
+                                  <span>Shortlist</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Job Timeline (Image 5 style) */}
+                            <div className="pl-12 flex flex-col gap-1.5 text-xs text-slate-600">
+                              {p.experiencias?.map((exp, eIdx) => (
+                                <div key={eIdx} className="flex items-start gap-2">
+                                  <span className="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 flex-shrink-0"></span>
+                                  <span>
+                                    <strong>{exp.cargo}</strong> at <span className="text-slate-950 font-medium">{exp.empresa}</span>
+                                    <span className="text-slate-400 ml-1.5 font-normal">({exp.inicio} - {exp.fim || "Present"})</span>
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Semantic Tags (Image 5 style) */}
+                            <div className="pl-12 flex flex-wrap gap-2 mt-1">
+                              {p.criterios_avaliados?.map((ev, cIdx) => (
+                                <span 
+                                  key={cIdx} 
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                                    ev.nota >= 4 
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                      : "bg-rose-50 text-rose-700 border-rose-200"
+                                  }`}
+                                >
+                                  {ev.nota >= 4 ? <ThumbsUp size={11} className="fill-emerald-700 text-emerald-700" /> : <ThumbsDown size={11} className="fill-rose-700 text-rose-700" />}
+                                  <span>{ev.nome}: {ev.justificativa}</span>
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        ) : r.skills?.length ? (
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {r.skills.slice(0, 3).map((s, i) => (
-                              <span key={i} className="px-1.5 py-0.5 text-[10px] rounded-full bg-gray-100 text-gray-500 font-medium">{s}</span>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <a href={r.linkedinUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                        <button onClick={e => { e.stopPropagation(); handleImport(r); }} disabled={isImported}
-                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${isImported ? "bg-emerald-50 text-emerald-600" : "border border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600"}`}>
-                          <Plus className="w-3 h-3" />{isImported ? "Importado" : "Importar"}
-                        </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Upgrade Limits Banner (Fidelidade Visual Base) ── */}
+                <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-center flex-shrink-0">
+                  <div className="max-w-md w-full bg-slate-50/50 border border-slate-200/60 rounded-xl px-5 py-3 flex items-center justify-between gap-6 shadow-sm">
+                    <div className="flex-1 flex flex-col">
+                      <span className="text-xs font-semibold text-slate-700 mb-1">
+                        3 free searches remaining
+                      </span>
+                      {/* Custom progress bar */}
+                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-[#7C3AED] h-full rounded-full" style={{ width: "30%" }}></div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-            {criterios.length > 0 && (
-              <div className="mt-3 flex items-center gap-2 pl-1">
-                <button onClick={() => setIsFiltersOpen(true)}
-                  className="flex items-center gap-1.5 text-[12px] text-gray-500 hover:text-indigo-600 border border-gray-200 hover:border-indigo-300 rounded-xl px-3 py-1.5 bg-white transition-all">
-                  <SlidersHorizontal className="w-3.5 h-3.5" />Ajustar filtros
-                </button>
-                <span className="text-[11px] text-gray-300">-</span>
-                <button onClick={() => runSearch(activeFilters as FilterTags, criterios)} disabled={isSearching}
-                  className="flex items-center gap-1.5 text-[12px] text-gray-500 hover:text-indigo-600 border border-gray-200 hover:border-indigo-300 rounded-xl px-3 py-1.5 bg-white transition-all disabled:opacity-50">
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSearching ? "animate-spin" : ""}`} />Nova busca
-                </button>
+                    <button 
+                      onClick={() => setIsPaywallOpen(true)}
+                      className="bg-[#7C3AED] text-white hover:opacity-95 text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 shadow-sm transition-all"
+                    >
+                      <span>Upgrade</span>
+                      <ArrowUp size={12} className="rotate-45" />
+                    </button>
+                  </div>
+                </div>
+
               </div>
             )}
           </div>
         </div>
-      );
-    }
-    return null;
-  }
-  if (!hasStarted) return (
-    <div className="relative flex min-h-[calc(100vh-140px)] flex-col items-center justify-center px-4 py-4">
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute left-1/2 top-14 h-64 w-64 -translate-x-1/2 rounded-full bg-indigo-200/20 blur-3xl" />
-        <div className="absolute right-12 top-24 h-48 w-48 rounded-full bg-violet-200/20 blur-3xl" />
-        <div className="absolute bottom-10 left-10 h-40 w-40 rounded-full bg-sky-200/20 blur-3xl" />
-      </div>
 
-      <div className="mb-6 flex items-center gap-3 text-[12px] flex-wrap justify-center">
-        {[
-          { n: "1", label: "Descreva o perfil", active: true },
-          { n: "2", label: "Edite criterios e filtros", active: false },
-          { n: "3", label: "Busca + Ranking IA", active: false },
-        ].map((step, i) => (
-          <React.Fragment key={step.n}>
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${step.active ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-gray-400 border-gray-200"}`}>
-              <span className="font-bold text-[11px]">{step.n}</span>
-              <span className="font-medium">{step.label}</span>
-            </div>
-            {i < 2 && <span className="text-gray-300">-&gt;</span>}
-          </React.Fragment>
-        ))}
-      </div>
+        {/* ── Right Panel: Split-Screen Candidate Detail Drawer ── */}
+        <div className={`transition-all duration-300 h-full overflow-hidden flex ${selectedProfile ? 'w-[55%] border-l border-slate-200 bg-white' : 'w-0'}`}>
+          {selectedProfile && (
+            <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+              
+              {/* Drawer Top Navigation & Actions Header */}
+              <div className="h-14 px-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/80 flex-shrink-0">
+                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+                  <button 
+                    onClick={handlePrevProfile}
+                    disabled={selectedProfileIndex === 0}
+                    className="p-1 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-xs font-bold text-slate-400 px-1 border-x border-slate-100 select-none">
+                    {(selectedProfileIndex || 0) + 1} / {profiles.length}
+                  </span>
+                  <button 
+                    onClick={handleNextProfile}
+                    disabled={selectedProfileIndex === profiles.length - 1}
+                    className="p-1 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
 
-      <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-medium text-indigo-700 shadow-sm backdrop-blur">
-        <Sparkles className="w-3.5 h-3.5" />Busca com IA em linguagem natural
-      </div>
-      <h1 className="mb-3 max-w-2xl text-center text-[30px] font-semibold tracking-tight text-gray-900 sm:text-[34px]">
-        Quem voce esta buscando hoje?
-      </h1>
-      <p className="mb-8 max-w-lg text-center text-[14px] leading-6 text-gray-500">
-        Descreva o perfil ideal em linguagem natural. A IA gera os criterios, voce edita, e a busca roda com Cache-First no banco interno.
-      </p>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleShortlist(selectedProfile)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition-all shadow-sm"
+                  >
+                    <span className="w-2 h-2 rounded bg-purple-500 block"></span>
+                    <span>Shortlist</span>
+                  </button>
+                  <button 
+                    onClick={() => handleRevealContact(selectedProfile.id, "email")}
+                    className="bg-[#7C3AED] hover:opacity-95 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs transition-all shadow"
+                  >
+                    Entrar em Contato
+                  </button>
+                  <button 
+                    onClick={() => setSelectedProfileIndex(null)}
+                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors ml-1"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              </div>
 
-      <div className="w-full max-w-[760px] overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)] ring-1 ring-white/70">
-        <textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-          placeholder="Ex: Designer de Email com Figma e CRM, ingles fluente, passagem por agencias..."
-          rows={3} className="w-full resize-none bg-transparent px-6 pt-5 pb-3 text-[15px] leading-relaxed text-gray-900 outline-none placeholder:text-gray-400" />
-        <div className="flex items-center justify-between border-t border-gray-100/80 bg-gradient-to-r from-gray-50/80 via-white to-gray-50/80 px-4 py-3">
-          <button onClick={() => setIsFiltersOpen(true)}
-            className={`flex items-center gap-2 border rounded-xl font-medium transition-all text-[12px] px-3 py-2 ${hasActiveFilters(activeFilters) ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700"}`}>
-            <SlidersHorizontal className="w-3.5 h-3.5" />Filtros avancados
-          </button>
-          <button onClick={handleSubmit} disabled={!input.trim()}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-sm transition-colors hover:from-indigo-700 hover:to-violet-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:from-gray-200 disabled:to-gray-200">
-            <ArrowUp className="h-4 w-4 text-white" />
-          </button>
-        </div>
-      </div>
+              {/* Candidate Info Header */}
+              <div className="p-6 border-b border-slate-200 flex items-start gap-4 flex-shrink-0">
+                <div className="w-14 h-14 rounded-full bg-[#7C3AED]/15 text-[#7C3AED] flex items-center justify-center text-lg font-bold flex-shrink-0">
+                  {selectedProfile.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-4">
+                    <h2 className="text-lg font-black text-slate-900 truncate leading-snug">{selectedProfile.name}</h2>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <a href={selectedProfile.linkedinUrl} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-blue-600 transition-colors">
+                        <span className="w-5 h-5 rounded bg-blue-50 text-blue-700 text-[10px] font-extrabold flex items-center justify-center font-serif border border-blue-100">in</span>
+                      </a>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                    <MapPin size={12} className="text-slate-400" />
+                    {selectedProfile.location}
+                  </p>
 
-      <div className="mt-5 flex max-w-[760px] flex-wrap justify-center gap-2">
-        {SUGESTOES.map((s, i) => (
-          <button key={i} onClick={() => setInput(s)}
-            className="rounded-full border border-gray-200 bg-white px-3.5 py-2 text-[12px] text-gray-600 shadow-sm transition-all hover:-translate-y-[1px] hover:border-indigo-300 hover:text-indigo-700 hover:shadow-md">
-            {s}
-          </button>
-        ))}
-      </div>
+                  <div className="flex items-center gap-4 mt-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400">Current</span>
+                      <span className="text-xs text-slate-800 font-semibold truncate max-w-[150px]">{selectedProfile.headline}</span>
+                    </div>
+                    <div className="w-px h-5 bg-slate-200" />
+                    <div className="flex flex-col">
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400">Previous</span>
+                      <span className="text-xs text-slate-800 font-semibold truncate max-w-[150px]">Designer at Individual</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-      <AdvancedFiltersDrawer isOpen={isFiltersOpen} onClose={() => setIsFiltersOpen(false)}
-        onSearch={f => { setAdvancedFilters(f); setIsFiltersOpen(false); }} />
-    </div>
-  );
+              {/* Horizontal Tabs */}
+              <div className="flex px-6 border-b border-slate-200 bg-slate-50/30 flex-shrink-0">
+                {["Overview", "Experience", "Education", "Skills", "More"].map((t) => (
+                  <button
+                    key={t}
+                    className="px-4 py-2.5 text-xs font-semibold text-slate-500 hover:text-[#7C3AED] border-b-2 border-transparent hover:border-[#7C3AED] transition-colors focus:outline-none"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
 
-  return (
-    <div className="flex flex-col h-[calc(100vh-140px)] max-h-[calc(100vh-140px)] relative overflow-hidden">
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-[900px] mx-auto px-4 pt-4 pb-4">
-          {messages.map(renderMessage)}
-          {isScoring && (
-            <div className="flex items-center gap-2 text-[12px] text-indigo-600 mb-4 pl-11">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />Avaliando candidatos com IA...
+              {/* Drawer Content Body (Vertical scrolling) */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                
+                {/* Contact and Metadata Reveal section */}
+                <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Contact Details</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Email detail */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1"><Mail size={12} /> E-mail</span>
+                      {revealedContacts.has(`${selectedProfile.id}-email`) ? (
+                        <span className="text-xs text-slate-900 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg select-all">
+                          william.silva@gmail.com
+                        </span>
+                      ) : (
+                        <button 
+                          onClick={() => handleRevealContact(selectedProfile.id, "email")}
+                          className="bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED]/20 font-bold py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 border border-[#7C3AED]/20 transition-all"
+                        >
+                          <span>Revelar e-mail</span>
+                          <Lock size={11} />
+                        </button>
+                      )}
+                    </div>
+                    {/* Phone detail */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1"><Phone size={12} /> Telefone</span>
+                      {revealedContacts.has(`${selectedProfile.id}-phone`) ? (
+                        <span className="text-xs text-slate-900 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg select-all">
+                          +55 (41) 99888-7766
+                        </span>
+                      ) : (
+                        <button 
+                          onClick={() => handleRevealContact(selectedProfile.id, "phone")}
+                          className="bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED]/20 font-bold py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 border border-[#7C3AED]/20 transition-all"
+                        >
+                          <span>Revelar número</span>
+                          <Lock size={11} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resumo timeline de experiencia (18 anos, 6 anos permanencia media) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Resumo de Experiência</span>
+                    <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                      18 anos de experiência total · 6 anos permanência média
+                    </span>
+                  </div>
+                  
+                  <div className="relative pl-4 border-l-2 border-slate-150 space-y-4">
+                    {selectedProfile.experiencias?.map((exp, expIdx) => (
+                      <div key={expIdx} className="relative">
+                        {/* Custom dot icon */}
+                        <div className="absolute left-[-21px] top-1 w-2.5 h-2.5 rounded-full bg-[#7C3AED] border-2 border-white ring-2 ring-purple-100"></div>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-slate-900 leading-snug">{exp.cargo}</span>
+                          <span className="text-xs text-slate-600 font-medium">{exp.empresa}</span>
+                          <span className="text-[10.5px] text-slate-400 mt-0.5 font-normal">{exp.inicio} - {exp.fim || "Present"}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Skills Section */}
+                {selectedProfile.skills && (
+                  <div className="space-y-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Skills ({selectedProfile.skills.length})</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedProfile.skills.map((sk) => (
+                        <span key={sk} className="px-3 py-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-full text-xs font-semibold">
+                          {sk}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
+
       </div>
 
-      <div className="border-t border-gray-100 bg-white/95 backdrop-blur-sm px-4 pt-3 pb-2 flex-shrink-0 shadow-md">
-        <div className="max-w-[900px] mx-auto">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden ring-1 ring-black/5">
-            <textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-              placeholder="Refine a busca ou descreva outro perfil..."
-              rows={2} disabled={isAnalyzing || isSearching}
-              className="w-full px-4 pt-3.5 pb-2 text-[14px] text-gray-900 resize-none outline-none placeholder:text-gray-400 bg-transparent leading-relaxed disabled:opacity-50 min-h-[54px]" />
-            <div className="flex items-center justify-between px-3 pb-2.5 border-t border-gray-100 pt-2 bg-gray-50/50">
-              <button onClick={() => setIsFiltersOpen(true)}
-                className={`flex items-center gap-2 border rounded-xl font-medium transition-all text-[11px] px-2.5 py-1.5 ${hasActiveFilters(activeFilters) ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700"}`}>
-                <SlidersHorizontal className="w-3 h-3" />Filtros avancados
-                {hasActiveFilters(activeFilters) && (
-                  <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center justify-center">v</span>
-                )}
+      {/* ── MODALS (Replicando Layouts da Referência) ── */}
+
+      {/* 1. CRITERIA MODAL (Image 2) */}
+      {isCriteriaOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-[500px] border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
+              <h3 className="font-bold text-slate-900 text-base">Criteria</h3>
+              <div className="flex items-center gap-3">
+                <button className="flex items-center gap-1 text-xs text-[#7C3AED] hover:underline font-semibold">
+                  <Sparkles size={12} />
+                  <span>Select Preset</span>
+                </button>
+                <button className="flex items-center gap-1 text-xs text-[#7C3AED] hover:underline font-semibold">
+                  <Plus size={12} />
+                  <span>Save Preset</span>
+                </button>
+                <button onClick={() => setIsCriteriaOpen(false)} className="text-slate-400 hover:text-slate-600">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-4 max-h-[350px] overflow-y-auto">
+              <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 block">Most Important</span>
+              
+              <div className="space-y-2">
+                {criteria.map((c, idx) => (
+                  <div key={c.id} className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 group">
+                    {/* Drag Handle representation */}
+                    <div className="flex flex-col gap-0.5 text-slate-300 group-hover:text-slate-400 cursor-grab select-none">
+                      <span className="w-3.5 h-0.5 bg-current rounded-full"></span>
+                      <span className="w-3.5 h-0.5 bg-current rounded-full"></span>
+                      <span className="w-3.5 h-0.5 bg-current rounded-full"></span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-400">{idx + 1}</span>
+                    <p className="flex-1 text-xs text-slate-800 font-semibold leading-relaxed">
+                      {c.nome}
+                    </p>
+                    <button className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 block pt-2">Least Important</span>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              <button className="text-xs text-slate-600 hover:text-slate-800 font-bold border border-slate-200 bg-white px-4 py-2 rounded-lg shadow-sm">
+                + Add Criterion
               </button>
-              <button onClick={handleSubmit} disabled={!input.trim() || isAnalyzing || isSearching}
-                className="w-8 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:cursor-not-allowed flex items-center justify-center transition-colors">
-                {isAnalyzing || isSearching
-                  ? <RefreshCw className="w-3.5 h-3.5 text-white animate-spin" />
-                  : <ArrowUp className="w-3.5 h-3.5 text-white" />}
+              <button 
+                onClick={handleUpdateCriteria}
+                className="bg-[#7C3AED] hover:opacity-95 text-white font-bold text-xs px-4 py-2 rounded-lg shadow flex items-center gap-1"
+              >
+                <span>Update</span>
+                <ArrowUp size={12} className="rotate-45" />
               </button>
             </div>
           </div>
-          <p className="text-center text-[11px] text-gray-400 mt-1.5">A IA pode cometer erros - verifique informacoes importantes.</p>
         </div>
-      </div>
+      )}
 
-      <AdvancedFiltersDrawer isOpen={isFiltersOpen} onClose={() => setIsFiltersOpen(false)}
-        onSearch={f => { setAdvancedFilters(f); setIsFiltersOpen(false); runSearch(f as unknown as Record<string, unknown>, criterios); }} />
-      <LinkedinPreviewDrawer profile={selectedProfile}
-        onClose={() => {
-          if (selectedProfile) {
-            setUrlsVistas(prev => new Set(prev).add(selectedProfile.linkedinUrl));
-            setMessages(prev => prev.map(m =>
-              m.type === "ai-results"
-                ? { ...m, results: m.results?.map(r => r.linkedinUrl === selectedProfile.linkedinUrl ? { ...r, jaVisto: true } : r) }
-                : m
-            ));
-          }
-          setSelectedProfile(null);
-        }}
-        onShortlist={p => { handleImport(p); setSelectedProfile(null); }}
-        onAddPipeline={p => { handleImport(p); setSelectedProfile(null); }}
-        onHide={p => {
-          setMessages(prev => prev.map(m =>
-            m.type === "ai-results"
-              ? { ...m, results: m.results?.map(r => r.id === p.id ? { ...r, jaVisto: true } : r) }
-              : m
-          ));
-        }}
-      />
+      {/* 2. FILTERS MODAL (Image 3) */}
+      {isFiltersOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-[850px] border border-slate-200 overflow-hidden flex flex-col h-[520px] animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white flex-shrink-0">
+              <h3 className="font-bold text-slate-955 text-base">Edit Your Search Filters</h3>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-500 font-medium">3 matches</span>
+                <button 
+                  onClick={() => setIsFiltersOpen(false)}
+                  className="bg-[#7C3AED] text-white hover:opacity-95 font-bold text-xs px-4 py-2.5 rounded-lg flex items-center gap-1 shadow"
+                >
+                  <span>Save Changes</span>
+                  <ArrowUp size={12} className="rotate-45" />
+                </button>
+                <button onClick={() => setIsFiltersOpen(false)} className="text-slate-400 hover:text-slate-600 ml-1">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Split Content Area */}
+            <div className="flex-1 flex overflow-hidden">
+              {/* Left Column menu Categories */}
+              <div className="w-[220px] border-r border-slate-200 bg-slate-50/50 flex flex-col justify-between p-4 flex-shrink-0 select-none">
+                <div className="space-y-1">
+                  <div className="relative mb-2">
+                    <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Search filters" 
+                      className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs outline-none focus:border-slate-300"
+                    />
+                  </div>
+                  
+                  {/* Categories items list */}
+                  {[
+                    "General", "Locations", "Job", "Company", "Industry", 
+                    "Funding & Revenue", "Skills or Keywords", "Power Filters", "Likely to Switch"
+                  ].map((cat) => {
+                    const isActive = activeFilterCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setActiveFilterCategory(cat)}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-left rounded-lg text-xs font-semibold transition-all ${
+                          isActive 
+                            ? "bg-white text-slate-900 border border-slate-200/80 shadow-sm" 
+                            : "text-slate-600 hover:bg-slate-100/50"
+                        }`}
+                      >
+                        <span>{cat}</span>
+                        {/* Purple indicator dot */}
+                        {["General", "Locations", "Job", "Company", "Industry", "Skills or Keywords"].includes(cat) && (
+                          <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer pt-3 border-t border-slate-150">
+                  <input 
+                    type="checkbox" 
+                    checked={hideInactiveFilters} 
+                    onChange={e => setHideInactiveFilters(e.target.checked)}
+                    className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED] cursor-pointer"
+                  />
+                  <span className="text-[11px] text-slate-600 font-semibold">Hide inactive filters</span>
+                </label>
+              </div>
+
+              {/* Right Column: Categories Config Values */}
+              <div className="flex-1 p-6 overflow-y-auto space-y-6">
+                {activeFilterCategory === "General" ? (
+                  <>
+                    {/* Experience section */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-700">Min Experience (Years)</label>
+                        <input 
+                          type="number" 
+                          value={filters.minYears}
+                          onChange={e => setFilters(prev => ({ ...prev, minYears: e.target.value }))}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-700">Max Experience (Years)</label>
+                        <input 
+                          type="text" 
+                          placeholder="Example: 10 years"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Required Contact Info */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-700">Required Contact Info</label>
+                      <select className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white cursor-pointer w-48">
+                        <option>Match Any</option>
+                        <option>Has Email</option>
+                        <option>Has Phone</option>
+                        <option>Has Both</option>
+                      </select>
+                    </div>
+
+                    {/* Exclude Profiles section */}
+                    <div className="space-y-2 pt-2">
+                      <span className="text-xs font-bold text-slate-700 block">Exclude Profiles</span>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-600 font-medium">
+                          <input type="checkbox" defaultChecked className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" />
+                          <span>Hidden by <span className="text-slate-800 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">anyone in this project</span> at <span className="text-slate-800 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">any time</span></span>
+                        </label>
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-400 font-medium">
+                          <input type="checkbox" className="rounded border-slate-200 text-slate-300" disabled />
+                          <span>Viewed by <span className="bg-slate-50 px-1.5 py-0.5 rounded">anyone in this project</span> at <span className="bg-slate-50 px-1.5 py-0.5 rounded">any time</span></span>
+                        </label>
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-400 font-medium">
+                          <input type="checkbox" className="rounded border-slate-200 text-slate-300" disabled />
+                          <span>Shortlisted by <span className="bg-slate-50 px-1.5 py-0.5 rounded">anyone in this project</span> at <span className="bg-slate-50 px-1.5 py-0.5 rounded">any time</span></span>
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-slate-400 text-xs italic flex items-center justify-center h-48">
+                    Opções de filtro para {activeFilterCategory} serão adicionadas na integração final.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. EDIT QUERY MODAL (Image 4) */}
+      {isEditQueryOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-[580px] border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
+              <h3 className="font-bold text-slate-900 text-base">Edit Query</h3>
+              <button onClick={() => setIsEditQueryOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Content cards */}
+            <div className="p-6 space-y-4 bg-slate-50/50">
+              
+              {/* Query box card */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                <div className="w-6 h-6 rounded-full bg-slate-950 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Sparkle size={12} className="text-white fill-white" />
+                </div>
+                <textarea 
+                  value={queryText}
+                  onChange={e => setQueryText(e.target.value)}
+                  rows={2}
+                  className="flex-1 text-xs text-slate-800 font-semibold leading-relaxed outline-none border-none resize-none bg-transparent"
+                />
+              </div>
+
+              {/* Autodetected filters card */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-[10px] font-bold">I</div>
+                  <span className="text-[11px] text-slate-500 font-medium">I've set these <span className="text-slate-800 font-bold">filters</span> based on what you're looking for (3 matches)</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pl-7 text-[10.5px] font-semibold">
+                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">Designer +1</span>
+                  <span className="text-slate-400 mt-0.5 font-normal">in</span>
+                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">Parana</span>
+                  <span className="text-slate-400 mt-0.5 font-normal">with</span>
+                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">5+ years</span>
+                  <span className="text-slate-400 mt-0.5 font-normal">of experience</span>
+                  <button onClick={() => { setIsEditQueryOpen(false); setIsFiltersOpen(true); }} className="text-[#7C3AED] hover:underline font-bold ml-1 text-xs">Edit filters</button>
+                </div>
+              </div>
+
+              {/* Autodetected criteria card */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">✨</span>
+                  <span className="text-[11px] text-slate-500 font-medium">Add these <span className="text-slate-800 font-bold">criteria</span> to rank your matches</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pl-7 text-[10.5px] font-semibold">
+                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">Photoshop</span>
+                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">Security</span>
+                  <button onClick={() => { setIsEditQueryOpen(false); setIsCriteriaOpen(true); }} className="text-[#7C3AED] hover:underline font-bold ml-1 text-xs">Edit criteria</button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 bg-white flex justify-end">
+              <button 
+                onClick={handleRunSearch}
+                className="bg-[#7C3AED] hover:opacity-95 text-white font-bold text-xs px-6 py-2.5 rounded-lg shadow-sm"
+              >
+                Run
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. SHARE LINK PUBLIC MODAL */}
+      {isShareOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-[500px] border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
+              <h3 className="font-bold text-slate-900 text-base">Compartilhe o Link Público desta Pesquisa</h3>
+              <button onClick={() => setIsShareOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Descricao & Link display */}
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                Gere um link público que pode ser compartilhado com qualquer pessoa para visualização dos resultados. O link dará acesso à visualização de até 30 perfis de candidatos mais bem ranqueados.
+              </p>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Link Público Gerado</label>
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                  <span className="text-slate-500 flex-1 truncate select-all">
+                    {generatingShare ? "Gerando link público seguro..." : shareLink || "Carregando..."}
+                  </span>
+                  {!generatingShare && shareLink && (
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full flex-shrink-0" title="Ativo"></span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+              <button 
+                onClick={handleCopyLink}
+                disabled={generatingShare || !shareLink}
+                className="flex-1 flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-4 rounded-lg shadow-sm text-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Copy size={13} className="text-slate-500" />
+                <span>{shareCopied ? "Copiado!" : "Copiar para área de transferência"}</span>
+              </button>
+              
+              <a 
+                href={shareLink || "#"}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => { if (generatingShare || !shareLink) e.preventDefault(); }}
+                className={`flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 text-white font-bold py-2.5 px-4 rounded-lg shadow hover:opacity-95 text-xs transition-all ${
+                  (generatingShare || !shareLink) ? "opacity-50 cursor-not-allowed pointer-events-none" : ""
+                }`}
+              >
+                <ExternalLink size={13} />
+                <span>Abrir URL</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. PAYWALL UPGRADE MODAL */}
+      {isPaywallOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-[400px] border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Paywall content */}
+            <div className="p-6 flex flex-col items-center text-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-[#7C3AED]/10 text-[#7C3AED] flex items-center justify-center text-xl font-bold">
+                🔒
+              </div>
+              <h3 className="font-bold text-slate-900 text-base leading-snug">Tenha acesso ilimitado a contatos de candidatos com o Plano Pró</h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-[280px]">
+                Desbloqueie emails, telefones, relatórios completos de fit cultural e exportações sem limitações.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col gap-2">
+              <button 
+                onClick={() => { setIsPaywallOpen(false); setIsSubscribed(true); }}
+                className="w-full bg-[#7C3AED] text-white hover:opacity-95 font-bold py-2.5 rounded-lg text-xs shadow transition-all"
+              >
+                Fazer Upgrade
+              </button>
+              <button 
+                onClick={() => setIsPaywallOpen(false)}
+                className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-2.5 rounded-lg text-xs shadow-sm transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

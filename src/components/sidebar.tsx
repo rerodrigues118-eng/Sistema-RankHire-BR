@@ -169,8 +169,8 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
       className="flex flex-col h-screen select-none relative transition-all duration-300 ease-in-out z-30"
     >
       {/* Header / Logo + Bell + Collapse Button */}
-      <div className="pt-4 pb-3 px-3 flex items-center justify-between border-b border-gray-100/80">
-        {!isSidebarCollapsed ? (
+      {!isSidebarCollapsed ? (
+        <div className="pt-4 pb-3 px-3 flex items-center justify-between border-b border-gray-100/80">
           <div className="flex items-center gap-2 overflow-hidden">
             <div className="w-7 h-7 bg-[var(--text-primary)] rounded-[6px] flex items-center justify-center flex-shrink-0">
               <span className="text-white font-bold text-[14px]">R.</span>
@@ -184,31 +184,36 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
               </span>
             </div>
           </div>
-        ) : (
-          <div className="w-7 h-7 bg-[var(--text-primary)] rounded-[6px] flex items-center justify-center flex-shrink-0 mx-auto">
+          <div className="flex items-center gap-1">
+            <NotificationPopover />
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              title="Recolher menu lateral"
+              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+            >
+              <PanelLeftClose size={18} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="pt-4 pb-3 px-2 flex flex-col items-center gap-3 border-b border-gray-100/80">
+          <div className="w-7 h-7 bg-[var(--text-primary)] rounded-[6px] flex items-center justify-center flex-shrink-0">
             <span className="text-white font-bold text-[14px]">R.</span>
           </div>
-        )}
-
-        <div className="flex items-center gap-1">
-          {/* Notification Bell with Popover */}
-          <NotificationPopover />
-
-          {/* Toggle Sidebar Collapse Button */}
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            title={isSidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-          >
-            {isSidebarCollapsed ? (
+          <div className="flex flex-col items-center gap-2">
+            <NotificationPopover />
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              title="Expandir menu lateral"
+              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+            >
               <PanelLeftOpen size={18} />
-            ) : (
-              <PanelLeftClose size={18} />
-            )}
-          </button>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Busca rápida */}
       {!isSidebarCollapsed && (

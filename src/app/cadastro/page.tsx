@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Building, CheckCircle2, Loader2, Phone, ShieldCheck, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building, CheckCircle2, Loader2, ShieldCheck, User } from "lucide-react";
 
 const BR_PHONE_REGEX = /^\+55[1-9]{2}[6-9]\d{8}$/;
 const TERMS_VERSION = "v2.0-2026-06";
@@ -60,11 +60,11 @@ export default function CadastroPage() {
     }
 
     if (!isPhoneValid) {
-      return "Informe um celular brasileiro valido no formato +55DDDnumero.";
+      return "Informe um celular brasileiro válido no formato +55DDDnumero.";
     }
 
     if (!termosAceitos) {
-      return "Voce precisa aceitar os Termos de Servico e a Politica de Privacidade.";
+      return "Você precisa aceitar os Termos de Serviço e a Política de Privacidade.";
     }
 
     return null;
@@ -91,14 +91,14 @@ export default function CadastroPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Nao foi possivel iniciar a verificacao.");
+        throw new Error(data.error || "Não foi possível iniciar a verificação.");
       }
 
       setStep(2);
       setIsCodeSent(true);
       setTimer(60);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao enviar codigo.");
+      setError(err instanceof Error ? err.message : "Erro ao enviar código.");
     } finally {
       setIsLoading(false);
     }
@@ -117,12 +117,12 @@ export default function CadastroPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Nao foi possivel reenviar o codigo.");
+        throw new Error(data.error || "Não foi possível reenviar o código.");
       }
 
       setTimer(60);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel enviar o codigo.");
+      setError(err instanceof Error ? err.message : "Não foi possível enviar o código.");
     } finally {
       setIsSendingCode(false);
     }
@@ -133,7 +133,7 @@ export default function CadastroPage() {
     setError(null);
 
     if (!/^\d{6}$/.test(codigo)) {
-      setError("Digite o codigo de 6 digitos enviado para o seu e-mail.");
+      setError("Digite o código de 6 dígitos enviado para o seu e-mail.");
       return;
     }
 
@@ -148,7 +148,7 @@ export default function CadastroPage() {
       const verifyData = await verifyRes.json();
 
       if (!verifyRes.ok) {
-        throw new Error(verifyData.error || "Codigo invalido.");
+        throw new Error(verifyData.error || "Código inválido.");
       }
 
       // Cria a conta no Supabase confirmada e com metadados
@@ -176,7 +176,7 @@ export default function CadastroPage() {
 
       setStep(3);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Codigo invalido ou expirado.");
+      setError(err instanceof Error ? err.message : "Código inválido ou expirado.");
     } finally {
       setIsLoading(false);
     }
@@ -211,189 +211,275 @@ export default function CadastroPage() {
       const bootstrapData = await bootstrap.json();
 
       if (!bootstrap.ok) {
-        throw new Error(bootstrapData.error || "Nao foi possivel concluir o cadastro.");
+        throw new Error(bootstrapData.error || "Não foi possível concluir o cadastro.");
       }
 
       router.push(`/onboarding${email ? `?email=${encodeURIComponent(email)}` : ""}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel concluir o cadastro.");
+      setError(err instanceof Error ? err.message : "Não foi possível concluir o cadastro.");
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="landing-dark min-h-screen flex items-center justify-center bg-[#030307] relative overflow-hidden px-4 select-none">
-      <div className="absolute top-1/2 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/10 blur-[120px] pointer-events-none" />
+    <div className="min-h-screen flex bg-white font-sans text-slate-900 select-none">
+      {/* Left Column: Visual & Branding (Desktop only) */}
+      <div className="hidden lg:flex flex-1 flex-col justify-between bg-slate-950 text-white relative overflow-hidden p-12 lg:p-16 border-r border-slate-800">
+        {/* Ambient glow light effect */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-gradient-to-tr from-blue-600/30 via-indigo-500/20 to-sky-400/10 blur-3xl rounded-full pointer-events-none -z-0" />
 
-      <div className="bg-zinc-900/60 border border-white/10 backdrop-blur-md p-8 md:p-10 w-full max-w-md rounded-3xl shadow-2xl relative z-10">
-        <div className="flex flex-col items-center mb-8">
-          <Link href="/" className="flex flex-col items-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-tr from-[#2563EB] to-[#D4AF37] flex items-center justify-center rounded-full mb-3 shadow-lg">
-              <span className="text-white font-extrabold text-xl">R</span>
-            </div>
-            <span className="text-sm font-semibold tracking-tight text-white">RankHire BR</span>
-          </Link>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Crie sua conta</h1>
-          <p className="text-[13px] text-zinc-400 mt-2 text-center leading-normal">
-            Trial gratis com verificacao por e-mail.
+        {/* Top Header Logo */}
+        <div className="relative z-10 flex items-center gap-2.5">
+          <div className="w-7 h-7 border border-white/20 rounded-md bg-white/10 flex items-center justify-center backdrop-blur-sm shadow-sm">
+            <div className="w-2.5 h-2.5 bg-blue-500 rounded-[1px]" />
+          </div>
+          <span className="text-white font-bold text-base tracking-tight">RankHire BR</span>
+        </div>
+
+        {/* Hero Branding Content */}
+        <div className="relative z-10 my-auto max-w-lg text-left">
+          <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-3.5 py-1.5 mb-6 text-xs text-blue-300 font-medium backdrop-blur-sm">
+            <span>✨ +500.000 currículos processados com precisão semântica</span>
+          </div>
+          <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight leading-[1.15] mb-4">
+            A forma mais inteligente de recrutar.
+          </h1>
+          <p className="text-base text-slate-400 leading-relaxed font-normal">
+            Nossa inteligência artificial analisa currículos em segundos e acelera o fechamento de vagas de ponta a ponta.
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3].map((item) => (
-            <div
-              key={item}
-              className={`h-1.5 flex-1 rounded-full ${step >= item ? "bg-[#2563EB]" : "bg-white/5"}`}
-            />
-          ))}
+        {/* Footer Credit */}
+        <div className="relative z-10 text-xs text-slate-500 font-medium">
+          © 2026 RankHire BR. Plataforma de recrutamento semântico autônomo.
         </div>
+      </div>
 
-        {error && (
-          <div className="p-3 mb-4 bg-red-500/10 text-xs font-semibold text-red-400 rounded-lg border border-red-500/20 leading-normal">
-            {error}
+      {/* Right Column: Clean Light Mode Register Form */}
+      <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 lg:p-20 bg-white relative z-10">
+        <div className="w-full max-w-[380px]">
+          {/* Logo (Mobile only) */}
+          <div className="mb-8 lg:hidden flex items-center gap-2.5 justify-center">
+            <div className="w-7 h-7 border border-slate-300 rounded-md bg-slate-100 flex items-center justify-center shadow-sm">
+              <div className="w-2.5 h-2.5 bg-blue-600 rounded-[1px]" />
+            </div>
+            <span className="text-slate-900 font-bold text-lg tracking-tight">RankHire BR</span>
           </div>
-        )}
 
-        {step === 1 && (
-          <form onSubmit={goToVerifyStep} className="space-y-4">
-            <div className="flex items-center gap-2 text-zinc-300 font-bold text-xs mb-2 uppercase tracking-wider">
-              <User className="w-4 h-4 text-[#D4AF37]" />
-              Dados basicos
+          {/* Form Header */}
+          <div className="mb-6 text-left">
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-1.5">Crie sua conta</h2>
+            <p className="text-slate-500 text-sm">Cadastre-se gratuitamente para iniciar seu trial de 3 dias.</p>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 mb-6">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className={`h-1 flex-1 rounded-full transition-colors duration-200 ${
+                  step >= item ? "bg-blue-600" : "bg-slate-100"
+                }`}
+              />
+            ))}
+          </div>
+
+          {error && (
+            <div className="p-3 mb-4 bg-red-50 text-xs font-semibold text-red-700 rounded-xl border border-red-200 leading-normal">
+              {error}
             </div>
+          )}
 
-            <Field label="Nome completo">
-              <input value={nome} onChange={(e) => setNome(e.target.value)} className="auth-input" placeholder="Ex: Gustavo Martins" required />
-            </Field>
+          {step === 1 && (
+            <form onSubmit={goToVerifyStep} className="space-y-4">
+              <div className="flex items-center gap-2 text-slate-500 font-bold text-xs mb-2 uppercase tracking-wider">
+                <User className="w-4 h-4 text-blue-600" />
+                Dados básicos
+              </div>
 
-            <Field label="E-mail corporativo">
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="auth-input" placeholder="voce@empresa.com.br" required />
-            </Field>
-
-            <Field label="Senha">
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="auth-input" placeholder="Minimo 8 caracteres" required />
-            </Field>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Cargo">
-                <input value={cargo} onChange={(e) => setCargo(e.target.value)} className="auth-input" placeholder="RH" required />
+              <Field label="Nome completo">
+                <input
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                  placeholder="Ex: Gustavo Martins"
+                  required
+                />
               </Field>
-              <Field label="Empresa">
-                <input value={nomeEmpresa} onChange={(e) => setNomeEmpresa(e.target.value)} className="auth-input" placeholder="Empresa" required />
-              </Field>
-            </div>
 
-            <Field label="Celular">
-              <input
-                value={telefone}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!val.startsWith("+55")) {
-                    // Prevent deleting the +55 prefix
-                    if (val === "" || val === "+" || val === "+5" || val === "5" || val === "55") {
-                      setTelefone("+55");
+              <Field label="E-mail corporativo">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                  placeholder="voce@empresa.com.br"
+                  required
+                />
+              </Field>
+
+              <Field label="Senha">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                  placeholder="Mínimo 8 caracteres"
+                  required
+                />
+              </Field>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Cargo">
+                  <input
+                    value={cargo}
+                    onChange={(e) => setCargo(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                    placeholder="RH"
+                    required
+                  />
+                </Field>
+                <Field label="Empresa">
+                  <input
+                    value={nomeEmpresa}
+                    onChange={(e) => setNomeEmpresa(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                    placeholder="Nome da Empresa"
+                    required
+                  />
+                </Field>
+              </div>
+
+              <Field label="Celular / WhatsApp">
+                <input
+                  value={telefone}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!val.startsWith("+55")) {
+                      if (val === "" || val === "+" || val === "+5" || val === "5" || val === "55") {
+                        setTelefone("+55");
+                      } else {
+                        setTelefone("+55" + val.replace(/^\+?55/, ""));
+                      }
                     } else {
-                      setTelefone("+55" + val.replace(/^\+?55/, ""));
+                      setTelefone(val);
                     }
-                  } else {
-                    setTelefone(val);
-                  }
-                }}
-                className="auth-input w-full"
-                placeholder="+5511999999999"
-                inputMode="tel"
-                required
-              />
-            </Field>
-
-            <ConsentChecks
-              termosAceitos={termosAceitos}
-              setTermosAceitos={setTermosAceitos}
-              aceitaMarketing={aceitaMarketing}
-              setAceitaMarketing={setAceitaMarketing}
-            />
-
-            <SubmitButton disabled={!termosAceitos} loading={isLoading}>
-              Proximo passo <ArrowRight className="w-4 h-4" />
-            </SubmitButton>
-
-            <button type="button" onClick={() => router.push("/login")} className="w-full text-center text-xs text-zinc-500 hover:text-white py-1.5">
-              Ja tem uma conta? <strong className="text-white hover:text-blue-400">Entrar</strong>
-            </button>
-          </form>
-        )}
-
-        {step === 2 && (
-          <form onSubmit={handleVerifyCode} className="space-y-4">
-            <div className="flex items-center gap-2 text-zinc-300 font-bold text-xs mb-2 uppercase tracking-wider">
-              <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
-              Verificacao de E-mail
-            </div>
-
-            <div className="text-sm text-zinc-400 mb-4 text-center">
-              Enviamos um codigo de 6 digitos para <br/> 
-              <strong className="text-white">{email}</strong>
-            </div>
-
-            <Field label="Codigo de Verificacao">
-              <input
-                value={codigo}
-                onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                className="auth-input text-center tracking-[0.4em]"
-                placeholder="000000"
-                inputMode="numeric"
-                required
-              />
-            </Field>
-
-            <SubmitButton disabled={!isCodeSent || codigo.length !== 6} loading={isLoading}>
-              Confirmar E-mail <CheckCircle2 className="w-4 h-4" />
-            </SubmitButton>
-
-            <button
-              type="button"
-              onClick={handleResendCode}
-              disabled={isSendingCode || timer > 0}
-              className="w-full text-center text-xs text-zinc-500 hover:text-white py-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSendingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : timer > 0 ? `Reenviar em ${timer}s` : "Reenviar codigo"}
-            </button>
-
-            <BackButton onClick={() => setStep(1)} />
-          </form>
-        )}
-
-        {step === 3 && (
-          <form onSubmit={handleFinish} className="space-y-4">
-            <div className="flex items-center gap-2 text-zinc-300 font-bold text-xs mb-2 uppercase tracking-wider">
-              <Building className="w-4 h-4 text-[#D4AF37]" />
-              Confirmacao
-            </div>
-
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-300">
-              E-mail confirmado. Falta apenas revisar os dados da empresa.
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="CNPJ opcional">
-                <input value={cnpj} onChange={(e) => setCnpj(e.target.value)} className="auth-input" placeholder="00.000.000/0001-00" />
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                  placeholder="+5511999999999"
+                  inputMode="tel"
+                  required
+                />
               </Field>
-              <Field label="Tamanho">
-                <select value={tamanho} onChange={(e) => setTamanho(e.target.value)} className="auth-input cursor-pointer">
-                  <option value="1-10">1 a 10 func.</option>
-                  <option value="11-50">11 a 50 func.</option>
-                  <option value="51-200">51 a 200 func.</option>
-                  <option value="200+">Mais de 200 func.</option>
-                </select>
+
+              <ConsentChecks
+                termosAceitos={termosAceitos}
+                setTermosAceitos={setTermosAceitos}
+                aceitaMarketing={aceitaMarketing}
+                setAceitaMarketing={setAceitaMarketing}
+              />
+
+              <SubmitButton disabled={!termosAceitos} loading={isLoading}>
+                Próximo passo <ArrowRight className="w-4 h-4" />
+              </SubmitButton>
+
+              <button
+                type="button"
+                onClick={() => router.push("/login")}
+                className="w-full text-center text-xs text-slate-500 hover:text-blue-600 py-1.5 transition-colors"
+              >
+                Já tem uma conta? <strong className="text-blue-600 font-bold">Entrar</strong>
+              </button>
+            </form>
+          )}
+
+          {step === 2 && (
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div className="flex items-center gap-2 text-slate-500 font-bold text-xs mb-2 uppercase tracking-wider">
+                <ShieldCheck className="w-4 h-4 text-blue-600" />
+                Verificação de E-mail
+              </div>
+
+              <div className="text-sm text-slate-500 mb-4 text-center leading-normal">
+                Enviamos um código de 6 dígitos para o e-mail: <br />
+                <strong className="text-slate-800">{email}</strong>
+              </div>
+
+              <Field label="Código de Verificação">
+                <input
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-900 text-center tracking-[0.4em] bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                  placeholder="000000"
+                  inputMode="numeric"
+                  required
+                />
               </Field>
-            </div>
 
-            <SubmitButton loading={isLoading}>
-              Finalizar cadastro <CheckCircle2 className="w-4 h-4" />
-            </SubmitButton>
+              <SubmitButton disabled={!isCodeSent || codigo.length !== 6} loading={isLoading}>
+                Confirmar E-mail <CheckCircle2 className="w-4 h-4" />
+              </SubmitButton>
 
-            <BackButton onClick={() => setStep(2)} />
-          </form>
-        )}
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={isSendingCode || timer > 0}
+                className="w-full text-center text-xs text-slate-500 hover:text-slate-800 py-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSendingCode ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                ) : timer > 0 ? (
+                  `Reenviar em ${timer}s`
+                ) : (
+                  "Reenviar código"
+                )}
+              </button>
+
+              <BackButton onClick={() => setStep(1)} />
+            </form>
+          )}
+
+          {step === 3 && (
+            <form onSubmit={handleFinish} className="space-y-4">
+              <div className="flex items-center gap-2 text-slate-500 font-bold text-xs mb-2 uppercase tracking-wider">
+                <Building className="w-4 h-4 text-blue-600" />
+                Confirmação
+              </div>
+
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">
+                E-mail verificado com sucesso. Preencha os detalhes adicionais abaixo.
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="CNPJ (opcional)">
+                  <input
+                    value={cnpj}
+                    onChange={(e) => setCnpj(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                    placeholder="00.000.000/0001-00"
+                  />
+                </Field>
+                <Field label="Tamanho da Empresa">
+                  <select
+                    value={tamanho}
+                    onChange={(e) => setTamanho(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition cursor-pointer"
+                  >
+                    <option value="1-10">1 a 10 func.</option>
+                    <option value="11-50">11 a 50 func.</option>
+                    <option value="51-200">51 a 200 func.</option>
+                    <option value="200+">Mais de 200 func.</option>
+                  </select>
+                </Field>
+              </div>
+
+              <SubmitButton loading={isLoading}>
+                Finalizar cadastro <CheckCircle2 className="w-4 h-4" />
+              </SubmitButton>
+
+              <BackButton onClick={() => setStep(2)} />
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -402,7 +488,7 @@ export default function CadastroPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[12px] font-bold text-zinc-400">{label}</label>
+      <label className="text-[12px] font-bold text-slate-500">{label}</label>
       {children}
     </div>
   );
@@ -421,7 +507,7 @@ function SubmitButton({
     <button
       type="submit"
       disabled={loading || disabled}
-      className="w-full py-3 bg-[#2563EB] hover:bg-blue-700 text-white rounded-full text-xs font-bold flex justify-center items-center gap-2 shadow-lg shadow-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold flex justify-center items-center gap-2 shadow-lg shadow-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed transition"
     >
       {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : children}
     </button>
@@ -433,7 +519,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-center text-xs text-zinc-500 hover:text-white py-1.5 flex items-center justify-center gap-1"
+      className="w-full text-center text-xs text-slate-500 hover:text-slate-800 py-1.5 flex items-center justify-center gap-1 transition-colors"
     >
       <ArrowLeft className="w-3.5 h-3.5" />
       Voltar
@@ -453,19 +539,23 @@ function ConsentChecks({
   setAceitaMarketing: (value: boolean) => void;
 }) {
   return (
-    <div className="space-y-3 pt-4 border-t border-white/5">
+    <div className="space-y-3 pt-4 border-t border-slate-100">
       <label className="flex items-start gap-2.5 cursor-pointer select-none">
         <input
           type="checkbox"
           checked={termosAceitos}
           onChange={(e) => setTermosAceitos(e.target.checked)}
-          className="mt-1 accent-blue-500 w-4 h-4 rounded border-white/10 bg-zinc-950"
+          className="mt-1 accent-blue-600 w-4 h-4 rounded border-slate-300"
         />
-        <span className="text-[11px] text-zinc-400 leading-snug">
+        <span className="text-[11px] text-slate-500 leading-snug">
           Li e aceito os{" "}
-          <Link href="/termos" target="_blank" className="text-[#2563EB] font-bold hover:underline">Termos de Servico</Link>{" "}
+          <Link href="/termos" target="_blank" className="text-blue-600 font-bold hover:underline">
+            Termos de Serviço
+          </Link>{" "}
           e a{" "}
-          <Link href="/privacidade" target="_blank" className="text-[#2563EB] font-bold hover:underline">Politica de Privacidade</Link>
+          <Link href="/privacidade" target="_blank" className="text-blue-600 font-bold hover:underline">
+            Política de Privacidade
+          </Link>
         </span>
       </label>
 
@@ -474,9 +564,9 @@ function ConsentChecks({
           type="checkbox"
           checked={aceitaMarketing}
           onChange={(e) => setAceitaMarketing(e.target.checked)}
-          className="mt-1 accent-blue-500 w-4 h-4 rounded border-white/10 bg-zinc-950"
+          className="mt-1 accent-blue-600 w-4 h-4 rounded border-slate-300"
         />
-        <span className="text-[11px] text-zinc-400 leading-snug">
+        <span className="text-[11px] text-slate-500 leading-snug">
           Aceito receber novidades e dicas de recrutamento por e-mail
         </span>
       </label>

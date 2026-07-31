@@ -1,0 +1,210 @@
+PLANO DE AÇÃO COMPLETO: REFATORAÇÃO E MELHORIAS RANKHIRE BR
+Objetivo: Melhorar a experiência do recrutador (UX/UI), corrigir bugs de layout e estruturar o backend (Supabase + Stripe) para gestão de assinaturas e segurança de dados.
+
+1. UI/UX: Melhorias Visuais e de Navegação
+Busca Inteligente (Layout do Chat): Mova a barra de input do chat para a parte inferior da tela (fixa), adotando um padrão de interface semelhante ao ChatGPT. O chat não deve mais ficar "achatado" ou espremido ao entrar/sair da conta; sua altura deve ser preservada.
+
+Animação de Busca (Loading State): Substitua as "bolinhas de carregamento" (spinners) por um checklist visual dinâmico. Enquanto a IA processa, exiba mensagens em cascata com um ícone de "check" (ex: Lendo currículos..., Cruzando palavras-chave..., Ranqueando candidatos...).
+
+Fixação do Input (Search Bar): Corrija o padding/margin em todos os campos de busca do sistema. A lupa está sobreposta ao texto (placeholder) conforme visto na imagem referenciada do seu sistema. Adicione o espaçamento (padding-left) correto no input.
+
+Barra Lateral (Sidebar): Corrija o bug de overflow nos ícones de notificação e de recolher/expandir o menu. Eles não podem vazar ou quebrar a interface quando a barra lateral for minimizada.
+
+Dashboard - Mensagem de Boas-vindas: Adicione uma saudação amigável (Ex: "👋 Bem-vindo de volta, [Nome]") logo abaixo da data atual na página principal.
+
+Dashboard - Gráfico de Funil: Substitua o atual gráfico de linhas/barras do "Funil de Conversão de Vagas" por um Gráfico de Rosca (Doughnut/Pie Chart). Use uma paleta de cores vivas e modernas, colocando a legenda com os dados alinhada à direita do gráfico.
+
+Modo Escuro (Dark Mode): Implemente a alternância (toggle) de Tema Claro/Escuro com um ícone na barra de navegação, replicando a funcionalidade para a Landing Page.
+
+2. Funcionalidades e Fluxo do Recrutador
+Histórico da Busca Inteligente: O sistema deve salvar o histórico de chats vinculados à conta do usuário. É necessário poder criar um "Novo Chat", visualizar conversas anteriores, sair e voltar para a tela inicial sem perder o contexto.
+
+Página de Vagas (Robustez): Refatore a página de detalhes da vaga. Adicione novos indicadores e métricas no front-end (ex: tempo médio de fechamento, taxa de conversão, fit cultural médio).
+
+Correção de Bug (Persistência de Vagas): As vagas criadas estão sumindo ao fazer logout. Garanta que o estado da aplicação puxe corretamente os dados do banco após o login.
+
+Desativar Auto-refresh: Remova o comportamento que atualiza a página inteira automaticamente (reload) quando o usuário troca de aba no navegador e volta. Isso faz o recrutador perder o que estava lendo.
+
+Descentralização das Configurações: Remova as abas "API credentials & integrações" e "Pesos de avaliação da IA" da página central de Configurações. Essas parametrizações devem ser movidas para dentro de cada funcionalidade respectiva (ex: configurar os pesos apenas na tela de ranqueamento).
+
+Etiquetas Personalizadas: Conecte a UI das etiquetas ao banco de dados. O usuário deve poder trocar as cores das etiquetas (Alta prioridade, Bom fit, etc.) e o sistema deve salvar e aplicar essas preferências na conta dele.
+
+3. Backend, Banco de Dados (Supabase) e Regras de Negócio
+Isolamento de Dados (RLS - Row Level Security): Urgente. Configure as políticas RLS no Supabase para que cada usuário visualize estritamente os seus próprios dados (candidatos, vagas, configurações). Vazamento ou cruzamento de dados de recrutadores diferentes deve ser impossível.
+
+Fluxo de Autenticação (Google OAuth): Após o usuário criar a conta via Google OAuth, o sistema deve detectar que é o primeiro login e redirecioná-lo para uma página de Onboarding (completar perfil) para preencher os dados faltantes (ex: Nome da Empresa, Cargo).
+
+Design da Tela de Cadastro: A página de "Criar Conta" (Signup) deve seguir exatamente o mesmo padrão de design limpo e de alto contraste (Light Mode com detalhes em azul) que foi definido para a página de Login, mantendo harmonia visual.
+
+Regras do Plano Trial: Altere a duração do período de testes (Trial) de 14 dias para 3 dias de forma global (no texto da Landing Page, no Stripe e na lógica de expiração no Supabase).
+
+Controle de Limites (Quotas): Revise e trave os contadores de importação de currículos. O sistema deve bloquear a ação assim que o usuário atingir o limite estipulado nos planos Trial e Pró.
+
+Integração Stripe + Supabase via MCP: Crie as tabelas necessárias no Supabase para gerenciar as inscrições (ex: subscriptions, customers). Vincule os webhooks do Stripe (para os planos "Pró" e "Enterprise") para atualizar os níveis de acesso automaticamente no banco de dados quando um pagamento for confirmado ou cancelado.
+
+
+
+
+ESPECIFICAÇÃO DE UI/UX: NOVA BUSCA INTELIGENTE
+
+1. Comportamento e Animação do Chat (Search Bar)
+Estado Inicial (Vazio): A caixa de chat fica centralizada e expansiva, convidando o usuário a descrever o perfil detalhadamente.
+
+Estado de Resultado (Após buscar):
+
+Animação: O campo de texto deve sofrer uma transição suave (transition-all duration-500 ease-in-out), diminuindo de tamanho e deslizando para a parte superior da tela (fixando-se abaixo do header).
+
+Design da Barra: Ela se transforma em uma "Pílula" (Pill-shape) ou barra horizontal compacta, exibindo o resumo do que foi digitado (ex: designer, parana, 5 anos de experiencia...), com o ícone da RankHire na esquerda.
+
+2. Organização por Contexto (Sistema de Vagas)
+Para que os chats e filtros fiquem salvos, o banco de dados e a interface precisam organizar as sessões de busca por vagas:
+
+Seletor de Contexto: Adicione um dropdown sutil no topo esquerdo da área de busca (ex: Pasta: Vaga de Designer Pleno).
+
+Lógica de Salvamento: Ao selecionar uma vaga existente, o sistema carrega o histórico do chat e os filtros aplicados daquela sessão. Ao clicar em "Nova Busca/Nova Vaga", um canvas em branco é gerado com um novo ID de contexto no banco de dados.
+
+3. Desacoplamento de Filtros e Critérios
+Baseado na referência, retire os filtros de dentro da caixa de texto do chat. Ao lado da nova barra de busca superior, implemente botões de ação independentes:
+
+Botão "Filtros" (Filters): Fundo branco, borda sutil, com um contador (badge) mostrando quantos filtros estão ativos (ex: Filtros: 7).
+
+Botão "Critérios" (Criteria): Ao lado dos filtros, para definir o peso das habilidades pedidas pela IA (ex: Critérios: 2).
+
+4. O Novo Modal de Filtros (Design Moderno)
+Quando o usuário clicar no botão "Filtros", deve abrir um modal expansivo ou um painel lateral super sofisticado (como visto no seu arquivo de referência):
+
+Layout em Duas Colunas:
+
+Menu Lateral Esquerdo: Navegação rápida pelas categorias com ícones limpos (Geral, Localização, Cargo, Empresa, Palavras-chave).
+
+Área Central Direita: Campos de input dinâmicos. Por exemplo, para "Experiência", use inputs de "Mínimo" e "Máximo". Para "Excluir Perfis", use caixas de seleção elegantes com dropdowns.
+
+Feedback Visual: Adicione um botão fixo no canto superior ou inferior direito do modal dizendo Aplicar Filtros ou Salvar Mudanças, atualizando os resultados em tempo real por trás do modal.
+
+5. Melhoria nos Cards de Candidatos
+Para aproveitar o novo espaço na tela, os resultados devem ser muito mais ricos visualmente:
+
+Visão de Lista Detalhada: Cada card deve mostrar o Nome, Cargo Atual, Localização e os links sociais (LinkedIn/GitHub).
+
+Indicadores Semânticos (Tags Verdes/Vermelhas): Embaixo do resumo profissional de cada candidato, a IA deve justificar o ranking. Mostre "Pílulas" verdes para requisitos atendidos (ex: 👍 Photoshop: O candidato lista habilidades com Photoshop) e vermelhas para o que faltou.
+
+Ações Rápidas no Card: Botões diretos para Salvar na Shortlist (favoritar) ou Ocultar Perfil diretamente na linha do candidato.
+
+
+
+
+ESPECIFICAÇÃO DE UI/UX: PAINEL DE DETALHES DO CANDIDATO
+
+1. Comportamento do Layout (Split-Screen)
+Ação de Abertura: Ao clicar em qualquer parte do card do candidato na lista, a tela deve se dividir. A lista de resultados encolhe sutilmente para a esquerda (ocupando cerca de 40-50% da tela), e o Painel do Candidato desliza da direita para a esquerda, ocupando o restante do espaço.
+
+Navegação Rápida: No topo do painel, inclua setas de navegação (< e >) para pular rapidamente para o candidato anterior ou próximo da lista, além de um botão de fechar (X) ou recolher (->|).
+
+2. Cabeçalho do Perfil (Header)
+Identificação: Nome do candidato em destaque (h1/h2), seguido da localização (Cidade, Estado, País) logo abaixo.
+
+Links Externos: Ícones minimalistas no canto superior direito para acessar o LinkedIn, GitHub, portfólio ou outras redes vinculadas ao candidato.
+
+Resumo de Empresas: Exibir os logotipos ou nomes da empresa atual e da anterior lado a lado (como um quick briefing).
+
+Call-to-Action (Ações Primárias):
+
+Botão com dropdown: Salvar na Shortlist (ou mover para uma etapa do funil).
+
+Botão de destaque (roxo/azul): Criar Sequência (para enviar mensagem ou e-mail) ou Entrar em Contato.
+
+3. Navegação Interna (Sistema de Abas / Tabs)
+Para evitar que o painel fique com rolagem infinita e desorganizada, o conteúdo deve ser dividido em abas horizontais fixas abaixo do cabeçalho:
+
+Visão Geral (Overview): O painel principal (detalhado abaixo).
+
+Experiência (Experience): Histórico completo de empregos.
+
+Educação (Education): Formação acadêmica e cursos.
+
+Habilidades (Skills): Lista de competências (tags).
+
+Mais (More): Idiomas, certificações, etc.
+
+4. Estrutura da Aba "Visão Geral" (Overview)
+Cartão de Contato e Metadados: Uma seção limpa com ícones à esquerda (Status, E-mail, Telefone, Tags customizadas).
+
+Sistema de "Reveal" (Desbloqueio de Contato): Os campos de e-mail e telefone não devem aparecer de imediato. Exiba um link ou botão chamativo como Revelar número + ou Revelar e-mail +. (Isso é crucial para segurança de dados e para a economia de créditos do seu sistema).
+
+Resumo de Experiência (Timeline): Logo abaixo dos contatos, mostre um cabeçalho sumarizado da experiência (Ex: 18 anos de experiência total · 6 anos de permanência média), seguido da listagem cronológica enxuta das experiências profissionais (Cargo, Empresa, Datas).
+
+
+
+
+
+ESPECIFICAÇÃO DE REGRA DE NEGÓCIO: REVELAÇÃO DE CONTATOS (UNLIMITED PRO)
+
+1. Lógica de Interface (Front-end / UI)
+A interface do painel lateral do candidato deve se comportar de duas maneiras distintas, dependendo do status de assinatura do recrutador:
+
+Para Usuários sem Assinatura Ativa (Trial / Free):
+
+Mascaramento: Os campos de contato exibem um botão de ação roxo/azul escrito Revelar e-mail + e Revelar número +.
+
+Gatilho de Venda (Paywall Suave): Ao clicar no botão, em vez de mostrar o dado, o sistema abre um modal limpo e direto informando: "Tenha acesso ilimitado a contatos de candidatos com o Plano Pró", acompanhado de um botão Fazer Upgrade.
+
+Para Usuários com Assinatura Ativa (Pró / Enterprise):
+
+Acesso Ilimitado: O sistema pode adotar dois caminhos visuais:
+
+Exibição Direta (Recomendado): Os botões de "Revelar" nem aparecem. O e-mail e o telefone do candidato já carregam abertos na tela por padrão, reduzindo o número de cliques do recrutador.
+
+Clique Único (Clean Reveal): O botão "Revelar" ainda existe (para manter a interface limpa), mas ao clicar, o dado aparece instantaneamente, com uma animação suave, sem restrições.
+
+2. Segurança de Dados e Backend (Supabase + Stripe)
+Para garantir que usuários mal-intencionados não consigam burlar o front-end e inspecionar o código para roubar os e-mails de graça, a trava de segurança deve acontecer no backend.
+
+Validação de Status via Stripe: O banco de dados (Supabase) deve ter uma tabela subscriptions atualizada em tempo real via webhooks do Stripe. O sistema precisa verificar o campo status (ex: active, trialing, canceled) atrelado ao user_id.
+
+Camada de Proteção (RLS / Edge Functions):
+
+Quando a aplicação solicitar os detalhes de um candidato ao banco de dados, a query no Supabase deve verificar o status da assinatura do usuário que fez o request.
+
+Se subscription_status == 'active', o backend envia o JSON completo do candidato: { "name": "William", "email": "william@email.com", "phone": "+55 11 99999-9999" }.
+
+Se subscription_status != 'active', o backend deve omitir ou mascarar esses dados antes de enviar para o navegador do usuário, retornando algo como: { "name": "William", "email": null, "phone": null }. Isso torna impossível o vazamento dos contatos.
+
+
+
+
+📋 ESPECIFICAÇÃO DE UI/UX: COMPARTILHAMENTO DE PESQUISA POR LINK PÚBLICO
+
+1. Ponto de Entrada na Interface (UI)
+Adição de Botão: Na barra de ações superior dos resultados da pesquisa (ao lado de "+ Nova pesquisa" e "Salvar"), adicione o botão de "Compartilhar".
+
+Design: Botão com ícone de upload/compartilhamento (UploadCloud, Share2) e texto "Compartilhar". Estilo de botão outline (fundo branco, borda cinza limpa, texto/ícone azul royal: border border-slate-200 text-slate-700 hover:bg-slate-50).
+
+2. O Modal de Compartilhamento (Baseado na Referência)
+Ao clicar no botão "Compartilhar", abre um modal centralizado e elegante sobre a tela, com fundo em branco puro.
+
+Título do Modal: "Compartilhe o Link Público desta Pesquisa." (Tipografia moderna, bold, text-slate-900).
+
+Texto Descritivo: "Gere um link público que pode ser compartilhado com qualquer pessoa para visualização dos resultados. O link dará acesso à visualização de até 30 perfis de candidatos mais bem ranqueados." (Tipografia limpa, text-slate-500, texto-sm).
+
+Campo de Link (Link Input):
+
+Um campo de input de texto não editável (disabled, readOnly), mas com o conteúdo selecionável pelo usuário, com borda sutil cinza.
+
+Conteúdo do Link: Deve ser gerado dinamicamente e de forma segura pelo backend, no formato: [https://rankhire.br/search/public/](https://rankhire.br/search/public/)[ID_HASH_UNICO_SESSAO_PESQUISA]. (O ID hash deve ser complexo e seguro).
+
+Botões de Ação Inferiores:
+
+Botão Esquerdo ("Copiar Link"): Estilo outline (fundo branco, borda cinza, texto/ícone azul royal: border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2), com ícone de copiar (Copy) e texto "Copiar para a área de transferência". Ao clicar, copia o link para o clipboard e mostra um feedback visual temporário de "Copiado!".
+
+Botão Direito ("Abrir URL"): Estilo de ação primária (com o nosso Gradiente Azul Royal: bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 text-white font-medium py-2.5 px-4 rounded-lg shadow-md shadow-blue-500/20 hover:opacity-95 transition-all w-full), com ícone de seta externa (ExternalLink) e texto "Abrir URL". Abre o link público em uma nova aba para visualização de teste.
+
+Botão de Fechar: Ícone de 'X' no canto superior direito do modal para fechar a janela.
+
+3. Regras de Negócio e Segurança de Dados (Backend - Supabase)
+Essa é a parte mais crítica para proteger os dados da sua plataforma.
+
+Geração Segura do Link: Quando o usuário clica em "Compartilhar", uma Edge Function no Supabase deve gerar um ID único e seguro (hash, não sequencial) para a visualização pública e armazená-lo em uma tabela public_searches vinculada ao ID da pesquisa original. O link público nunca deve conter o ID real da pesquisa.
+
+Limitador de Visualização (Regra dos 30): Ao carregar a página pública via link, o backend deve recuperar os resultados da pesquisa original, mas limitar o resultado aos top 30 candidatos (limit 30). O objetivo é dar uma amostra robusta, mas não o banco inteiro.
+
+Segurança de Contato (O "Paywall" Público): Na visualização pública do painel do candidato, as informações de e-mail e telefone devem ser mascaradas e os botões de "Revelar contato" devem ser desativados para o público. Exiba uma mensagem sutil: "Informações de contato disponíveis apenas para usuários RankHire BR registrados com Plano Pró." O compartilhamento público é para revisão e feedback, não para recrutamento direto sem a plataforma.

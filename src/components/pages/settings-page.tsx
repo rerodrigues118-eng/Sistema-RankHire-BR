@@ -1,199 +1,237 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Sliders, Lock, CreditCard, AlertCircle } from 'lucide-react';
-import ProfileConfig from '@/components/ProfileConfig';
-import CompanySection from '../CompanySection';
+import { useState, useEffect } from "react";
+import { CreditCard, Tag, Plus, Trash2, Save, Sparkles } from "lucide-react";
+import ProfileConfig from "@/components/ProfileConfig";
+import CompanySection from "../CompanySection";
 
-const criteriaConfig = [
-  {
-    key: 'experience' as const,
-    label: 'Experiência profissional',
-    description: 'Anos de atuação e cargos relevantes',
-  },
-  {
-    key: 'techStack' as const,
-    label: 'Stack tecnológica e ferramentas',
-    description: 'Linguagens, frameworks e plataformas',
-  },
-  {
-    key: 'education' as const,
-    label: 'Formação acadêmica e certificados',
-    description: 'Graduação, pós e certificações reconhecidas',
-  },
-  {
-    key: 'english' as const,
-    label: 'Proficiência em inglês',
-    description: 'Nível de comunicação escrita e verbal',
-  },
-  {
-    key: 'tooling' as const,
-    label: 'Metodologias e habilidades comportamentais',
-    description: 'Agile, comunicação, liderança e soft skills',
-  },
+const PRESET_COLORS = [
+  { value: "#10B981", label: "Verde" },
+  { value: "#3B82F6", label: "Azul" },
+  { value: "#F59E0B", label: "Amarelo" },
+  { value: "#EF4444", label: "Vermelho" },
+  { value: "#8B5CF6", label: "Roxo" },
+  { value: "#6B7280", label: "Cinza" },
 ];
 
 export default function SettingsPage() {
-  const [weights, setWeights] = useState({
-    experience: 4,
-    techStack: 5,
-    education: 2,
-    english: 3,
-    tooling: 4,
-  });
+  const [etiquetas, setEtiquetas] = useState<any[]>([]);
+  const [loadingEtiquetas, setLoadingEtiquetas] = useState(true);
+  const [savingEtiquetaId, setSavingEtiquetaId] = useState<string | null>(null);
+  const [newTagName, setNewTagName] = useState("");
+  const [newTagColor, setNewTagColor] = useState("#3B82F6");
 
-  const handleWeightChange = (key: keyof typeof weights, value: number) => {
-    setWeights((prev) => ({ ...prev, [key]: value }));
+  useEffect(() => {
+    async function loadEtiquetas() {
+      try {
+        const res = await fetch("/api/etiquetas", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setEtiquetas(data.etiquetas || []);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar etiquetas:", err);
+      } finally {
+        setLoadingEtiquetas(false);
+      }
+    }
+    loadEtiquetas();
+  }, []);
+
+  const handleUpdateTag = async (id: string, nome: string, cor: string) => {
+    setSavingEtiquetaId(id);
+    try {
+      const res = await fetch("/api/etiquetas", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, nome, cor }),
+      });
+      if (!res.ok) {
+        console.error("Erro ao salvar etiqueta");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingEtiquetaId(null);
+    }
+  };
+
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return;
+    try {
+      const res = await fetch("/api/etiquetas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: newTagName.trim(),
+          cor: newTagColor,
+          posicao: etiquetas.length,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEtiquetas([...etiquetas, data.etiqueta]);
+        setNewTagName("");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteTag = async (id: string) => {
+    try {
+      const res = await fetch(`/api/etiquetas?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setEtiquetas(etiquetas.filter((e) => e.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl p-6" style={{ border: '0.5px solid #E2E8F0' }}>
+      {/* 1. Profile Config */}
+      <div className="bg-white rounded-xl p-6" style={{ border: "0.5px solid #E2E8F0" }}>
         <ProfileConfig />
       </div>
 
-      {/* Criteria weights card */}
-      <div
-        className="bg-white rounded-xl p-6"
-        style={{ border: '0.5px solid #E2E8F0' }}
-      >
+      {/* 2. Custom Labels Management */}
+      <div className="bg-white rounded-xl p-6" style={{ border: "0.5px solid #E2E8F0" }}>
         <div className="flex items-center gap-2 mb-1">
-          <Sliders size={16} style={{ color: '#1B4FD8' }} />
-          <h2 className="text-sm font-medium text-gray-800">
-            Pesos de avaliação da IA (1 a 5)
-          </h2>
+          <Tag size={16} style={{ color: "#1B4FD8" }} />
+          <h2 className="text-sm font-medium text-gray-800">Etiquetas Personalizadas</h2>
         </div>
         <p className="text-xs text-gray-400 mb-6">
-          Ajuste a importância de cada critério na análise automática de currículos.
-          Valores maiores aumentam o peso do critério no score final.
+          Personalize as etiquetas e cores que você utiliza para classificar candidatos em sua triagem.
         </p>
 
-        <div className="space-y-5">
-          {criteriaConfig.map((criterion) => (
-            <div
-              key={criterion.key}
-              className="flex items-center justify-between gap-6"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-700">{criterion.label}</p>
-                <p className="text-xs text-gray-400">{criterion.description}</p>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <input
-                  type="range"
-                  min={1}
-                  max={5}
-                  step={1}
-                  value={weights[criterion.key]}
-                  onChange={(e) =>
-                    handleWeightChange(criterion.key, Number(e.target.value))
-                  }
-                  className="w-28 h-1 rounded-full appearance-none cursor-pointer"
-                  style={{
-                    accentColor: '#1B4FD8',
-                  }}
-                />
-                <span
-                  className="text-xs font-medium rounded-md px-2 py-0.5 min-w-[32px] text-center"
-                  style={{
-                    backgroundColor: '#E8EEFB',
-                    color: '#1B4FD8',
-                  }}
+        {loadingEtiquetas ? (
+          <div className="text-xs text-gray-400">Carregando etiquetas...</div>
+        ) : (
+          <div className="space-y-6">
+            {/* List of tags */}
+            <div className="space-y-3">
+              {etiquetas.map((tag) => (
+                <div key={tag.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="flex-1 flex items-center gap-3">
+                    <span
+                      className="w-3.5 h-3.5 rounded-full shrink-0"
+                      style={{ backgroundColor: tag.cor }}
+                    />
+                    <input
+                      type="text"
+                      value={tag.nome}
+                      onChange={(e) => {
+                        const next = etiquetas.map((item) =>
+                          item.id === tag.id ? { ...item, nome: e.target.value } : item
+                        );
+                        setEtiquetas(next);
+                      }}
+                      className="bg-transparent font-medium text-sm text-gray-700 focus:outline-none focus:border-indigo-500 border-b border-transparent w-full"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    {/* Color picker presets */}
+                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-gray-200">
+                      {PRESET_COLORS.map((preset) => (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => {
+                            const next = etiquetas.map((item) =>
+                              item.id === tag.id ? { ...item, cor: preset.value } : item
+                            );
+                            setEtiquetas(next);
+                            handleUpdateTag(tag.id, tag.nome, preset.value);
+                          }}
+                          className={`w-4 h-4 rounded-full border transition-transform ${
+                            tag.cor === preset.value ? "scale-125 border-gray-900" : "border-transparent"
+                          }`}
+                          style={{ backgroundColor: preset.value }}
+                          title={preset.label}
+                        />
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => handleUpdateTag(tag.id, tag.nome, tag.cor)}
+                      disabled={savingEtiquetaId === tag.id}
+                      className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                      title="Salvar alterações"
+                    >
+                      <Save size={15} />
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteTag(tag.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                      title="Excluir etiqueta"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Create Tag Form */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100">
+              <input
+                type="text"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                placeholder="Nova etiqueta (ex: Fazer entrevista)"
+                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+                  {PRESET_COLORS.map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => setNewTagColor(preset.value)}
+                      className={`w-4.5 h-4.5 rounded-full border transition-transform ${
+                        newTagColor === preset.value ? "scale-115 border-gray-900" : "border-transparent"
+                      }`}
+                      style={{ backgroundColor: preset.value }}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCreateTag}
+                  disabled={!newTagName.trim()}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition flex items-center gap-1 disabled:opacity-50"
                 >
-                  {weights[criterion.key]}x
-                </span>
+                  <Plus size={15} /> Adicionar
+                </button>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* API credentials card */}
-      <div
-        className="bg-white rounded-xl p-6"
-        style={{ border: '0.5px solid #E2E8F0' }}
-      >
-        <div className="flex items-center gap-2 mb-5">
-          <Lock size={16} style={{ color: '#1B4FD8' }} />
-          <h2 className="text-sm font-medium text-gray-800">
-            API credentials &amp; integrações
-          </h2>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">
-              Supabase service key
-            </label>
-            <input
-              type="password"
-              disabled
-              value="••••••••••••••••••••••••••••••••"
-              className="w-full text-sm px-3 py-2 rounded-lg bg-gray-50 text-gray-400 cursor-not-allowed"
-              style={{ border: '0.5px solid #E2E8F0' }}
-            />
-          </div>
-
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">
-              Anthropic API key
-            </label>
-            <input
-              type="password"
-              disabled
-              value="••••••••••••••••••••••••••••••••"
-              className="w-full text-sm px-3 py-2 rounded-lg bg-gray-50 text-gray-400 cursor-not-allowed"
-              style={{ border: '0.5px solid #E2E8F0' }}
-            />
-          </div>
-        </div>
-
-        <div
-          className="flex items-start gap-2.5 mt-5 rounded-lg p-3.5"
-          style={{
-            backgroundColor: '#FFFBEA',
-            border: '0.5px solid rgba(245, 192, 0, 0.2)',
-          }}
-        >
-          <AlertCircle size={14} className="shrink-0 mt-0.5" style={{ color: '#F5C000' }} />
-          <p className="text-xs text-gray-600 leading-relaxed">
-            Chaves armazenadas com criptografia AES-256 no Supabase Vault.
-            Nenhuma credencial trafega em texto plano.
-          </p>
-        </div>
-      </div>
-
-      {/* Company card (inline) */}
+      {/* 3. Company section (inline) */}
       <CompanySection />
 
-      {/* Billing card */}
-      <div
-        className="bg-white rounded-xl p-6"
-        style={{ border: '0.5px solid #E2E8F0' }}
-      >
+      {/* 4. Billing card */}
+      <div className="bg-white rounded-xl p-6" style={{ border: "0.5px solid #E2E8F0" }}>
         <div className="flex items-center gap-2 mb-5">
-          <CreditCard size={16} style={{ color: '#1B4FD8' }} />
-          <h2 className="text-sm font-medium text-gray-800">
-            Plano e faturamento
-          </h2>
+          <CreditCard size={16} style={{ color: "#1B4FD8" }} />
+          <h2 className="text-sm font-medium text-gray-800">Plano e faturamento</h2>
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-700">Plano Pro mensal</p>
-          <span
-            className="text-xs font-medium px-3 py-1 rounded-full"
-            style={{
-              backgroundColor: '#E8EEFB',
-              color: '#1B4FD8',
-            }}
+          <p className="text-sm text-gray-700">Consulte e gerencie seu plano corporativo.</p>
+          <a
+            href="/configuracoes/plano"
+            className="text-xs font-semibold px-4 py-2 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 transition"
           >
-            R$ 380,00 / mês
-          </span>
+            Gerenciar Assinatura
+          </a>
         </div>
-
-        <p className="text-xs text-gray-400 mt-3">
-          Próximo vencimento: 01 de julho de 2026
-        </p>
       </div>
     </div>
   );

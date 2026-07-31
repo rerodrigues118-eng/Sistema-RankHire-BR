@@ -1,12 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
-import { PLANOS, getPlanoAtual } from '@/lib/planos';
-import { CreditCard, QrCode, FileText, CheckCircle2 } from 'lucide-react';
-// import PagarMe from '@pagarme/pagarme-js';
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { PLANOS, getPlanoAtual } from "@/lib/planos";
+import { CreditCard, ArrowRight, ShieldCheck, Check } from "lucide-react";
 
 type EmpresaPlano = {
   id: string;
@@ -14,414 +12,290 @@ type EmpresaPlano = {
   plano: string;
   subscription_status: string;
   current_period_end?: string | null;
-  pagarme_subscription_id?: string | null;
-  pagarme_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  stripe_customer_id?: string | null;
+  stripe_price_id?: string | null;
   trial_expires_at: string;
-};
-
-type Fatura = {
-  data: string;
-  valor: number;
-  status: string;
-  url_boleto?: string | null;
 };
 
 export default function PlanosConfigPage() {
   const [empresa, setEmpresa] = useState<EmpresaPlano | null>(null);
   const [loading, setLoading] = useState(true);
-  const [faturas, setFaturas] = useState<Fatura[]>([]);
-  
-  // Modal states
-  const [showModal, setShowModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'pix' | 'boleto'>('credit_card');
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  
-  // LGPD Consent states
-  const [aceitaTermosPlano, setAceitaTermosPlano] = useState(false);
-  const [autorizaRecorrencia, setAutorizaRecorrencia] = useState(false);
-
-  // Forms
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardHolder, setCardHolder] = useState('');
-  const [cardExp, setCardExp] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-
-  // PIX state
-  const [pixQrCode, setPixQrCode] = useState('');
-  const [pixCopiacola, setPixCopiacola] = useState('');
-  
-  // Boleto state
-  const [boletoUrl, setBoletoUrl] = useState('');
+  const [submittingPlan, setSubmittingPlan] = useState<string | null>(null);
+  const [loadingPortal, setLoadingPortal] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-      const { data: usuario } = await supabase
-        .from('usuarios')
-        .select('empresa_id')
-        .eq('id', user.id)
-        .single();
-
-      if (usuario?.empresa_id) {
-        const { data: emp } = await supabase
-          .from('empresas')
-          .select('id, nome, plano, subscription_status, trial_expires_at, current_period_end, pagarme_subscription_id, pagarme_customer_id')
-          .eq('id', usuario.empresa_id)
+        const { data: usuario } = await supabase
+          .from("usuarios")
+          .select("empresa_id")
+          .eq("id", user.id)
           .single();
-        if (emp) setEmpresa(emp as EmpresaPlano);
-        
-        fetch('/api/pagarme/faturas?empresaId=' + usuario.empresa_id, { credentials: 'include' })
-          .then(res => res.json())
-          .then(data => {
-            if (data.faturas) setFaturas(data.faturas);
-          });
+
+        if (usuario?.empresa_id) {
+          const { data: emp } = await supabase
+            .from("empresas")
+            .select("id, nome, plano, subscription_status, trial_expires_at, current_period_end, stripe_subscription_id, stripe_customer_id, stripe_price_id")
+            .eq("id", usuario.empresa_id)
+            .single();
+          if (emp) setEmpresa(emp as EmpresaPlano);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados do plano:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
+
     load();
+
+    // Check URL params for feedback (success/cancel from Stripe redirects)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success") === "true") {
+      setFeedback({ type: "success", text: "Assinatura ativada ou alterada com sucesso! As alterações serão aplicadas em alguns instantes." });
+    } else if (params.get("canceled") === "true") {
+      setFeedback({ type: "error", text: "O checkout do Stripe foi cancelado." });
+    }
   }, []);
 
-  const handleSubscribe = async () => {
-    if (!selectedPlan || !empresa) return;
-    
-    // Processamento do pagamento
-    if (paymentMethod === 'credit_card') {
-      try {
-        // Obtenção do token com Pagar.me.js
-        // const card = await PagarMe.card.tokenize({...})
-        // Envio do token (aqui apenas simulado)
-        const res = await fetch('/api/pagarme/assinar', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            empresaId: empresa.id,
-            planId: selectedPlan,
-            cardToken: 'simulated_tok_123'
-          })
-        });
-        if (res.ok) {
-          setFeedback({ type: 'success', text: 'Assinatura ativada com sucesso.' });
-        }
-      } catch (error) {
-        console.error(error);
-        setFeedback({ type: 'error', text: 'Erro ao processar pagamento.' });
+  const handleCheckout = async (planKey: string) => {
+    if (!empresa) return;
+    const planConfig = PLANOS[planKey];
+    if (!planConfig || !planConfig.stripe_price_id) {
+      setFeedback({ type: "error", text: "Plano inválido ou ID do Stripe ausente." });
+      return;
+    }
+
+    setSubmittingPlan(planKey);
+    setFeedback(null);
+
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: planConfig.stripe_price_id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        setFeedback({ type: "error", text: data.error || "Erro ao iniciar o checkout." });
       }
-    } else if (paymentMethod === 'pix') {
-      try {
-        const res = await fetch('/api/pagarme/assinar-pix', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ empresaId: empresa.id, planId: selectedPlan })
-        });
-        const data = await res.json();
-        if (data.pix_qr_code) {
-          setPixQrCode(data.pix_qr_code_url);
-          setPixCopiacola(data.pix_qr_code);
-          setFeedback({ type: 'success', text: 'PIX gerado com sucesso.' });
-        }
-      } catch (error) {
-        console.error(error);
-        setFeedback({ type: 'error', text: 'Erro ao gerar PIX.' });
-      }
-    } else if (paymentMethod === 'boleto') {
-      try {
-        const res = await fetch('/api/pagarme/assinar-boleto', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ empresaId: empresa.id, planId: selectedPlan })
-        });
-        const data = await res.json();
-        if (data.boleto_url) {
-          setBoletoUrl(data.boleto_url);
-          setFeedback({ type: 'success', text: 'Boleto gerado com sucesso.' });
-        }
-      } catch (error) {
-        console.error(error);
-        setFeedback({ type: 'error', text: 'Erro ao gerar boleto.' });
-      }
+    } catch {
+      setFeedback({ type: "error", text: "Falha de conexão ao criar sessão de checkout." });
+    } finally {
+      setSubmittingPlan(null);
     }
   };
 
-  const handleCancel = async () => {
-    if (!empresa) return;
-    setShowCancelConfirm(false);
+  const handleManageBilling = async () => {
+    if (!empresa || !empresa.stripe_customer_id) return;
+    setLoadingPortal(true);
+    setFeedback(null);
+
     try {
-      const res = await fetch('/api/pagarme/cancelar', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empresaId: empresa.id })
-      });
-      if (res.ok) {
-        setFeedback({ type: 'success', text: 'Assinatura cancelada com sucesso.' });
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        setFeedback({ type: "error", text: data.error || "Erro ao redirecionar para o portal." });
       }
     } catch {
-      setFeedback({ type: 'error', text: 'Erro ao cancelar assinatura.' });
+      setFeedback({ type: "error", text: "Falha de conexão ao acessar o portal do cliente." });
+    } finally {
+      setLoadingPortal(false);
     }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
   }
 
-  if (loading) return <div className="p-8">Carregando...</div>;
-  if (!empresa) return <div className="p-8 text-gray-500">Empresa não encontrada.</div>;
+  if (!empresa) {
+    return (
+      <div className="max-w-4xl mx-auto p-8 text-center bg-white border rounded-xl shadow-sm">
+        <p className="text-gray-500 font-medium">Empresa ou usuário não associado.</p>
+        <p className="text-xs text-gray-400 mt-2">Por favor, conclua o onboarding.</p>
+      </div>
+    );
+  }
 
   const statusAtual = getPlanoAtual(empresa);
 
   return (
-    <div className="max-w-6xl mx-auto p-8 space-y-10">
+    <div className="max-w-5xl mx-auto p-8 space-y-10">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Configurações de Plano e Pagamento</h1>
-        <p className="text-gray-500 mt-2">Gerencie sua assinatura e faturas.</p>
+        <h1 className="text-3xl font-bold text-gray-900">Plano e Faturamento</h1>
+        <p className="text-gray-500 mt-2">Gerencie sua assinatura, formas de pagamento e consulte faturas via Stripe.</p>
       </div>
 
       {feedback && (
-        <div className={`rounded-xl border px-4 py-3 text-sm ${feedback.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
-          {feedback.text}
+        <div
+          className={`rounded-xl border px-5 py-4 text-sm flex items-start gap-3 shadow-sm ${
+            feedback.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
+          <div className="font-semibold">{feedback.type === "success" ? "✓" : "⚠"}</div>
+          <p>{feedback.text}</p>
         </div>
       )}
 
-      {/* PLANO ATUAL */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <p className="text-sm text-gray-500 font-medium">Plano Atual</p>
-          <div className="flex items-center gap-3 mt-1">
-            <h2 className="text-2xl font-bold text-gray-900 capitalize">{empresa.plano}</h2>
-            {statusAtual === 'active' && <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-bold uppercase">Ativo</span>}
-            {statusAtual === 'trial' && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold uppercase">Trial</span>}
-            {statusAtual === 'expirado' && <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold uppercase">Expirado</span>}
+      {/* PLANO ATUAL CARD */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="space-y-2">
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Status da Assinatura</p>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-gray-900 capitalize">
+              {PLANOS[empresa.plano]?.nome || empresa.plano}
+            </h2>
+            {statusAtual === "active" && (
+              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold uppercase tracking-wide">
+                Ativo
+              </span>
+            )}
+            {statusAtual === "trial" && (
+              <span className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wide">
+                Período Trial (3 Dias)
+              </span>
+            )}
+            {statusAtual === "expirado" && (
+              <span className="px-2.5 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-bold uppercase tracking-wide">
+                Expirado
+              </span>
+            )}
           </div>
-          {empresa.subscription_status === 'active' && (
-            <p className="text-sm text-gray-500 mt-2">
-              Próxima cobrança: {empresa.current_period_end ? new Date(empresa.current_period_end).toLocaleDateString() : "—"}
+          {statusAtual === "trial" && (
+            <p className="text-sm text-gray-500">
+              Seu trial expira em:{" "}
+              <span className="font-medium text-gray-700">
+                {new Date(empresa.trial_expires_at).toLocaleDateString()}
+              </span>
+            </p>
+          )}
+          {statusAtual === "active" && empresa.current_period_end && (
+            <p className="text-sm text-gray-500">
+              Próxima renovação:{" "}
+              <span className="font-medium text-gray-700">
+                {new Date(empresa.current_period_end).toLocaleDateString()}
+              </span>
             </p>
           )}
         </div>
-        
-        <div className="flex gap-3">
-          {statusAtual === 'active' ? (
-            <>
-              <button onClick={() => setShowModal(true)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50">
-                Trocar plano
-              </button>
-              <button onClick={() => setShowCancelConfirm(true)} className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-50">
-                Cancelar plano
-              </button>
-            </>
-          ) : (
-            <button onClick={() => setShowModal(true)} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
-              Escolher um plano
-            </button>
-          )}
-        </div>
+
+        {empresa.stripe_customer_id && (
+          <button
+            onClick={handleManageBilling}
+            disabled={loadingPortal}
+            className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingPortal ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            ) : (
+              <CreditCard className="w-4 h-4" />
+            )}
+            Gerenciar Assinatura &amp; Faturas
+          </button>
+        )}
       </div>
 
-      {/* HISTÓRICO DE FATURAS */}
-      <div>
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Histórico de Faturas</h3>
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500">
-              <tr>
-                <th className="px-6 py-3 font-medium">Data</th>
-                <th className="px-6 py-3 font-medium">Valor</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Documento</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {faturas.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">Nenhuma fatura encontrada.</td>
-                </tr>
-              ) : faturas.map((f, i) => (
-                <tr key={i}>
-                  <td className="px-6 py-4">{new Date(f.data).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">R$ {f.valor.toFixed(2).replace('.', ',')}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold uppercase ${f.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {f.status}
+      {/* PLAN OPTIONS */}
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900">Planos Disponíveis</h3>
+          <p className="text-sm text-gray-500 mt-1">Selecione o plano ideal para a sua empresa e acelere suas triagens.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {Object.keys(PLANOS)
+            .filter((key) => key !== "trial")
+            .map((key) => {
+              const plan = PLANOS[key];
+              const isCurrent = empresa.plano === key && statusAtual === "active";
+
+              return (
+                <div
+                  key={key}
+                  className={`bg-white rounded-2xl border p-6 flex flex-col justify-between relative transition shadow-sm ${
+                    isCurrent
+                      ? "border-indigo-600 ring-1 ring-indigo-600"
+                      : "border-gray-200 hover:border-indigo-300"
+                  }`}
+                >
+                  {plan.destaque && (
+                    <span className="absolute -top-3 left-6 px-3 py-0.5 bg-indigo-600 text-white rounded-full text-xs font-semibold uppercase tracking-wider">
+                      Mais Popular
                     </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {f.url_boleto && <Link href={f.url_boleto} target="_blank" className="text-indigo-600 hover:underline">Ver Boleto</Link>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* MODAL DE PAGAMENTO */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Assinar o RankHire BR</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
-            </div>
-            
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-              
-              {/* Seleção do Plano */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900 mb-4">Escolha seu plano</h3>
-                
-                {['starter', 'pro', 'agencia'].map(p => (
-                  <label key={p} className={`block p-4 border rounded-xl cursor-pointer transition ${selectedPlan === PLANOS[p as keyof typeof PLANOS].pagarme_plan_id ? 'border-indigo-600 ring-1 ring-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <input 
-                          type="radio" 
-                          name="plan" 
-                          value={PLANOS[p as keyof typeof PLANOS].pagarme_plan_id} 
-                          checked={selectedPlan === PLANOS[p as keyof typeof PLANOS].pagarme_plan_id}
-                          onChange={(e) => setSelectedPlan(e.target.value)}
-                          className="w-4 h-4 text-indigo-600"
-                        />
-                        <span className="font-bold text-gray-900 text-lg">{PLANOS[p as keyof typeof PLANOS].nome}</span>
-                      </div>
-                      <span className="font-bold text-indigo-600">R$ {PLANOS[p as keyof typeof PLANOS].preco},00 /mês</span>
-                    </div>
-                  </label>
-                ))}
-              </div>
-
-              {/* Formulário de Pagamento */}
-              <div className="space-y-6 border-l pl-8">
-                <h3 className="font-semibold text-gray-900 mb-4">Forma de Pagamento</h3>
-                
-                <div className="flex border rounded-lg p-1 bg-gray-50 gap-1">
-                  <button onClick={() => setPaymentMethod('credit_card')} className={`flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 ${paymentMethod === 'credit_card' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}>
-                    <CreditCard className="w-4 h-4" /> Cartão
-                  </button>
-                  <button onClick={() => setPaymentMethod('pix')} className={`flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 ${paymentMethod === 'pix' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}>
-                    <QrCode className="w-4 h-4" /> PIX
-                  </button>
-                  <button onClick={() => setPaymentMethod('boleto')} className={`flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 ${paymentMethod === 'boleto' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}>
-                    <FileText className="w-4 h-4" /> Boleto
-                  </button>
-                </div>
-
-                {paymentMethod === 'credit_card' && (
+                  )}
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Número do Cartão</label>
-                      <input type="text" value={cardNumber} onChange={e => setCardNumber(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none" placeholder="0000 0000 0000 0000" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome no Cartão</label>
-                      <input type="text" value={cardHolder} onChange={e => setCardHolder(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none" placeholder="Como impresso no cartão" />
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Validade</label>
-                        <input type="text" value={cardExp} onChange={e => setCardExp(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none" placeholder="MM/AA" />
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">CVV</label>
-                        <input type="text" value={cardCvv} onChange={e => setCardCvv(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none" placeholder="123" />
+                      <h4 className="text-lg font-bold text-gray-900">{plan.nome}</h4>
+                      <div className="mt-2 flex items-baseline">
+                        <span className="text-3xl font-extrabold text-gray-900">R$ {plan.preco}</span>
+                        <span className="text-sm text-gray-400 font-medium ml-1">/mês</span>
                       </div>
                     </div>
+
+                    <ul className="space-y-3 pt-4 border-t border-gray-100 text-sm text-gray-600">
+                      <li className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span>Até <strong>{plan.limite_vagas}</strong> vaga{plan.limite_vagas > 1 ? "s" : ""} ativa{plan.limite_vagas > 1 ? "s" : ""}</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span>Até <strong>{plan.limite_pdfs_mes}</strong> PDFs de currículos/mês</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span>Até <strong>{plan.limite_buscas_linkedin}</strong> buscas no LinkedIn/mês</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span>
+                          {plan.agente_ia_bloqueado ? "Sem suporte a Agentes de IA" : "Suporte completo a Agentes de IA"}
+                        </span>
+                      </li>
+                    </ul>
                   </div>
-                )}
 
-                {paymentMethod === 'pix' && pixQrCode && (
-                  <div className="flex flex-col items-center justify-center py-6 space-y-4 text-center">
-                    <Image src={pixQrCode} alt="QR Code PIX" width={192} height={192} className="border rounded-xl" />
-                    <p className="text-sm text-gray-500">Escaneie o QR Code ou copie a chave abaixo:</p>
-                    <input readOnly value={pixCopiacola} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600 text-center" />
-                    <div className="flex items-center gap-2 text-indigo-600 font-medium text-sm animate-pulse">
-                      <CheckCircle2 className="w-4 h-4" /> Aguardando pagamento...
-                    </div>
+                  <div className="pt-6 mt-6 border-t border-gray-50">
+                    {isCurrent ? (
+                      <div className="w-full py-2.5 bg-indigo-50 text-indigo-700 text-sm font-semibold rounded-xl text-center flex items-center justify-center gap-2">
+                        <ShieldCheck className="w-4 h-4" /> Plano Atual
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleCheckout(key)}
+                        disabled={submittingPlan !== null}
+                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {submittingPlan === key ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                          <>
+                            Assinar Plano <ArrowRight className="w-4 h-4" />
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
-                )}
-
-                {paymentMethod === 'boleto' && boletoUrl && (
-                  <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center bg-gray-50 rounded-xl border border-gray-200">
-                    <FileText className="w-12 h-12 text-gray-400" />
-                    <div>
-                      <h4 className="font-bold text-gray-900">Boleto gerado com sucesso!</h4>
-                      <p className="text-sm text-gray-500 mt-1">Vence em 3 dias úteis</p>
-                    </div>
-                    <Link href={boletoUrl} target="_blank" className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
-                      Abrir Boleto (PDF)
-                    </Link>
-                  </div>
-                )}
-
-                {/* Checkboxes de conformidade LGPD e Cobrança */}
-                <div className="space-y-3 pt-4 border-t border-gray-100">
-                  <label className="flex items-start gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={aceitaTermosPlano}
-                      onChange={(e) => setAceitaTermosPlano(e.target.checked)}
-                      className="mt-1 accent-indigo-600 w-4 h-4 rounded"
-                    />
-                    <span className="text-xs text-gray-500 leading-snug">
-                      Li e aceito os <Link href="/termos" target="_blank" className="text-indigo-600 underline font-medium">Termos de Serviço</Link> e a <Link href="/privacidade" target="_blank" className="text-indigo-600 underline font-medium">Política de Privacidade</Link> (Obrigatório)
-                    </span>
-                  </label>
-
-                  {paymentMethod === 'credit_card' && (
-                    <label className="flex items-start gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={autorizaRecorrencia}
-                        onChange={(e) => setAutorizaRecorrencia(e.target.checked)}
-                        className="mt-1 accent-indigo-600 w-4 h-4 rounded"
-                      />
-                      <span className="text-xs text-gray-500 leading-snug">
-                        Autorizo a cobrança recorrente mensal do plano selecionado no cartão de crédito fornecido até que eu solicite o cancelamento. (Obrigatório)
-                      </span>
-                    </label>
-                  )}
                 </div>
-
-                <button 
-                  onClick={handleSubscribe} 
-                  disabled={
-                    !selectedPlan || 
-                    (paymentMethod === 'pix' && !!pixQrCode) || 
-                    (paymentMethod === 'boleto' && !!boletoUrl) ||
-                    !aceitaTermosPlano ||
-                    (paymentMethod === 'credit_card' && !autorizaRecorrencia)
-                  }
-                  className="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition mt-4"
-                >
-                  {paymentMethod === 'credit_card' ? 'Assinar com Cartão' : paymentMethod === 'pix' ? (pixQrCode ? 'Aguardando PIX' : 'Gerar PIX') : (boletoUrl ? 'Boleto Gerado' : 'Gerar Boleto')}
-                </button>
-
-              </div>
-            </div>
-          </div>
+              );
+            })}
         </div>
-      )}
-
-      {showCancelConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">Cancelar assinatura</h3>
-            <p className="text-sm text-gray-600">Você terá acesso até o fim do período já pago.</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowCancelConfirm(false)} className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold">
-                Voltar
-              </button>
-              <button onClick={handleCancel} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold">
-                Confirmar cancelamento
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      </div>
     </div>
   );
 }
