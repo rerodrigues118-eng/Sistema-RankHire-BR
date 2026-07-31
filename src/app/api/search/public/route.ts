@@ -109,7 +109,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const host = req.headers.get("host") || "sistema-rank-hire-br.vercel.app";
+    const protocol = req.headers.get("x-forwarded-proto") || "https";
+    const appUrl = host.includes("localhost") 
+      ? `http://${host}` 
+      : `${protocol}://${host}`;
     const shareLink = `${appUrl}/search/public/${randomHash}`;
 
     return NextResponse.json({ shareLink });
