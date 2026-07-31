@@ -33,16 +33,16 @@ interface FilterTags {
   maxYears?: string;
   idiomas?: string[];
   countries?: string;
-  workOption?: { hybrid: boolean; remote: boolean; onsite: boolean };
+  workOption?: { hybrid?: boolean; remote?: boolean; onsite?: boolean };
   currentJobTitles?: string;
   pastJobTitles?: string;
-  seniority?: { junior: boolean; pleno: boolean; senior: boolean; lead: boolean };
+  seniority?: { junior?: boolean; pleno?: boolean; senior?: boolean; lead?: boolean };
   currentCompany?: string;
   pastCompany?: string;
   excludeCompany?: string;
   industries?: string;
   revenue?: string;
-  fundingRound?: { seed: boolean; seriesA: boolean; seriesB: boolean; ipo: boolean };
+  fundingRound?: { seed?: boolean; seriesA?: boolean; seriesB?: boolean; ipo?: boolean };
   requiredKeywords?: string;
   optionalKeywords?: string;
   excludeKeywords?: string;
@@ -1049,14 +1049,14 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-[850px] border border-slate-200 overflow-hidden flex flex-col h-[520px] animate-in fade-in zoom-in duration-200">
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white flex-shrink-0">
-              <h3 className="font-bold text-slate-955 text-base">Edit Your Search Filters</h3>
+              <h3 className="font-bold text-slate-955 text-base">Editar Filtros de Busca</h3>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-500 font-medium">3 matches</span>
+                <span className="text-xs text-slate-500 font-medium">3 correspond\u00eancias</span>
                 <button 
-                  onClick={() => setIsFiltersOpen(false)}
+                  onClick={handleRunSearch}
                   className="bg-[#7C3AED] text-white hover:opacity-95 font-bold text-xs px-4 py-2.5 rounded-lg flex items-center gap-1 shadow"
                 >
-                  <span>Save Changes</span>
+                  <span>Salvar Altera\u00e7\u00f5es</span>
                   <ArrowUp size={12} className="rotate-45" />
                 </button>
                 <button onClick={() => setIsFiltersOpen(false)} className="text-slate-400 hover:text-slate-600 ml-1">
@@ -1114,6 +1114,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   />
                   <span className="text-[11px] text-slate-600 font-semibold">Ocultar filtros inativos</span>
                 </label>
+              </div>
+
               <div className="flex-1 p-6 overflow-y-auto space-y-6">
                 {activeFilterCategory === "Geral" && (
                   <>
@@ -1208,7 +1210,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                           <input 
                             type="checkbox" 
                             checked={filters.workOption?.hybrid} 
-                            onChange={e => setFilters(prev => ({ ...prev, workOption: { ...prev.workOption!, hybrid: e.target.checked } }))}
+                            onChange={e => setFilters(prev => ({ ...prev, workOption: { ...(prev.workOption || {}), hybrid: e.target.checked } }))}
                             className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" 
                           />
                           <span>H\u00edbrido</span>
@@ -1217,7 +1219,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                           <input 
                             type="checkbox" 
                             checked={filters.workOption?.remote} 
-                            onChange={e => setFilters(prev => ({ ...prev, workOption: { ...prev.workOption!, remote: e.target.checked } }))}
+                            onChange={e => setFilters(prev => ({ ...prev, workOption: { ...(prev.workOption || {}), remote: e.target.checked } }))}
                             className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" 
                           />
                           <span>Remoto</span>
@@ -1226,7 +1228,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                           <input 
                             type="checkbox" 
                             checked={filters.workOption?.onsite} 
-                            onChange={e => setFilters(prev => ({ ...prev, workOption: { ...prev.workOption!, onsite: e.target.checked } }))}
+                            onChange={e => setFilters(prev => ({ ...prev, workOption: { ...(prev.workOption || {}), onsite: e.target.checked } }))}
                             className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" 
                           />
                           <span>Presencial</span>
@@ -1269,7 +1271,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                             <input 
                               type="checkbox" 
                               checked={(filters.seniority as any)[level]} 
-                              onChange={e => setFilters(prev => ({ ...prev, seniority: { ...prev.seniority!, [level]: e.target.checked } }))}
+                              onChange={e => setFilters(prev => ({ ...prev, seniority: { ...(prev.seniority || {}), [level]: e.target.checked } }))}
                               className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" 
                             />
                             <span className="capitalize">{level}</span>
@@ -1356,7 +1358,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                             <input 
                               type="checkbox" 
                               checked={(filters.fundingRound as any)[round]} 
-                              onChange={e => setFilters(prev => ({ ...prev, fundingRound: { ...prev.fundingRound!, [round]: e.target.checked } }))}
+                              onChange={e => setFilters(prev => ({ ...prev, fundingRound: { ...(prev.fundingRound || {}), [round]: e.target.checked } }))}
                               className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" 
                             />
                             <span className="uppercase">{round}</span>
