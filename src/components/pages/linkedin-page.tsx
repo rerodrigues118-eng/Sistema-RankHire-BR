@@ -177,8 +177,8 @@ const INITIAL_MOCK_PROFILES: LinkedinProfile[] = [
 
 export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinPageProps) {
   // Page search query state
-  const [queryText, setQueryText] = useState("designer, parana, 5 anos de experiencias, empresa privada de segurança, habilidades em photoshop");
-  const [hasSearched, setHasSearched] = useState(true);
+  const [queryText, setQueryText] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
   const [activeTab, setActiveTab] = useState<"results" | "insights">("results");
   const [viewMode, setViewMode] = useState<"table" | "list">("table");
   
@@ -393,29 +393,17 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
       <div className="h-12 border-b border-slate-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
         {/* Breadcrumbs */}
         <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-medium">
-          <span>teste</span>
+          <span>{activeJob?.company || "Empresa"}</span>
           <ChevronRight size={14} className="text-slate-300" />
-          <span>Searches</span>
+          <span>Buscas</span>
           <ChevronRight size={14} className="text-slate-300" />
           <span className="text-slate-800 font-semibold truncate max-w-[240px]">
-            Designer Parana 5Y Photoshop
+            {activeJob?.title || "Nova Busca"}
           </span>
         </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          {/* Mock Toggle for Plan Testing */}
-          <button
-            onClick={() => setIsSubscribed(!isSubscribed)}
-            className={`text-[10px] px-2 py-1 rounded font-bold border transition-colors ${
-              isSubscribed 
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                : "bg-amber-50 text-amber-700 border-amber-200"
-            }`}
-          >
-            {isSubscribed ? "Mock: Plano Pró Ativo" : "Mock: Plano Trial"}
-          </button>
-          
           <button 
             onClick={() => setIsShareOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-xs shadow-sm transition-all"
@@ -507,34 +495,52 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     </div>
 
                     {/* Filtros & Critérios Quick Buttons */}
-                    <button 
-                      onClick={() => setIsFiltersOpen(true)}
-                      className="flex items-center gap-1.5 h-11 px-4 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm"
-                    >
-                      <SlidersHorizontal size={13} className="text-slate-500" />
-                      <span className="text-[12px] font-semibold text-slate-700">Filters</span>
-                      <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">7</span>
-                    </button>
-                    <button 
-                      onClick={() => setIsCriteriaOpen(true)}
-                      className="flex items-center gap-1.5 h-11 px-4 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm"
-                    >
-                      <Sparkles size={13} className="text-slate-500" />
-                      <span className="text-[12px] font-semibold text-slate-700">Criteria</span>
-                      <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">2</span>
-                    </button>
-                  </div>
+                  <button 
+                    onClick={() => setIsFiltersOpen(true)}
+                    className="flex items-center gap-1.5 h-11 px-4 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm"
+                  >
+                    <SlidersHorizontal size={13} className="text-slate-500" />
+                    <span className="text-[12px] font-semibold text-slate-700">Filtros</span>
+                    {Object.values(filters).filter(v => v && v !== "any" && (typeof v !== "object" || Object.values(v).some(Boolean))).length > 0 && (
+                      <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                        {Object.values(filters).filter(v => v && v !== "any" && (typeof v !== "object" || Object.values(v as Record<string,unknown>).some(Boolean))).length}
+                      </span>
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => setIsCriteriaOpen(true)}
+                    className="flex items-center gap-1.5 h-11 px-4 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm"
+                  >
+                    <Sparkles size={13} className="text-slate-500" />
+                    <span className="text-[12px] font-semibold text-slate-700">Critérios</span>
+                    {criteria.length > 0 && (
+                      <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{criteria.length}</span>
+                    )}
+                  </button>
+                </div>
 
-                  {/* Suggestion Expansion Chips */}
+                {/* Suggestion Expansion Chips */}
+                {profiles.length > 0 && (
                   <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
-                    <span className="flex items-center gap-1 font-medium"><Sparkles size={11} /> Expand pool:</span>
-                    <button className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors">
-                      Drop security company filter +71
-                    </button>
-                    <button className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors">
-                      Remove Photoshop skill filter +8
-                    </button>
+                    <span className="flex items-center gap-1 font-medium"><Sparkles size={11} /> Expandir pool:</span>
+                    {filters.excludeCompany && (
+                      <button 
+                        onClick={() => setFilters(prev => ({ ...prev, excludeCompany: "" }))}
+                        className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors"
+                      >
+                        Remover filtro: empresa excluída
+                      </button>
+                    )}
+                    {filters.requiredKeywords && (
+                      <button 
+                        onClick={() => setFilters(prev => ({ ...prev, requiredKeywords: "" }))}
+                        className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors"
+                      >
+                        Remover filtro: {filters.requiredKeywords.split(",")[0].trim()}
+                      </button>
+                    )}
                   </div>
+                )}
                 </div>
               )}
             </div>
@@ -552,17 +558,17 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         : "border-transparent text-slate-500 hover:text-slate-800"
                     }`}
                   >
-                    Results
+                    Resultados
                   </button>
                   <button 
                     onClick={() => setActiveTab("insights")}
                     className={`px-5 py-3 text-xs font-bold border-b-2 transition-all ${
                       activeTab === "insights" 
-                        ? "border-transparent text-slate-500 hover:text-[#7C3AED]" 
+                        ? "border-[#7C3AED] text-[#7C3AED]" 
                         : "border-transparent text-slate-500 hover:text-slate-800"
                     }`}
                   >
-                    Insights
+                    Análises
                   </button>
                 </div>
 
@@ -600,7 +606,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
                     <button className="flex items-center gap-1 border border-slate-200 bg-white px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
                       <FileText size={12} />
-                      <span>Review</span>
+                      <span>Revisar</span>
                     </button>
                   </div>
 
@@ -626,9 +632,9 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                           <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Perfis</th>
                           <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Cargo</th>
                           <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Empresa</th>
-                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Status da Sele\u00e7\u00e3o</th>
+                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Status</th>
                           <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px]">Match</th>
-                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px] text-right pr-6">Photoshop</th>
+                          <th className="px-3 py-2.5 font-medium uppercase tracking-wider text-[10px] text-right pr-6">Critério</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -733,8 +739,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                                 <div key={eIdx} className="flex items-start gap-2">
                                   <span className="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 flex-shrink-0"></span>
                                   <span>
-                                    <strong>{exp.cargo}</strong> at <span className="text-slate-950 font-medium">{exp.empresa}</span>
-                                    <span className="text-slate-400 ml-1.5 font-normal">({exp.inicio} - {exp.fim || "Present"})</span>
+                                    <strong>{exp.cargo}</strong> na <span className="text-slate-950 font-medium">{exp.empresa}</span>
+                                    <span className="text-slate-400 ml-1.5 font-normal">({exp.inicio} - {exp.fim || "Atual"})</span>
                                   </span>
                                 </div>
                               ))}
@@ -876,7 +882,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
               {/* Horizontal Tabs */}
               <div className="flex px-6 border-b border-slate-200 bg-slate-50/30 flex-shrink-0">
-                {["Vis\u00e3o Geral", "Experi\u00eancia", "Forma\u00e7\u00e3o", "Compet\u00eancias", "Mais"].map((t) => (
+                {["Visão Geral", "Experiência", "Formação", "Competências", "Mais"].map((t) => (
                   <button
                     key={t}
                     className="px-4 py-2.5 text-xs font-semibold text-slate-500 hover:text-[#7C3AED] border-b-2 border-transparent hover:border-[#7C3AED] transition-colors focus:outline-none"
@@ -945,19 +951,19 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         {/* Custom dot icon */}
                         <div className="absolute left-[-21px] top-1 w-2.5 h-2.5 rounded-full bg-[#7C3AED] border-2 border-white ring-2 ring-purple-100"></div>
                         <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-900 leading-snug">{exp.cargo}</span>
-                          <span className="text-xs text-slate-600 font-medium">{exp.empresa}</span>
-                          <span className="text-[10.5px] text-slate-400 mt-0.5 font-normal">{exp.inicio} - {exp.fim || "Present"}</span>
+                           <span className="text-xs font-bold text-slate-900 leading-snug">{exp.cargo}</span>
+                           <span className="text-xs text-slate-600 font-medium">{exp.empresa}</span>
+                           <span className="text-[10.5px] text-slate-400 mt-0.5 font-normal">{exp.inicio} - {exp.fim || "Atual"}</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Skills Section */}
+                {/* Competências Section */}
                 {selectedProfile.skills && (
                   <div className="space-y-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Skills ({selectedProfile.skills.length})</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Competências ({selectedProfile.skills.length})</span>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedProfile.skills.map((sk) => (
                         <span key={sk} className="px-3 py-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-full text-xs font-semibold">
@@ -977,21 +983,21 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
       {/* ── MODALS (Replicando Layouts da Referência) ── */}
 
-      {/* 1. CRITERIA MODAL (Image 2) */}
+      {/* 1. CRITERIA MODAL */}
       {isCriteriaOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-[500px] border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
-              <h3 className="font-bold text-slate-900 text-base">Criteria</h3>
+              <h3 className="font-bold text-slate-900 text-base">Critérios de Avaliação</h3>
               <div className="flex items-center gap-3">
                 <button className="flex items-center gap-1 text-xs text-[#7C3AED] hover:underline font-semibold">
                   <Sparkles size={12} />
-                  <span>Select Preset</span>
+                  <span>Usar Predefinição</span>
                 </button>
                 <button className="flex items-center gap-1 text-xs text-[#7C3AED] hover:underline font-semibold">
                   <Plus size={12} />
-                  <span>Save Preset</span>
+                  <span>Salvar Predefinição</span>
                 </button>
                 <button onClick={() => setIsCriteriaOpen(false)} className="text-slate-400 hover:text-slate-600">
                   <X size={16} />
@@ -1001,12 +1007,11 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
             {/* Modal Content */}
             <div className="p-6 space-y-4 max-h-[350px] overflow-y-auto">
-              <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 block">Most Important</span>
+              <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 block">Mais Importante</span>
               
               <div className="space-y-2">
                 {criteria.map((c, idx) => (
                   <div key={c.id} className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 group">
-                    {/* Drag Handle representation */}
                     <div className="flex flex-col gap-0.5 text-slate-300 group-hover:text-slate-400 cursor-grab select-none">
                       <span className="w-3.5 h-0.5 bg-current rounded-full"></span>
                       <span className="w-3.5 h-0.5 bg-current rounded-full"></span>
@@ -1016,26 +1021,32 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     <p className="flex-1 text-xs text-slate-800 font-semibold leading-relaxed">
                       {c.nome}
                     </p>
-                    <button className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => setCriteria(prev => prev.filter(cr => cr.id !== c.id))}
+                      className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
                       <X size={14} />
                     </button>
                   </div>
                 ))}
               </div>
               
-              <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 block pt-2">Least Important</span>
+              <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 block pt-2">Menos Importante</span>
             </div>
 
             {/* Modal Actions */}
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-              <button className="text-xs text-slate-600 hover:text-slate-800 font-bold border border-slate-200 bg-white px-4 py-2 rounded-lg shadow-sm">
-                + Add Criterion
+              <button 
+                onClick={() => setCriteria(prev => [...prev, { id: `c${Date.now()}`, nome: "Novo critério de avaliação", descricao: "", peso: 3 }])}
+                className="text-xs text-slate-600 hover:text-slate-800 font-bold border border-slate-200 bg-white px-4 py-2 rounded-lg shadow-sm"
+              >
+                + Adicionar Critério
               </button>
               <button 
                 onClick={handleUpdateCriteria}
                 className="bg-[#7C3AED] hover:opacity-95 text-white font-bold text-xs px-4 py-2 rounded-lg shadow flex items-center gap-1"
               >
-                <span>Update</span>
+                <span>Atualizar</span>
                 <ArrowUp size={12} className="rotate-45" />
               </button>
             </div>
@@ -1043,238 +1054,159 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         </div>
       )}
 
-      {/* 2. FILTERS MODAL (Image 3) */}
+      {/* 2. FILTERS MODAL — Profissional */}
       {isFiltersOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-[850px] border border-slate-200 overflow-hidden flex flex-col h-[520px] animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-[900px] border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: '88vh' }}>
             {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white flex-shrink-0">
-              <h3 className="font-bold text-slate-955 text-base">Editar Filtros de Busca</h3>
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 flex-shrink-0">
+              <h3 className="font-semibold text-slate-900 text-lg">Filtros Avançados de Sourcing</h3>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-500 font-medium">3 correspond\u00eancias</span>
-                <button 
-                  onClick={handleRunSearch}
-                  className="bg-[#7C3AED] text-white hover:opacity-95 font-bold text-xs px-4 py-2.5 rounded-lg flex items-center gap-1 shadow"
-                >
-                  <span>Salvar Altera\u00e7\u00f5es</span>
-                  <ArrowUp size={12} className="rotate-45" />
-                </button>
-                <button onClick={() => setIsFiltersOpen(false)} className="text-slate-400 hover:text-slate-600 ml-1">
-                  <X size={18} />
-                </button>
+                {profiles.length > 0 && (
+                  <span className="text-xs text-slate-500 font-medium bg-white border border-slate-200 px-2.5 py-1 rounded-full">
+                    {profiles.length} {profiles.length === 1 ? "resultado" : "resultados"}
+                  </span>
+                )}
+                <button onClick={() => setIsFiltersOpen(false)} className="text-slate-400 hover:text-slate-600 text-xl font-bold leading-none">&times;</button>
               </div>
             </div>
 
-            {/* Split Content Area */}
-            <div className="flex-1 flex overflow-hidden">
-              {/* Left Column menu Categories */}
-              <div className="w-[220px] border-r border-slate-200 bg-slate-50/50 flex flex-col justify-between p-4 flex-shrink-0 select-none">
-                <div className="space-y-1">
-                  <div className="relative mb-2">
-                    <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Pesquisar filtros" 
-                      className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs outline-none focus:border-slate-300"
-                    />
-                  </div>
-                  
-                  {/* Categories items list */}
-                  {[
-                    "Geral", "Localiza\u00e7\u00f5es", "Cargo", "Empresa", "Setor", 
-                    "Faturamento & Financiamento", "Compet\u00eancias ou Palavras-chave", "Filtros de Poder", "Propens\u00e3o \u00e0 Mudan\u00e7a"
-                  ].map((cat) => {
-                    const isActive = activeFilterCategory === cat;
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => setActiveFilterCategory(cat)}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-left rounded-lg text-xs font-semibold transition-all ${
-                          isActive 
-                            ? "bg-white text-slate-900 border border-slate-200/80 shadow-sm" 
-                            : "text-slate-600 hover:bg-slate-100/50"
-                        }`}
-                      >
-                        <span>{cat}</span>
-                        {/* Purple indicator dot */}
-                        {["Geral", "Localiza\u00e7\u00f5es", "Cargo", "Empresa", "Setor", "Compet\u00eancias ou Palavras-chave"].includes(cat) && (
-                          <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <label className="flex items-center gap-2 cursor-pointer pt-3 border-t border-slate-150">
-                  <input 
-                    type="checkbox" 
-                    checked={hideInactiveFilters} 
-                    onChange={e => setHideInactiveFilters(e.target.checked)}
-                    className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED] cursor-pointer"
-                  />
-                  <span className="text-[11px] text-slate-600 font-semibold">Ocultar filtros inativos</span>
-                </label>
+            {/* Body — Split em duas colunas */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Coluna Esquerda — Categorias */}
+              <div className="w-64 border-r border-slate-100 p-4 space-y-1 bg-slate-50/50 text-sm font-medium text-slate-600 flex-shrink-0 overflow-y-auto">
+                {[
+                  { key: "experiencia", label: "Experiência & Senioridade" },
+                  { key: "localizacao", label: "Localização & Trabalho Remoto" },
+                  { key: "competencias", label: "Competências & Tech Stack" },
+                  { key: "empresas", label: "Empresas" },
+                  { key: "setor", label: "Setor de Atuação" },
+                  { key: "metricas", label: "Métricas & Financiamento" },
+                  { key: "sinais", label: "Sinais de Mercado" },
+                ].map(({ key, label }) => {
+                  const isActive = activeFilterCategory === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setActiveFilterCategory(key)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        isActive 
+                          ? "bg-[#7C3AED]/10 text-[#7C3AED] border border-[#7C3AED]/20" 
+                          : "hover:bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
 
+              {/* Coluna Direita — Campos do filtro selecionado */}
               <div className="flex-1 p-6 overflow-y-auto space-y-6">
-                {activeFilterCategory === "Geral" && (
+
+                {/* ── Experiência & Senioridade ── */}
+                {activeFilterCategory === "experiencia" && (
                   <>
-                    {/* Experiencia */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700">Experi\u00eancia M\u00ednima (Anos)</label>
-                        <input 
-                          type="number" 
-                          value={filters.minYears}
-                          onChange={e => setFilters(prev => ({ ...prev, minYears: e.target.value }))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700">Experi\u00eancia M\u00e1xima (Anos)</label>
-                        <input 
-                          type="number" 
-                          value={filters.maxYears}
-                          onChange={e => setFilters(prev => ({ ...prev, maxYears: e.target.value }))}
-                          placeholder="Exemplo: 10 anos"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                        />
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-800 mb-3">Tempo de Experiência (Anos)</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-xs text-slate-500 font-medium">Mínimo</span>
+                          <input
+                            type="number"
+                            value={filters.minYears || ""}
+                            onChange={e => setFilters(prev => ({ ...prev, minYears: e.target.value }))}
+                            placeholder="Ex: 3"
+                            className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-xs text-slate-500 font-medium">Máximo</span>
+                          <input
+                            type="number"
+                            value={filters.maxYears || ""}
+                            onChange={e => setFilters(prev => ({ ...prev, maxYears: e.target.value }))}
+                            placeholder="Ex: 15"
+                            className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    {/* Dados de Contato */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-700">Dados de Contato Obrigat\u00f3rios</label>
-                      <select 
-                        value={filters.contactInfo}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-800 mb-3">Nível de Senioridade</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["Júnior", "Pleno", "Sênior", "Especialista", "Liderança", "Direção"] as const).map(nivel => (
+                          <label key={nivel} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 hover:border-[#7C3AED]/30 transition-colors">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]"
+                              checked={!!(filters.seniority as Record<string, boolean | undefined>)?.[nivel.toLowerCase()]}
+                              onChange={e => setFilters(prev => ({ ...prev, seniority: { ...(prev.seniority || {}), [nivel.toLowerCase()]: e.target.checked } }))}
+                            />
+                            {nivel}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-800 mb-3">Dados de Contato Obrigatórios</label>
+                      <select
+                        value={filters.contactInfo || "any"}
                         onChange={e => setFilters(prev => ({ ...prev, contactInfo: e.target.value }))}
-                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white cursor-pointer w-48"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:bg-white outline-none cursor-pointer w-56"
                       >
-                        <option value="any">Qualquer um</option>
-                        <option value="email">Possui E-mail</option>
-                        <option value="phone">Possui Telefone</option>
-                        <option value="both">Possui Ambos</option>
+                        <option value="any">Qualquer contato</option>
+                        <option value="email">Requer e-mail verificado</option>
+                        <option value="phone">Requer telefone verificado</option>
+                        <option value="both">Requer e-mail e telefone</option>
                       </select>
                     </div>
+                  </>
+                )}
 
-                    {/* Excluir Perfis */}
-                    <div className="space-y-2 pt-2">
-                      <span className="text-xs font-bold text-slate-700 block">Excluir Perfis</span>
+                {/* ── Localização & Trabalho Remoto ── */}
+                {activeFilterCategory === "localizacao" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-800 mb-3">Localização</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-xs text-slate-500 font-medium">Cidade / Estado</span>
+                          <input
+                            type="text"
+                            value={filters.location || ""}
+                            onChange={e => setFilters(prev => ({ ...prev, location: e.target.value }))}
+                            placeholder="Ex: Curitiba, Paraná"
+                            className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-xs text-slate-500 font-medium">País</span>
+                          <input
+                            type="text"
+                            value={filters.countries || ""}
+                            onChange={e => setFilters(prev => ({ ...prev, countries: e.target.value }))}
+                            placeholder="Ex: Brasil"
+                            className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-800 mb-3">Modelo de Trabalho</label>
                       <div className="space-y-2">
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-600 font-medium">
-                          <input type="checkbox" defaultChecked className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" />
-                          <span>Oculto por <span className="text-slate-800 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">qualquer pessoa neste projeto</span> a <span className="text-slate-800 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">qualquer momento</span></span>
-                        </label>
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-400 font-medium">
-                          <input type="checkbox" className="rounded border-slate-200 text-slate-300" disabled />
-                          <span>Visualizado por <span className="bg-slate-50 px-1.5 py-0.5 rounded">qualquer pessoa neste projeto</span> a <span className="bg-slate-50 px-1.5 py-0.5 rounded">qualquer momento</span></span>
-                        </label>
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-400 font-medium">
-                          <input type="checkbox" className="rounded border-slate-200 text-slate-300" disabled />
-                          <span>Adicionado na shortlist por <span className="bg-slate-50 px-1.5 py-0.5 rounded">qualquer pessoa neste projeto</span> a <span className="bg-slate-50 px-1.5 py-0.5 rounded">qualquer momento</span></span>
-                        </label>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {activeFilterCategory === "Localiza\u00e7\u00f5es" && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700">Cidades / Estados</label>
-                        <input 
-                          type="text" 
-                          value={filters.location}
-                          onChange={e => setFilters(prev => ({ ...prev, location: e.target.value }))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                          placeholder="Ex: Paran\u00e1, Curitiba"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700">Pa\u00edses</label>
-                        <input 
-                          type="text" 
-                          value={filters.countries}
-                          onChange={e => setFilters(prev => ({ ...prev, countries: e.target.value }))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                          placeholder="Ex: Brasil"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 pt-2">
-                      <span className="text-xs font-bold text-slate-700 block">Op\u00e7\u00e3o de Trabalho</span>
-                      <div className="flex gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-600">
-                          <input 
-                            type="checkbox" 
-                            checked={filters.workOption?.hybrid} 
-                            onChange={e => setFilters(prev => ({ ...prev, workOption: { ...(prev.workOption || {}), hybrid: e.target.checked } }))}
-                            className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" 
-                          />
-                          <span>H\u00edbrido</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-600">
-                          <input 
-                            type="checkbox" 
-                            checked={filters.workOption?.remote} 
-                            onChange={e => setFilters(prev => ({ ...prev, workOption: { ...(prev.workOption || {}), remote: e.target.checked } }))}
-                            className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" 
-                          />
-                          <span>Remoto</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-600">
-                          <input 
-                            type="checkbox" 
-                            checked={filters.workOption?.onsite} 
-                            onChange={e => setFilters(prev => ({ ...prev, workOption: { ...(prev.workOption || {}), onsite: e.target.checked } }))}
-                            className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" 
-                          />
-                          <span>Presencial</span>
-                        </label>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {activeFilterCategory === "Cargo" && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700">Cargos Atuais</label>
-                        <input 
-                          type="text" 
-                          value={filters.currentJobTitles}
-                          onChange={e => setFilters(prev => ({ ...prev, currentJobTitles: e.target.value }))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                          placeholder="Ex: Designer, Product Manager"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700">Cargos Anteriores</label>
-                        <input 
-                          type="text" 
-                          value={filters.pastJobTitles}
-                          onChange={e => setFilters(prev => ({ ...prev, pastJobTitles: e.target.value }))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                          placeholder="Ex: Designer J\u00fanior"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 pt-2">
-                      <span className="text-xs font-bold text-slate-700 block">N\u00edvel de Senioridade</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        {Object.keys(filters.seniority || {}).map((level) => (
-                          <label key={level} className="flex items-center gap-2 cursor-pointer text-xs text-slate-600">
-                            <input 
-                              type="checkbox" 
-                              checked={(filters.seniority as any)[level]} 
-                              onChange={e => setFilters(prev => ({ ...prev, seniority: { ...(prev.seniority || {}), [level]: e.target.checked } }))}
-                              className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" 
+                        {[{ key: "remote", label: "Apenas Remoto" }, { key: "hybrid", label: "Híbrido" }, { key: "onsite", label: "Presencial" }].map(({ key, label }) => (
+                          <label key={key} className="flex items-center gap-3 cursor-pointer text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 hover:border-[#7C3AED]/30 transition-colors">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]"
+                              checked={!!(filters.workOption as Record<string, boolean | undefined>)?.[key]}
+                              onChange={e => setFilters(prev => ({ ...prev, workOption: { ...(prev.workOption || {}), [key]: e.target.checked } }))}
                             />
-                            <span className="capitalize">{level}</span>
+                            {label}
                           </label>
                         ))}
                       </div>
@@ -1282,86 +1214,142 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   </>
                 )}
 
-                {activeFilterCategory === "Empresa" && (
+                {/* ── Competências & Tech Stack ── */}
+                {activeFilterCategory === "competencias" && (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700">Empresa Atual</label>
-                        <input 
-                          type="text" 
-                          value={filters.currentCompany}
-                          onChange={e => setFilters(prev => ({ ...prev, currentCompany: e.target.value }))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                          placeholder="Ex: Google, Nubank"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-700">Empresas Anteriores</label>
-                        <input 
-                          type="text" 
-                          value={filters.pastCompany}
-                          onChange={e => setFilters(prev => ({ ...prev, pastCompany: e.target.value }))}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                          placeholder="Ex: Ita\u00fa, Ambev"
-                        />
-                      </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-sm font-semibold text-slate-800">Competências obrigatórias (AND)</label>
+                      <p className="text-xs text-slate-400">Candidate deve ter TODAS essas habilidades</p>
+                      <input
+                        type="text"
+                        value={filters.requiredKeywords || ""}
+                        onChange={e => setFilters(prev => ({ ...prev, requiredKeywords: e.target.value }))}
+                        placeholder="Ex: React, TypeScript, Node.js"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
+                      />
                     </div>
-
-                    <div className="flex flex-col gap-1.5 pt-2">
-                      <label className="text-xs font-bold text-slate-700">Excluir Empresas</label>
-                      <input 
-                        type="text" 
-                        value={filters.excludeCompany}
-                        onChange={e => setFilters(prev => ({ ...prev, excludeCompany: e.target.value }))}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                        placeholder="Ex: Concorr\u00eancia Ltda"
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-sm font-semibold text-slate-800">Competências desejáveis (OR)</label>
+                      <p className="text-xs text-slate-400">Candidate deve ter pelo menos uma dessas</p>
+                      <input
+                        type="text"
+                        value={filters.optionalKeywords || ""}
+                        onChange={e => setFilters(prev => ({ ...prev, optionalKeywords: e.target.value }))}
+                        placeholder="Ex: Docker, AWS, GraphQL"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-sm font-semibold text-slate-800">Excluir competências (NOT)</label>
+                      <p className="text-xs text-slate-400">Candidate NÃO deve ter essas habilidades</p>
+                      <input
+                        type="text"
+                        value={filters.excludeKeywords || ""}
+                        onChange={e => setFilters(prev => ({ ...prev, excludeKeywords: e.target.value }))}
+                        placeholder="Ex: PHP, Delphi"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
                       />
                     </div>
                   </>
                 )}
 
-                {activeFilterCategory === "Setor" && (
+                {/* ── Empresas ── */}
+                {activeFilterCategory === "empresas" && (
+                  <>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-sm font-semibold text-slate-800">Cargo Atual</label>
+                      <input
+                        type="text"
+                        value={filters.currentJobTitles || ""}
+                        onChange={e => setFilters(prev => ({ ...prev, currentJobTitles: e.target.value }))}
+                        placeholder="Ex: Desenvolvedor Sênior, Tech Lead"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-sm font-semibold text-slate-800">Empresa Atual</label>
+                      <input
+                        type="text"
+                        value={filters.currentCompany || ""}
+                        onChange={e => setFilters(prev => ({ ...prev, currentCompany: e.target.value }))}
+                        placeholder="Ex: Google, Meta, iFood"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-sm font-semibold text-slate-800">Passou por (Empresas Anteriores)</label>
+                      <input
+                        type="text"
+                        value={filters.pastCompany || ""}
+                        onChange={e => setFilters(prev => ({ ...prev, pastCompany: e.target.value }))}
+                        placeholder="Ex: Nubank, Totvs, Ambev"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-sm font-semibold text-slate-800">Excluir Empresas</label>
+                      <input
+                        type="text"
+                        value={filters.excludeCompany || ""}
+                        onChange={e => setFilters(prev => ({ ...prev, excludeCompany: e.target.value }))}
+                        placeholder="Ex: Concorrente Ltda"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* ── Setor de Atuação ── */}
+                {activeFilterCategory === "setor" && (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-700">Setores de Atua\u00e7\u00e3o</label>
-                    <input 
-                      type="text" 
-                      value={filters.industries}
+                    <label className="block text-sm font-semibold text-slate-800">Setores de Atuação</label>
+                    <p className="text-xs text-slate-400">Separe múltiplos setores por vírgula</p>
+                    <input
+                      type="text"
+                      value={filters.industries || ""}
                       onChange={e => setFilters(prev => ({ ...prev, industries: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                      placeholder="Ex: Tecnologia, Finan\u00e7as, Recursos Humanos"
+                      placeholder="Ex: Tecnologia, Finanças, Saúde"
+                      className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#7C3AED]/30 outline-none bg-slate-50 focus:bg-white"
                     />
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {["Tecnologia", "Finanças", "Saúde", "Varejo", "Indústria", "Educação", "Logística", "Consultoria"].map(setor => (
+                        <button
+                          key={setor}
+                          onClick={() => setFilters(prev => ({ ...prev, industries: prev.industries ? `${prev.industries}, ${setor}` : setor }))}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-[#7C3AED]/10 hover:text-[#7C3AED] text-slate-600 rounded-full text-xs font-medium transition-colors border border-slate-200"
+                        >
+                          + {setor}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {activeFilterCategory === "Faturamento & Financiamento" && (
+                {/* ── Métricas & Financiamento ── */}
+                {activeFilterCategory === "metricas" && (
                   <>
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-700">Faixa de Faturamento Anual</label>
-                      <select 
-                        value={filters.revenue}
+                      <label className="block text-sm font-semibold text-slate-800">Faixa de Faturamento Anual</label>
+                      <select
+                        value={filters.revenue || "any"}
                         onChange={e => setFilters(prev => ({ ...prev, revenue: e.target.value }))}
-                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white cursor-pointer w-64"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:bg-white outline-none cursor-pointer"
                       >
                         <option value="any">Qualquer faturamento</option>
-                        <option value="lt5m">At\u00e9 R$ 5M</option>
-                        <option value="5m50m">R$ 5M - R$ 50M</option>
-                        <option value="50m500m">R$ 50M - R$ 500M</option>
-                        <option value="gt500m">Acima de R$ 500M</option>
+                        <option value="lt5m">Até R$ 5 milhões</option>
+                        <option value="5m50m">R$ 5M – R$ 50 milhões</option>
+                        <option value="50m500m">R$ 50M – R$ 500 milhões</option>
+                        <option value="gt500m">Acima de R$ 500 milhões</option>
                       </select>
                     </div>
 
-                    <div className="space-y-2 pt-2">
-                      <span className="text-xs font-bold text-slate-700 block">Rodada de Investimento</span>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-800 mb-3">Rodada de Investimento</label>
                       <div className="grid grid-cols-2 gap-2">
-                        {Object.keys(filters.fundingRound || {}).map((round) => (
-                          <label key={round} className="flex items-center gap-2 cursor-pointer text-xs text-slate-600">
-                            <input 
-                              type="checkbox" 
-                              checked={(filters.fundingRound as any)[round]} 
-                              onChange={e => setFilters(prev => ({ ...prev, fundingRound: { ...(prev.fundingRound || {}), [round]: e.target.checked } }))}
-                              className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" 
-                            />
-                            <span className="uppercase">{round}</span>
+                        {(["Bootstrapped", "Seed", "Série A", "Série B", "Série C+", "IPO / Listada"] as const).map(rodada => (
+                          <label key={rodada} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 hover:border-[#7C3AED]/30 transition-colors">
+                            <input type="checkbox" className="rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED]" />
+                            {rodada}
                           </label>
                         ))}
                       </div>
@@ -1369,99 +1357,84 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   </>
                 )}
 
-                {activeFilterCategory === "Compet\u00eancias ou Palavras-chave" && (
+                {/* ── Sinais de Mercado ── */}
+                {activeFilterCategory === "sinais" && (
                   <>
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-700">Palavras-chave obrigat\u00f3rias (AND)</label>
-                      <input 
-                        type="text" 
-                        value={filters.requiredKeywords}
-                        onChange={e => setFilters(prev => ({ ...prev, requiredKeywords: e.target.value }))}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                        placeholder="Ex: Photoshop, Sketch"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-700">Palavras-chave opcionais (OR)</label>
-                      <input 
-                        type="text" 
-                        value={filters.optionalKeywords}
-                        onChange={e => setFilters(prev => ({ ...prev, optionalKeywords: e.target.value }))}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                        placeholder="Ex: Figma, Illustrator"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-700">Excluir palavras-chave (NOT)</label>
-                      <input 
-                        type="text" 
-                        value={filters.excludeKeywords}
-                        onChange={e => setFilters(prev => ({ ...prev, excludeKeywords: e.target.value }))}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white focus:border-slate-300"
-                        placeholder="Ex: CorelDraw"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {activeFilterCategory === "Filtros de Poder" && (
-                  <>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-700">Tempo no Cargo Atual</label>
-                      <select 
-                        value={filters.timeInRole}
+                      <label className="block text-sm font-semibold text-slate-800">Tempo Mínimo no Cargo Atual</label>
+                      <select
+                        value={filters.timeInRole || "any"}
                         onChange={e => setFilters(prev => ({ ...prev, timeInRole: e.target.value }))}
-                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white cursor-pointer w-64"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:bg-white outline-none cursor-pointer w-64"
                       >
                         <option value="any">Qualquer tempo</option>
+                        <option value="gt6m">Mais de 6 meses</option>
                         <option value="gt1y">Mais de 1 ano</option>
                         <option value="gt2y">Mais de 2 anos</option>
                         <option value="gt3y">Mais de 3 anos</option>
                       </select>
                     </div>
+
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-700">Crescimento Anual da Empresa</label>
-                      <select 
-                        value={filters.companyGrowth}
+                      <label className="block text-sm font-semibold text-slate-800">Crescimento Anual da Empresa</label>
+                      <select
+                        value={filters.companyGrowth || "any"}
                         onChange={e => setFilters(prev => ({ ...prev, companyGrowth: e.target.value }))}
-                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white cursor-pointer w-64"
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:bg-white outline-none cursor-pointer w-64"
                       >
                         <option value="any">Qualquer crescimento</option>
-                        <option value="gt10">Mais de 10% a.a.</option>
-                        <option value="gt30">Mais de 30% a.a.</option>
+                        <option value="gt10">Acima de 10% a.a.</option>
+                        <option value="gt30">Acima de 30% a.a.</option>
+                        <option value="gt50">Acima de 50% a.a.</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="block text-sm font-semibold text-slate-800">Propensão à Mudança</label>
+                      <select
+                        value={filters.likelyToSwitch || "any"}
+                        onChange={e => setFilters(prev => ({ ...prev, likelyToSwitch: e.target.value }))}
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:bg-white outline-none cursor-pointer w-64"
+                      >
+                        <option value="any">Qualquer propensão</option>
+                        <option value="high">Alta — Open to Work ativo</option>
+                        <option value="medium">Média — Possivelmente receptivo</option>
+                        <option value="low">Baixa — Estável na empresa atual</option>
                       </select>
                     </div>
                   </>
                 )}
 
-                {activeFilterCategory === "Propens\u00e3o \u00e0 Mudan\u00e7a" && (
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-700">Propens\u00e3o \u00e0 mudan\u00e7a</label>
-                    <select 
-                      value={filters.likelyToSwitch}
-                      onChange={e => setFilters(prev => ({ ...prev, likelyToSwitch: e.target.value }))}
-                      className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:bg-white cursor-pointer w-64"
-                    >
-                      <option value="any">Qualquer propens\u00e3o</option>
-                      <option value="high">Alta (Open to Work ativo)</option>
-                      <option value="medium">M\u00e9dia</option>
-                      <option value="low">Baixa</option>
-                    </select>
-                  </div>
-                )}
               </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 flex-shrink-0">
+              <button
+                onClick={() => setIsFiltersOpen(false)}
+                className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setIsFiltersOpen(false); handleRunSearch(); }}
+                className="px-5 py-2 bg-[#7C3AED] text-white rounded-lg text-sm font-semibold shadow-md shadow-[#7C3AED]/20 hover:opacity-95 transition-all flex items-center gap-2"
+              >
+                Salvar e Aplicar
+                <ArrowUp size={14} className="rotate-45" />
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 3. EDIT QUERY MODAL (Image 4) */}
+      {/* 3. EDIT QUERY MODAL */}
       {isEditQueryOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-[580px] border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
-              <h3 className="font-bold text-slate-900 text-base">Edit Query</h3>
+              <h3 className="font-bold text-slate-900 text-base">Editar Busca</h3>
               <button onClick={() => setIsEditQueryOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={16} />
               </button>
@@ -1483,35 +1456,35 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                 />
               </div>
 
-              {/* Autodetected filters card */}
+              {/* Filtros detectados */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm">
                 <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-[10px] font-bold">I</div>
-                  <span className="text-[11px] text-slate-500 font-medium">I've set these <span className="text-slate-800 font-bold">filters</span> based on what you're looking for (3 matches)</span>
+                  <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-[10px] font-bold">IA</div>
+                  <span className="text-[11px] text-slate-500 font-medium">Configurei estes <span className="text-slate-800 font-bold">filtros</span> com base no seu perfil buscado ({profiles.length} resultados)</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 pl-7 text-[10.5px] font-semibold">
-                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">Designer +1</span>
-                  <span className="text-slate-400 mt-0.5 font-normal">in</span>
-                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">Parana</span>
-                  <span className="text-slate-400 mt-0.5 font-normal">with</span>
-                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">5+ years</span>
-                  <span className="text-slate-400 mt-0.5 font-normal">of experience</span>
-                  <button onClick={() => { setIsEditQueryOpen(false); setIsFiltersOpen(true); }} className="text-[#7C3AED] hover:underline font-bold ml-1 text-xs">Edit filters</button>
+                  {filters.currentJobTitles && <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">{filters.currentJobTitles}</span>}
+                  {filters.location && <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">{filters.location}</span>}
+                  {filters.minYears && <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">{filters.minYears}+ anos</span>}
+                  <button onClick={() => { setIsEditQueryOpen(false); setIsFiltersOpen(true); }} className="text-[#7C3AED] hover:underline font-bold ml-1 text-xs">Editar filtros</button>
                 </div>
               </div>
 
-              {/* Autodetected criteria card */}
-              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs">✨</span>
-                  <span className="text-[11px] text-slate-500 font-medium">Add these <span className="text-slate-800 font-bold">criteria</span> to rank your matches</span>
+              {/* Critérios detectados */}
+              {criteria.length > 0 && (
+                <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs">✨</span>
+                    <span className="text-[11px] text-slate-500 font-medium">Adicione estes <span className="text-slate-800 font-bold">critérios</span> para ranquear seus resultados</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pl-7 text-[10.5px] font-semibold">
+                    {criteria.map(c => (
+                      <span key={c.id} className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">{c.nome.split(" ").slice(0, 3).join(" ")}...</span>
+                    ))}
+                    <button onClick={() => { setIsEditQueryOpen(false); setIsCriteriaOpen(true); }} className="text-[#7C3AED] hover:underline font-bold ml-1 text-xs">Editar critérios</button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 pl-7 text-[10.5px] font-semibold">
-                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">Photoshop</span>
-                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">Security</span>
-                  <button onClick={() => { setIsEditQueryOpen(false); setIsCriteriaOpen(true); }} className="text-[#7C3AED] hover:underline font-bold ml-1 text-xs">Edit criteria</button>
-                </div>
-              </div>
+              )}
 
             </div>
 
@@ -1521,7 +1494,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                 onClick={handleRunSearch}
                 className="bg-[#7C3AED] hover:opacity-95 text-white font-bold text-xs px-6 py-2.5 rounded-lg shadow-sm"
               >
-                Run
+                Executar Busca
               </button>
             </div>
           </div>
