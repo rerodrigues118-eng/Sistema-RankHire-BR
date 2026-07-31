@@ -393,7 +393,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
       <div className="h-12 border-b border-slate-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
         {/* Breadcrumbs */}
         <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-medium">
-          <span>{activeJob?.company || "Empresa"}</span>
+          <span>{activeJob?.department || "RH"}</span>
           <ChevronRight size={14} className="text-slate-300" />
           <span>Buscas</span>
           <ChevronRight size={14} className="text-slate-300" />
