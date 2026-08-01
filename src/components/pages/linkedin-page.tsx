@@ -10,7 +10,7 @@ import {
   ChevronLeft, ChevronRight, Lock, RotateCcw, Share2, UploadCloud,
   Mail, Phone, CircleDollarSign, Calendar, Building2, MapPin,
   ThumbsUp, ThumbsDown, Database, Zap, Sparkle, Link as LinkIcon,
-  MoreVertical, UserPlus, Download, Flag
+  MoreVertical, UserPlus, Download, Flag, User, ArrowRight
 } from "lucide-react";
 
 interface LinkedinPageProps {
@@ -261,6 +261,14 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   // Card expansion state
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
+  // Contador de buscas gratuitas e modal de upgrade
+  const [freeSearchesLeft, setFreeSearchesLeft] = useState(3);
+  const maxFreeSearches = 3;
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<'Monthly' | 'Yearly'>('Yearly');
+  const [growthSeats, setGrowthSeats] = useState(1);
+  const searchProgressPercentage = (freeSearchesLeft / maxFreeSearches) * 100;
+
   useEffect(() => {
     if (isShareOpen && !shareLink) {
       (async () => {
@@ -421,6 +429,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
       setIsSearching(false);
       setHasSearched(true);
       setSearchStep('idle');
+      // Decrementa contador de buscas gratuitas
+      setFreeSearchesLeft(prev => Math.max(0, prev - 1));
     }
   };
 
@@ -913,26 +923,26 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   )}
                 </div>
 
-                {/* ── Upgrade Limits Banner (Fidelidade Visual Base) ── */}
-                <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-center flex-shrink-0">
-                  <div className="max-w-md w-full bg-slate-50/50 border border-slate-200/60 rounded-xl px-5 py-3 flex items-center justify-between gap-6 shadow-sm">
-                    <div className="flex-1 flex flex-col">
-                      <span className="text-xs font-semibold text-slate-700 mb-1">
-                        3 buscas gratuitas restantes
-                      </span>
-                      {/* Custom progress bar */}
-                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-[#7C3AED] h-full rounded-full" style={{ width: "30%" }}></div>
-                      </div>
+                {/* ── Widget de Buscas Gratuitas Funcional ── */}
+                <div className="sticky bottom-0 bg-white border-t border-slate-200 px-5 py-3 flex items-center justify-between gap-4 flex-shrink-0">
+                  <div className="flex-1 space-y-1.5">
+                    <span className="text-xs font-semibold text-slate-800">
+                      {freeSearchesLeft === 0 ? 'Nenhuma busca gratuita restante' : `Resta ${freeSearchesLeft} busca${freeSearchesLeft > 1 ? 's' : ''} gratuita${freeSearchesLeft > 1 ? 's' : ''}`}
+                    </span>
+                    <div className="w-full max-w-[200px] h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#7C3AED] rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${searchProgressPercentage}%` }}
+                      />
                     </div>
-                    <button 
-                      onClick={() => setIsPaywallOpen(true)}
-                      className="bg-[#7C3AED] text-white hover:opacity-95 text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1 shadow-sm transition-all"
-                    >
-                      <span>Fazer Upgrade</span>
-                      <ArrowUp size={12} className="rotate-45" />
-                    </button>
                   </div>
+                  <button
+                    onClick={() => setIsUpgradeModalOpen(true)}
+                    className="bg-[#7C3AED] hover:bg-[#6d28d9] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all whitespace-nowrap"
+                  >
+                    Fazer upgrade para continuar
+                    <ArrowRight size={13} />
+                  </button>
                 </div>
 
               </div>
@@ -1932,6 +1942,151 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                 Cancelar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ── MODAL DE UPGRADE COM BACKDROP BLUR ── */}
+      {isUpgradeModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-300">
+
+            {/* Botão Fechar */}
+            <button
+              onClick={() => setIsUpgradeModalOpen(false)}
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Cabeçalho */}
+            <div className="px-8 pt-7 pb-4 flex flex-col items-center justify-center border-b border-slate-100">
+              <div className="w-full flex items-center gap-2 text-sm font-bold text-slate-700 mb-5">
+                <span className="text-orange-500 text-lg leading-none">♔</span>
+                Upgrade para desbloquear mais buscas
+              </div>
+              {/* Toggle Mensal / Anual */}
+              <div className="flex p-1 bg-slate-100 rounded-full text-sm font-semibold border border-slate-200">
+                <button
+                  onClick={() => setBillingCycle('Monthly')}
+                  className={`px-6 py-2 rounded-full transition-all ${billingCycle === 'Monthly' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                >
+                  Mensal
+                </button>
+                <button
+                  onClick={() => setBillingCycle('Yearly')}
+                  className={`px-6 py-2 rounded-full transition-all flex items-center gap-2 ${billingCycle === 'Yearly' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                >
+                  Anual <span className="text-emerald-600 text-xs font-bold tracking-wide">• Economize 15%</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Cards dos Planos */}
+            <div className="p-8 pt-6 grid grid-cols-3 gap-5">
+
+              {/* PLANO STARTER */}
+              <div className="border border-slate-200 rounded-3xl p-6 flex flex-col bg-white">
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Starter</h3>
+                <p className="text-sm text-slate-500 mb-6 min-h-[40px]">Plano self-serve com buscas ilimitadas, ideal para uso individual.</p>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-4xl font-extrabold text-slate-900">{billingCycle === 'Yearly' ? 'R$499' : 'R$599'}</span>
+                  <div className="flex flex-col text-xs text-slate-500 font-medium">
+                    <span>/ mês</span>
+                    <span>{billingCycle === 'Yearly' ? '(cobrado anualmente)' : '(cobrado mensalmente)'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600 mb-6 font-medium">
+                  <User className="w-4 h-4 text-slate-400" /> Inclui 1 assento
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-slate-900 mb-4">Tudo do plano Gratuito, e mais:</p>
+                  <ul className="space-y-3 text-sm text-slate-700 font-medium">
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Perfis e buscas ilimitados</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 500 créditos de contato (e-mail + telefone)</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 500 créditos de exportação</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Outreach por e-mail + templates IA</li>
+                  </ul>
+                </div>
+                <button className="w-full mt-8 py-3.5 rounded-xl border border-slate-200 text-slate-900 font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2">
+                  Assinar Starter <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* PLANO GROWTH */}
+              <div className="border border-slate-200 rounded-3xl p-6 flex flex-col bg-white">
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Growth</h3>
+                <p className="text-sm text-slate-500 mb-6 min-h-[40px]">Colaborativo, ideal para pequenas equipes, agências e startups.</p>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-4xl font-extrabold text-slate-900">{billingCycle === 'Yearly' ? 'R$899' : 'R$1.099'}</span>
+                  <div className="flex flex-col text-xs text-slate-500 font-medium">
+                    <span>/ mês</span>
+                    <span>{billingCycle === 'Yearly' ? '(cobrado anualmente)' : '(cobrado mensalmente)'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600 mb-6 font-medium">
+                  <User className="w-4 h-4 text-slate-400" /> Até 5 assentos (pago por assento)
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-slate-900 mb-4">Tudo do Starter, e mais:</p>
+                  <ul className="space-y-3 text-sm text-slate-700 font-medium">
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Insights de talentos</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 1.500 créditos de contato (e-mail + telefone)</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 1.500 créditos de exportação</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 3 caixas de entrada por usuário</li>
+                  </ul>
+                </div>
+                <div className="mt-6 mb-4">
+                  <p className="text-xs text-slate-500 mb-2 font-medium">Número de assentos</p>
+                  <div className="flex items-center justify-between border border-slate-200 rounded-lg p-1">
+                    <button onClick={() => setGrowthSeats(Math.max(1, growthSeats - 1))} className="px-3 py-1 hover:bg-slate-50 rounded text-slate-500 font-bold">−</button>
+                    <span className="font-semibold text-slate-900">{growthSeats}</span>
+                    <button onClick={() => setGrowthSeats(Math.min(5, growthSeats + 1))} className="px-3 py-1 hover:bg-slate-50 rounded text-slate-500 font-bold">+</button>
+                  </div>
+                </div>
+                <button className="w-full py-3.5 rounded-xl border border-slate-200 text-slate-900 font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2">
+                  Assinar Growth <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* PLANO BUSINESS (Em Destaque) */}
+              <div className="border border-purple-100 bg-purple-50/40 rounded-3xl p-6 flex flex-col relative shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-2xl font-bold text-slate-900">Business</h3>
+                  <span className="bg-[#7C3AED] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">Para você</span>
+                </div>
+                <p className="text-sm text-slate-500 mb-6 min-h-[40px]">Plano completo para grandes empresas ou agências de recrutamento.</p>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-3xl font-extrabold text-slate-900">Fale com a equipe</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600 mb-6 font-medium">
+                  <User className="w-4 h-4 text-slate-400" /> Assentos ilimitados
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-slate-900 mb-4">Tudo do Growth, e mais:</p>
+                  <ul className="space-y-3 text-sm text-slate-700 font-medium">
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Análises de uso</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Assentos para gestores de contratação</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Sourcing por rede</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Integração com ATS ou CRM</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Créditos de contato ilimitados</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Suporte prioritário (e-mail, chat, Slack)</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Customer Success Manager dedicado</li>
+                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 6 caixas de entrada por usuário</li>
+                  </ul>
+                </div>
+                <button className="w-full mt-8 py-3.5 rounded-xl bg-[#7C3AED] text-white font-bold hover:bg-[#6d28d9] transition-colors flex justify-center items-center gap-2 shadow-md">
+                  Solicitar Demo <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
+            </div>
+
+            {/* Rodapé */}
+            <div className="px-8 py-5 text-center text-sm text-slate-600 font-medium border-t border-slate-100">
+              Não sabe qual plano escolher?{' '}
+              <a href="mailto:contato@rankhire.com.br" className="text-[#7C3AED] font-bold hover:underline">Fale com o time de vendas</a>
+            </div>
+
           </div>
         </div>
       )}
