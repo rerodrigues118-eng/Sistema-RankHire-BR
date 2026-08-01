@@ -9,7 +9,8 @@ import {
   ArrowUp, PlayCircle, Eye, EyeOff, LayoutGrid, List, FileText,
   ChevronLeft, ChevronRight, Lock, RotateCcw, Share2, UploadCloud,
   Mail, Phone, CircleDollarSign, Calendar, Building2, MapPin,
-  ThumbsUp, ThumbsDown, Database, Zap, Sparkle, Link as LinkIcon
+  ThumbsUp, ThumbsDown, Database, Zap, Sparkle, Link as LinkIcon,
+  MoreVertical, UserPlus, Download, Flag
 } from "lucide-react";
 
 interface LinkedinPageProps {
@@ -253,6 +254,9 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
   // Candidate drawer active tab
   const [drawerTab, setDrawerTab] = useState<'geral' | 'experiencia' | 'formacao' | 'competencias' | 'mais'>('geral');
+
+  // Dropdown menu state in candidate drawer
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isShareOpen && !shareLink) {
@@ -509,7 +513,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
       <div className="flex-1 flex overflow-hidden w-full relative">
         
         {/* ── Left Panel: Main Workspace Content ── */}
-        <div className={`transition-all duration-300 flex flex-col h-full overflow-hidden ${selectedProfile ? 'w-[45%]' : 'w-full'}`}>
+        <div className={`transition-all duration-300 flex flex-col h-full overflow-hidden ${selectedProfile ? 'w-[38%] border-r border-slate-200' : 'w-full'}`}>
           <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
             
             {/* ── Search Bar Area (Se contrai para o topo) ── */}
@@ -896,7 +900,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         </div>
 
         {/* ── Right Panel: Split-Screen Candidate Detail Drawer ── */}
-        <div className={`transition-all duration-300 h-full overflow-hidden flex ${selectedProfile ? 'w-[55%] border-l border-slate-200 bg-white' : 'w-0'}`}>
+        <div className={`transition-all duration-300 h-full overflow-hidden flex ${selectedProfile ? 'w-[62%] bg-white flex flex-col shadow-xl animate-in slide-in-from-right duration-200' : 'w-0'}`}>
           {selectedProfile && (
             <div className="flex-1 flex flex-col h-full overflow-hidden relative">
               
@@ -936,6 +940,57 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   >
                     Entrar em Contato
                   </button>
+
+                  {/* BOTÃO DOS TRÊS PONTINHOS COM MENU FUNCIONAL */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => setMenuOpenId(menuOpenId === 'profile' ? null : 'profile')}
+                      className="p-2 hover:bg-slate-150 rounded-lg text-slate-500 hover:text-slate-700 transition-all flex items-center justify-center"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+
+                    {menuOpenId === 'profile' && (
+                      <div className="absolute right-0 top-10 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95">
+                        <button 
+                          onClick={() => { handleShortlist(selectedProfile); setMenuOpenId(null); }}
+                          className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
+                        >
+                          <UserPlus size={13} className="text-slate-500" />
+                          <span>Salvar Candidato</span>
+                        </button>
+                        <button 
+                          onClick={() => { alert("Buscando perfis semelhantes..."); setMenuOpenId(null); }}
+                          className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
+                        >
+                          <Sparkles size={13} className="text-purple-600" />
+                          <span>Buscar Perfis Semelhantes</span>
+                        </button>
+                        <button 
+                          onClick={() => { alert("Gerando resumo completo..."); setMenuOpenId(null); }}
+                          className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium border-t border-slate-100"
+                        >
+                          <FileText size={13} className="text-slate-500" />
+                          <span>Resumir Perfil Completo</span>
+                        </button>
+                        <button 
+                          onClick={() => { alert("Exportando perfil..."); setMenuOpenId(null); }}
+                          className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
+                        >
+                          <Download size={13} className="text-slate-500" />
+                          <span>Exportar Perfil</span>
+                        </button>
+                        <button 
+                          onClick={() => { alert("Perfil denunciado."); setMenuOpenId(null); }}
+                          className="w-full px-4 py-2.5 text-left text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium border-t border-slate-100"
+                        >
+                          <Flag size={13} />
+                          <span>Denunciar Perfil</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <button 
                     onClick={() => setSelectedProfileIndex(null)}
                     className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors ml-1"

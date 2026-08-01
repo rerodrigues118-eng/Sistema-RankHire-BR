@@ -1332,8 +1332,51 @@ export default function AgenteIAPage() {
                 ))}
               </div>
               <div className="mt-3 flex justify-between text-[11px] text-slate-400">
-                <span>30 dias atras</span>
+                <span>30 dias atrás</span>
                 <span>Hoje</span>
+              </div>
+            </div>
+
+            {/* Indicadores de Inteligência Operacional */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-slate-400">Taxa de Conversão Geral</span>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-slate-900">8.3%</span>
+                  <span className="text-xs text-emerald-500 font-semibold">↑ 1.2% esta semana</span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">Porcentagem de candidatos analisados que foram contratados ou aprovados na shortlist.</p>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-slate-400">Tempo Médio de Triagem</span>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-slate-900">1.2s</span>
+                  <span className="text-xs text-slate-400 font-medium">por currículo</span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">Tempo de resposta da inteligência artificial para leitura, extração e pontuação do perfil.</p>
+              </div>
+            </div>
+
+            {/* Log de Atividades Recentes do Agente */}
+            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-[16px] font-semibold text-slate-900 mb-4">Log de Atividades Recentes do Agente</h3>
+              <div className="space-y-3.5">
+                {[
+                  { text: "Currículo ranqueado para Desenvolvedor Frontend", desc: "João Silva · Score: 8.7", time: "Há 5 min" },
+                  { text: "Varredura automática concluída na base de talentos", desc: "15 novos perfis analisados e filtrados", time: "Há 25 min" },
+                  { text: "Alerta de candidato com score alto enviado via Brevo", desc: "Destinatário: rh@empresa.com", time: "Há 1 hora" },
+                  { text: "Calibração de critérios do agente concluída", desc: "8 perfis calibrados pelo recrutador", time: "Há 2 horas" }
+                ].map((act, i) => (
+                  <div key={i} className="flex items-start justify-between text-xs pb-3 border-b border-slate-100 last:border-0 last:pb-0">
+                    <div className="space-y-0.5">
+                      <p className="font-semibold text-slate-800">{act.text}</p>
+                      <p className="text-slate-500">{act.desc}</p>
+                    </div>
+                    <span className="text-[10px] text-slate-400 whitespace-nowrap">{act.time}</span>
+                  </div>
+                ))
+              }
               </div>
             </div>
           </div>
