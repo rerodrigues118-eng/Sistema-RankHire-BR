@@ -10,7 +10,7 @@ import {
   ChevronLeft, ChevronRight, Lock, RotateCcw, Share2, UploadCloud,
   Mail, Phone, CircleDollarSign, Calendar, Building2, MapPin,
   ThumbsUp, ThumbsDown, Database, Zap, Sparkle, Link as LinkIcon,
-  MoreVertical, UserPlus, Download, Flag, User, ArrowRight
+  MoreVertical, UserPlus, Download, Flag, User, ArrowRight, Bookmark
 } from "lucide-react";
 
 interface LinkedinPageProps {
@@ -273,6 +273,64 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   const [billingCycle, setBillingCycle] = useState<'Monthly' | 'Yearly'>('Yearly');
   const [growthSeats, setGrowthSeats] = useState(1);
   const searchProgressPercentage = (freeSearchesLeft / maxFreeSearches) * 100;
+
+  // Estados para interatividade de botões e ações
+  const [hiddenProfileIds, setHiddenProfileIds] = useState<Set<string>>(new Set());
+  const [candidateStatuses, setCandidateStatuses] = useState<Record<string, string>>({});
+  const [candidateTags, setCandidateTags] = useState<Record<string, string[]>>({});
+  const [openCardDropdownId, setOpenCardDropdownId] = useState<string | null>(null);
+  const [openShortlistDropdown, setOpenShortlistDropdown] = useState(false);
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [newTagInput, setNewTagInput] = useState("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleHideProfile = (id: string, name: string) => {
+    setHiddenProfileIds(prev => new Set(prev).add(id));
+    showToast(`Candidato ${name} foi ocultado da lista.`);
+  };
+
+  const handleExportProfile = (p: LinkedinProfile) => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(p, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `perfil_${p.name.replace(/\s+/g, '_')}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    showToast(`Perfil de ${p.name} exportado com sucesso!`);
+  };
+
+  const handleSimilarSearch = (p: LinkedinProfile) => {
+    const term = p.headline || p.company || p.name;
+    setQueryText(term);
+    setPhase('searching');
+    handleConfirmSearch();
+    showToast(`Buscando perfis semelhantes a "${term}"...`);
+  };
+
+  const handleAddTag = (candidateId: string) => {
+    if (!newTagInput.trim()) return;
+    setCandidateTags(prev => ({
+      ...prev,
+      [candidateId]: [...(prev[candidateId] || []), newTagInput.trim()]
+    }));
+    setNewTagInput("");
+    setIsAddingTag(false);
+    showToast("Nova tag adicionada!");
+  };
+
+  const handleRemoveTag = (candidateId: string, tagToRemove: string) => {
+    setCandidateTags(prev => ({
+      ...prev,
+      [candidateId]: (prev[candidateId] || []).filter(t => t !== tagToRemove)
+    }));
+    showToast(`Tag "${tagToRemove}" removida.`);
+  };
 
   useEffect(() => {
     if (isShareOpen && !shareLink) {
@@ -789,8 +847,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   </div>
                 )}
 
-                {/* Toolbar — só aparece na fase results */}
-                {phase === 'results' && (
+                {/* Toolbar — só aparece na fase results quando a aba Resultados está selecionada */}
+                {phase === 'results' && activeTab === 'results' && (
                 <div className="px-4 py-2 border-b border-slate-200 bg-white flex items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-3">
                     <input 
@@ -822,7 +880,10 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       </button>
                     </div>
 
-                    <button className="flex items-center gap-1 border border-slate-200 bg-white px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
+                    <button 
+                      onClick={() => setIsCriteriaOpen(true)}
+                      className="flex items-center gap-1 border border-slate-200 bg-white px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
                       <FileText size={12} />
                       <span>Revisar</span>
                     </button>
@@ -858,8 +919,9 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {profiles.map((p, idx) => {
+                        {profiles.filter(p => !hiddenProfileIds.has(p.id)).map((p, idx) => {
                           const isSelected = selectedProfileIndex === idx;
+                          const currentStatus = candidateStatuses[p.id] || "Sem status";
                           return (
                             <tr 
                               key={p.id}
@@ -913,9 +975,10 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   ) : (
                     // Visão de Lista Flat Minimalista (Juice.box Style)
                     <div className="divide-y divide-slate-100">
-                      {profiles.map((p, idx) => {
+                      {profiles.filter(p => !hiddenProfileIds.has(p.id)).map((p, idx) => {
                         const isSelected = selectedProfileIndex === idx;
                         const isImported = selectedRowIds.has(p.id);
+                        const isDropdownOpen = openCardDropdownId === p.id;
                         return (
                           <div
                             key={p.id}
@@ -950,12 +1013,15 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                                 </div>
                               </div>
 
-                              {/* Actions: Hide + Shortlist */}
-                              <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                                <button className="text-[11px] text-slate-500 hover:text-slate-800 font-medium transition-colors px-1">
+                              {/* Actions: Hide + Shortlist Dropdown */}
+                              <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity relative" onClick={e => e.stopPropagation()}>
+                                <button
+                                  onClick={() => handleHideProfile(p.id, p.name)}
+                                  className="text-[11px] text-slate-500 hover:text-rose-600 font-medium transition-colors px-1"
+                                >
                                   Ocultar
                                 </button>
-                                <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden shadow-xs">
+                                <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden shadow-xs relative">
                                   <button
                                     onClick={() => handleShortlist(p)}
                                     className={`flex items-center gap-1 text-[11px] font-semibold px-3 py-1.5 transition-colors ${
@@ -968,10 +1034,44 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                                     {isImported ? "Shortlisted" : "Shortlist"}
                                   </button>
                                   <div className="w-px h-5 bg-slate-200" />
-                                  <button className="px-1.5 py-1.5 bg-white hover:bg-slate-50 transition-colors">
+                                  <button
+                                    onClick={() => setOpenCardDropdownId(isDropdownOpen ? null : p.id)}
+                                    className="px-1.5 py-1.5 bg-white hover:bg-slate-50 transition-colors"
+                                  >
                                     <ChevronDown size={12} className="text-slate-400" />
                                   </button>
                                 </div>
+
+                                {/* Menu Dropdown do Card */}
+                                {isDropdownOpen && (
+                                  <div className="absolute right-0 top-9 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95">
+                                    <button
+                                      onClick={() => { handleShortlist(p); setOpenCardDropdownId(null); }}
+                                      className="w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-purple-50 flex items-center gap-2"
+                                    >
+                                      <Bookmark size={12} className="text-[#7C3AED]" />
+                                      <span>{isImported ? 'Remover da Shortlist' : 'Adicionar à Shortlist'}</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setCandidateStatuses(prev => ({ ...prev, [p.id]: 'Em Análise' }));
+                                        showToast(`Status de ${p.name} alterado para "Em Análise"`);
+                                        setOpenCardDropdownId(null);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-purple-50 flex items-center gap-2"
+                                    >
+                                      <UserPlus size={12} className="text-slate-400" />
+                                      <span>Mover para Em Análise</span>
+                                    </button>
+                                    <button
+                                      onClick={() => { handleExportProfile(p); setOpenCardDropdownId(null); }}
+                                      className="w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-purple-50 flex items-center gap-2 border-t border-slate-100"
+                                    >
+                                      <Download size={12} className="text-slate-400" />
+                                      <span>Exportar perfil (JSON)</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -1069,6 +1169,343 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                 </div>
                 </>)}
 
+                {/* ── ABA ANÁLISES: DASHBOARD COMPLETO DE TALENT INSIGHTS (REFERÊNCIA JUICE.BOX) ── */}
+                {phase === 'results' && activeTab === 'insights' && (
+                  <div className="flex-1 overflow-y-auto bg-slate-50/60 p-6 space-y-6 animate-in fade-in duration-300">
+                    
+                    {/* Top Bar: Title & Export Insights */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-[#7C3AED]" />
+                          Talent Insights ({profiles.length > 0 ? `${profiles.length * 14}k` : '43k'})
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-0.5">Visão analítica profunda da base de candidatos encontrada</p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          showToast("Relatório de Talent Insights exportado!");
+                          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ query: queryText, totalMatches: "43k", avgExperience: 10.9, avgTenure: 2.1 }, null, 2));
+                          const dlAnchor = document.createElement('a');
+                          dlAnchor.setAttribute("href", dataStr);
+                          dlAnchor.setAttribute("download", `talent_insights_${queryText.replace(/\s+/g, '_') || 'busca'}.json`);
+                          dlAnchor.click();
+                          dlAnchor.remove();
+                        }}
+                        className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
+                      >
+                        <Download size={14} className="text-slate-500" />
+                        <span>Export Insights</span>
+                      </button>
+                    </div>
+
+                    {/* ROW 1: Top Locations (Map & List) + Key Takeaways */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      
+                      {/* Top Locations (Map + List) */}
+                      <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-900">Top Locations</h3>
+                          <p className="text-xs text-slate-500 mb-4">Top cities for your search pool</p>
+                        </div>
+
+                        <div className="flex items-stretch gap-4 h-[220px]">
+                          {/* Cities list */}
+                          <div className="w-48 overflow-y-auto pr-2 space-y-1 text-xs divide-y divide-slate-50">
+                            {[
+                              { city: "San Francisco", count: "1.7K", active: true },
+                              { city: "London", count: "1.4K" },
+                              { city: "New York", count: "1.3K" },
+                              { city: "Berlin", count: "895" },
+                              { city: "Paris", count: "731" },
+                              { city: "Toronto", count: "569" },
+                              { city: "Barcelona", count: "558" },
+                              { city: "Los Angeles", count: "532" },
+                              { city: "Seattle", count: "373" },
+                              { city: "Outros (Brasil)", count: "33.0K" },
+                            ].map((loc, i) => (
+                              <div key={i} className={`flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${loc.active ? 'bg-purple-50 text-[#7C3AED] font-bold' : 'hover:bg-slate-50 text-slate-700'}`}>
+                                <span className="truncate">{loc.city}</span>
+                                <span className="font-semibold text-[11px] ml-1">{loc.count}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Map graphic representation */}
+                          <div className="flex-1 bg-sky-50/50 border border-sky-100 rounded-xl relative overflow-hidden flex items-center justify-center p-3">
+                            <div className="absolute inset-0 bg-[radial-gradient(#e0f2fe_1px,transparent_1px)] [background-size:12px_12px] opacity-70" />
+                            <div className="relative w-full h-full flex items-center justify-center">
+                              <div className="absolute top-[35%] left-[25%] w-8 h-8 rounded-full bg-[#7C3AED]/20 border-2 border-[#7C3AED] flex items-center justify-center text-[9px] font-bold text-[#7C3AED] animate-pulse">
+                                SF
+                              </div>
+                              <div className="absolute top-[42%] left-[36%] w-7 h-7 rounded-full bg-[#7C3AED]/20 border-2 border-[#7C3AED] flex items-center justify-center text-[9px] font-bold text-[#7C3AED]">
+                                NY
+                              </div>
+                              <div className="absolute top-[30%] left-[58%] w-9 h-9 rounded-full bg-[#7C3AED]/20 border-2 border-[#7C3AED] flex items-center justify-center text-[9px] font-bold text-[#7C3AED]">
+                                EU
+                              </div>
+                              <div className="absolute top-[60%] left-[48%] w-12 h-12 rounded-full bg-[#7C3AED]/30 border-2 border-[#7C3AED] flex items-center justify-center text-[10px] font-extrabold text-[#7C3AED] shadow-sm">
+                                BR
+                              </div>
+                              <span className="text-[11px] font-semibold text-slate-500 z-10 bg-white/90 backdrop-blur px-2.5 py-1 rounded-md shadow-xs border border-slate-200">
+                                🌐 Mapa Global de Talentos
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Key Takeaways (AI Insights) */}
+                      <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                              <Sparkles className="w-4 h-4 text-[#7C3AED]" />
+                              Key Takeaways
+                            </h3>
+                            <button onClick={() => showToast("Insights copiados!")} className="text-slate-400 hover:text-slate-600">
+                              <Copy size={13} />
+                            </button>
+                          </div>
+                          <p className="text-xs text-slate-400 mb-4">Takeaways from your insights, curated by AI</p>
+
+                          <div className="space-y-3 text-xs text-slate-700 leading-relaxed">
+                            <p>
+                              <strong className="text-slate-900 font-semibold block mb-0.5">Design tool stack:</strong>
+                              Figma (<mark className="bg-purple-100 text-purple-900 font-medium px-1 py-0.2 rounded">47%</mark>) domina sobre ferramentas tradicionais como Photoshop (<mark className="bg-purple-100 text-purple-900 font-medium px-1 py-0.2 rounded">42%</mark>) e Illustrator (<mark className="bg-purple-100 text-purple-900 font-medium px-1 py-0.2 rounded">39%</mark>).
+                            </p>
+                            <p>
+                              <strong className="text-slate-900 font-semibold block mb-0.5">End-to-end capability:</strong>
+                              Alta prevalência de UI Design (<mark className="bg-purple-100 text-purple-900 font-medium px-1 py-0.2 rounded">56%</mark>) e UX Design (<mark className="bg-purple-100 text-purple-900 font-medium px-1 py-0.2 rounded">56%</mark>) sugere candidatos versáteis para produto.
+                            </p>
+                            <p>
+                              <strong className="text-slate-900 font-semibold block mb-0.5">Senioridade para Startups:</strong>
+                              Cargos concentram-se em Product Designer (<mark className="bg-purple-100 text-purple-900 font-medium px-1 py-0.2 rounded">28%</mark>) e Senior Product Designer (<mark className="bg-purple-100 text-purple-900 font-medium px-1 py-0.2 rounded">22%</mark>).
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* ROW 2: Experience & Tenure Metrics + Distribution Curve */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      
+                      {/* Experience & Tenure summary cards */}
+                      <div className="lg:col-span-4 flex flex-col gap-4">
+                        {/* Years of Experience */}
+                        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                          <h4 className="text-xs font-bold text-slate-900">Years of Experience</h4>
+                          <p className="text-[11px] text-slate-400 mb-3">Total full-time work experience</p>
+                          <div className="text-center my-2">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Average</span>
+                            <span className="text-3xl font-extrabold text-slate-900">10.9 years</span>
+                          </div>
+                          <div className="grid grid-cols-3 text-center border-t border-slate-100 pt-3 mt-3 text-[11px]">
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">P25</span>
+                              <span className="font-bold text-slate-800">7 years</span>
+                            </div>
+                            <div className="border-x border-slate-100">
+                              <span className="text-slate-400 block text-[10px]">MEDIAN</span>
+                              <span className="font-bold text-slate-800">10.2 years</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">P75</span>
+                              <span className="font-bold text-slate-800">13.9 years</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Average Tenure */}
+                        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                          <h4 className="text-xs font-bold text-slate-900">Average Tenure</h4>
+                          <p className="text-[11px] text-slate-400 mb-3">Average time before switching companies</p>
+                          <div className="text-center my-2">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Average</span>
+                            <span className="text-3xl font-extrabold text-slate-900">2.1 years</span>
+                          </div>
+                          <div className="grid grid-cols-3 text-center border-t border-slate-100 pt-3 mt-3 text-[11px]">
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">P25</span>
+                              <span className="font-bold text-slate-800">1.3 years</span>
+                            </div>
+                            <div className="border-x border-slate-100">
+                              <span className="text-slate-400 block text-[10px]">MEDIAN</span>
+                              <span className="font-bold text-slate-800">1.8 years</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">P75</span>
+                              <span className="font-bold text-slate-800">2.5 years</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Number of Profiles by Experience (Distribution Curve Chart) */}
+                      <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-900">Number of Profiles by Experience</h3>
+                          <p className="text-xs text-slate-400 mb-4">Distribution of years of experience in your search pool</p>
+                        </div>
+
+                        {/* SVG Distribution Bell Curve */}
+                        <div className="w-full h-56 relative flex flex-col justify-end">
+                          <div className="absolute top-2 left-2 text-[11px] font-bold text-slate-400">3.6K</div>
+                          <div className="absolute top-1/2 left-2 text-[11px] font-bold text-slate-400">1.8K</div>
+                          
+                          <svg className="w-full h-44 overflow-visible" viewBox="0 0 500 150" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id="curveGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.25" />
+                                <stop offset="100%" stopColor="#7C3AED" stopOpacity="0.0" />
+                              </linearGradient>
+                            </defs>
+                            <path
+                              d="M 0 150 Q 120 10 200 60 T 450 145 L 500 150 Z"
+                              fill="url(#curveGradient)"
+                            />
+                            <path
+                              d="M 0 150 Q 120 10 200 60 T 450 145"
+                              fill="none"
+                              stroke="#7C3AED"
+                              strokeWidth="2.5"
+                            />
+                          </svg>
+
+                          <div className="flex justify-between text-[10px] text-slate-400 font-medium pt-2 border-t border-slate-200">
+                            {[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 35, 39].map(yr => (
+                              <span key={yr}>{yr}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* ROW 3: Skills & Current Employers Bar Charts */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      
+                      {/* Skills Chart */}
+                      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                        <h3 className="text-sm font-bold text-slate-900">Skills</h3>
+                        <p className="text-xs text-slate-400 mb-4">Most common skills in your search pool</p>
+
+                        <div className="space-y-2.5">
+                          {[
+                            { skill: "User Interface Design", count: "24.0K (56%)", pct: 56 },
+                            { skill: "User Experience", count: "23.9K (56%)", pct: 56 },
+                            { skill: "Figma", count: "20.3K (47%)", pct: 47 },
+                            { skill: "Graphic Design", count: "19.8K (46%)", pct: 46 },
+                            { skill: "Product Design", count: "19.0K (44%)", pct: 44 },
+                            { skill: "Web Design", count: "18.5K (43%)", pct: 43 },
+                            { skill: "Adobe Photoshop", count: "18.0K (42%)", pct: 42 },
+                            { skill: "User Experience Design", count: "17.3K (40%)", pct: 40 },
+                            { skill: "Adobe Illustrator", count: "16.8K (39%)", pct: 39 },
+                            { skill: "Wireframing", count: "16.0K (37%)", pct: 37 },
+                          ].map((sk, i) => (
+                            <div key={i} className="flex items-center gap-3 text-xs">
+                              <span className="w-36 text-slate-700 font-medium truncate">{sk.skill}</span>
+                              <div className="flex-1 bg-slate-100 rounded-full h-3.5 overflow-hidden">
+                                <div className="bg-[#7C3AED] h-full rounded-full transition-all duration-500" style={{ width: `${sk.pct}%` }} />
+                              </div>
+                              <span className="w-24 text-right font-semibold text-slate-600 text-[11px]">{sk.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Current Employers Chart */}
+                      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                        <h3 className="text-sm font-bold text-slate-900">Current Employers</h3>
+                        <p className="text-xs text-slate-400 mb-4">Top current employers in your search pool (covers 1%)</p>
+
+                        <div className="space-y-2.5">
+                          {[
+                            { company: "Meta", count: "138 (1%)", pct: 85 },
+                            { company: "Microsoft", count: "72 (1%)", pct: 60 },
+                            { company: "Atlassian", count: "65 (1%)", pct: 55 },
+                            { company: "Amazon", count: "60 (1%)", pct: 50 },
+                            { company: "Adplist.org", count: "60 (1%)", pct: 50 },
+                            { company: "Apple", count: "58 (1%)", pct: 48 },
+                            { company: "Adobe", count: "38 (0.5%)", pct: 35 },
+                            { company: "American Express", count: "36 (0.5%)", pct: 32 },
+                            { company: "Autodesk", count: "33 (0.5%)", pct: 30 },
+                            { company: "Accenture Song", count: "25 (0.4%)", pct: 25 },
+                          ].map((emp, i) => (
+                            <div key={i} className="flex items-center gap-3 text-xs">
+                              <span className="w-36 text-slate-700 font-medium truncate flex items-center gap-1.5">
+                                <Building2 size={12} className="text-slate-400" />
+                                {emp.company}
+                              </span>
+                              <div className="flex-1 bg-slate-100 rounded-full h-3.5 overflow-hidden">
+                                <div className="bg-[#7C3AED] h-full rounded-full transition-all duration-500" style={{ width: `${emp.pct}%` }} />
+                              </div>
+                              <span className="w-24 text-right font-semibold text-slate-600 text-[11px]">{emp.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* ROW 4: Gated / Blocked Insights (Paywall Trial Protection - image_b0eb03.png) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+                      
+                      {/* Gated Card 1: Job Title Level Insights */}
+                      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-xs relative overflow-hidden min-h-[220px] flex items-center justify-center">
+                        <div className="absolute inset-0 p-6 blur-[6px] opacity-40 select-none pointer-events-none space-y-4">
+                          <div className="h-4 w-40 bg-slate-300 rounded" />
+                          <div className="h-32 w-32 rounded-full bg-purple-200 mx-auto" />
+                        </div>
+
+                        <div className="relative z-10 bg-white/95 border border-slate-200 rounded-2xl p-6 shadow-xl max-w-sm text-center flex flex-col items-center gap-3 animate-in zoom-in-95 duration-200">
+                          <div className="w-10 h-10 rounded-full bg-purple-100 text-[#7C3AED] flex items-center justify-center">
+                            <Lock size={18} />
+                          </div>
+                          <h4 className="font-bold text-slate-900 text-sm">Job Title Level Insights</h4>
+                          <p className="text-xs text-slate-500">
+                            This insight is only available on <strong className="text-slate-800">Growth</strong> and <strong className="text-slate-800">Business</strong> plans.
+                          </p>
+                          <button
+                            onClick={() => setIsUpgradeModalOpen(true)}
+                            className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#7C3AED] hover:underline cursor-pointer"
+                          >
+                            Upgrade Plan <ExternalLink size={12} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Gated Card 2: Job Title Role Insights */}
+                      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-xs relative overflow-hidden min-h-[220px] flex items-center justify-center">
+                        <div className="absolute inset-0 p-6 blur-[6px] opacity-40 select-none pointer-events-none space-y-4">
+                          <div className="h-4 w-40 bg-slate-300 rounded" />
+                          <div className="h-32 w-32 rounded-full bg-[#7C3AED]/20 mx-auto" />
+                        </div>
+
+                        <div className="relative z-10 bg-white/95 border border-slate-200 rounded-2xl p-6 shadow-xl max-w-sm text-center flex flex-col items-center gap-3 animate-in zoom-in-95 duration-200">
+                          <div className="w-10 h-10 rounded-full bg-purple-100 text-[#7C3AED] flex items-center justify-center">
+                            <Lock size={18} />
+                          </div>
+                          <h4 className="font-bold text-slate-900 text-sm">Job Title Role Insights</h4>
+                          <p className="text-xs text-slate-500">
+                            This insight is only available on <strong className="text-slate-800">Growth</strong> and <strong className="text-slate-800">Business</strong> plans.
+                          </p>
+                          <button
+                            onClick={() => setIsUpgradeModalOpen(true)}
+                            className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#7C3AED] hover:underline cursor-pointer"
+                          >
+                            Upgrade Plan <ExternalLink size={12} />
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+                )}
+
               </div>
             )}
           </div>
@@ -1080,99 +1517,63 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
             <div className="flex-1 flex flex-col h-full overflow-hidden relative">
               
               {/* Drawer Top Navigation & Actions Header */}
-              <div className="h-14 px-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/80 flex-shrink-0">
-                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+              <div className="h-14 px-6 border-b border-slate-200 flex items-center justify-end gap-1 bg-white flex-shrink-0">
+                {/* BOTÃO DOS TRÊS PONTINHOS COM MENU FUNCIONAL */}
+                <div className="relative">
                   <button 
-                    onClick={handlePrevProfile}
-                    disabled={selectedProfileIndex === 0}
-                    className="p-1 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    onClick={() => setMenuOpenId(menuOpenId === 'profile' ? null : 'profile')}
+                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-all flex items-center justify-center"
                   >
-                    <ChevronLeft size={16} />
+                    <MoreVertical size={16} />
                   </button>
-                  <span className="text-xs font-bold text-slate-400 px-1 border-x border-slate-100 select-none">
-                    {(selectedProfileIndex || 0) + 1} / {profiles.length}
-                  </span>
-                  <button 
-                    onClick={handleNextProfile}
-                    disabled={selectedProfileIndex === profiles.length - 1}
-                    className="p-1 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+
+                  {menuOpenId === 'profile' && (
+                    <div className="absolute right-0 top-10 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95">
+                      <button 
+                        onClick={() => { handleShortlist(selectedProfile); setMenuOpenId(null); }}
+                        className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
+                      >
+                        <UserPlus size={13} className="text-slate-500" />
+                        <span>Salvar Candidato</span>
+                      </button>
+                      <button 
+                        onClick={() => { handleSimilarSearch(selectedProfile); setMenuOpenId(null); }}
+                        className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
+                      >
+                        <Sparkles size={13} className="text-purple-600" />
+                        <span>Buscar Perfis Semelhantes</span>
+                      </button>
+                      <button 
+                        onClick={() => { showToast(`Resumo IA gerado para ${selectedProfile.name}!`); setMenuOpenId(null); }}
+                        className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium border-t border-slate-100"
+                      >
+                        <FileText size={13} className="text-slate-500" />
+                        <span>Resumir Perfil Completo</span>
+                      </button>
+                      <button 
+                        onClick={() => { handleExportProfile(selectedProfile); setMenuOpenId(null); }}
+                        className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
+                      >
+                        <Download size={13} className="text-slate-500" />
+                        <span>Exportar Perfil</span>
+                      </button>
+                      <button 
+                        onClick={() => { showToast(`Perfil de ${selectedProfile.name} denunciado.`); setMenuOpenId(null); }}
+                        className="w-full px-4 py-2.5 text-left text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium border-t border-slate-100"
+                      >
+                        <Flag size={13} />
+                        <span>Denunciar Perfil</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => handleShortlist(selectedProfile)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition-all shadow-sm"
-                  >
-                    <span className="w-2 h-2 rounded bg-purple-500 block"></span>
-                    <span>Selecionar</span>
-                  </button>
-                  <button 
-                    onClick={() => handleRevealContact(selectedProfile.id, "email")}
-                    className="bg-[#7C3AED] hover:opacity-95 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs transition-all shadow"
-                  >
-                    Entrar em Contato
-                  </button>
-
-                  {/* BOTÃO DOS TRÊS PONTINHOS COM MENU FUNCIONAL */}
-                  <div className="relative">
-                    <button 
-                      onClick={() => setMenuOpenId(menuOpenId === 'profile' ? null : 'profile')}
-                      className="p-2 hover:bg-slate-150 rounded-lg text-slate-500 hover:text-slate-700 transition-all flex items-center justify-center"
-                    >
-                      <MoreVertical size={16} />
-                    </button>
-
-                    {menuOpenId === 'profile' && (
-                      <div className="absolute right-0 top-10 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95">
-                        <button 
-                          onClick={() => { handleShortlist(selectedProfile); setMenuOpenId(null); }}
-                          className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
-                        >
-                          <UserPlus size={13} className="text-slate-500" />
-                          <span>Salvar Candidato</span>
-                        </button>
-                        <button 
-                          onClick={() => { alert("Buscando perfis semelhantes..."); setMenuOpenId(null); }}
-                          className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
-                        >
-                          <Sparkles size={13} className="text-purple-600" />
-                          <span>Buscar Perfis Semelhantes</span>
-                        </button>
-                        <button 
-                          onClick={() => { alert("Gerando resumo completo..."); setMenuOpenId(null); }}
-                          className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium border-t border-slate-100"
-                        >
-                          <FileText size={13} className="text-slate-500" />
-                          <span>Resumir Perfil Completo</span>
-                        </button>
-                        <button 
-                          onClick={() => { alert("Exportando perfil..."); setMenuOpenId(null); }}
-                          className="w-full px-4 py-2.5 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
-                        >
-                          <Download size={13} className="text-slate-500" />
-                          <span>Exportar Perfil</span>
-                        </button>
-                        <button 
-                          onClick={() => { alert("Perfil denunciado."); setMenuOpenId(null); }}
-                          className="w-full px-4 py-2.5 text-left text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium border-t border-slate-100"
-                        >
-                          <Flag size={13} />
-                          <span>Denunciar Perfil</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <button 
-                    onClick={() => setSelectedProfileIndex(null)}
-                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors ml-1"
-                  >
-                    <X size={15} />
-                  </button>
-                </div>
+                <button 
+                  onClick={() => setSelectedProfileIndex(null)}
+                  className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
               {/* Candidate Info Header — Redesenhado (Juice.box Style) */}
@@ -1206,20 +1607,63 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                 )}
 
                 {/* Primary Actions */}
-                <div className="flex items-center gap-2 mt-4">
-                  <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden shadow-xs">
+                <div className="flex items-center gap-2 mt-4 relative">
+                  <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden shadow-xs relative">
                     <button
                       onClick={() => handleShortlist(selectedProfile)}
-                      className="flex items-center gap-1.5 text-[12px] font-semibold px-3 py-2 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
+                      className={`flex items-center gap-1.5 text-[12px] font-semibold px-3 py-2 transition-colors ${
+                        selectedRowIds.has(selectedProfile.id) ? 'bg-purple-50 text-[#7C3AED]' : 'bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
                     >
-                      <span className="w-2.5 h-2.5 rounded-sm border border-slate-400 flex-shrink-0" />
-                      Add to Shortlist
+                      <span className={`w-2.5 h-2.5 rounded-sm flex-shrink-0 ${
+                        selectedRowIds.has(selectedProfile.id) ? 'bg-[#7C3AED]' : 'border border-slate-400'
+                      }`} />
+                      {selectedRowIds.has(selectedProfile.id) ? 'Shortlisted' : 'Add to Shortlist'}
                     </button>
                     <div className="w-px h-5 bg-slate-200" />
-                    <button className="px-2 py-2 bg-white hover:bg-slate-50 transition-colors">
+                    <button
+                      onClick={() => setOpenShortlistDropdown(!openShortlistDropdown)}
+                      className="px-2 py-2 bg-white hover:bg-slate-50 transition-colors"
+                    >
                       <ChevronDown size={13} className="text-slate-400" />
                     </button>
                   </div>
+
+                  {/* Dropdown menu do Add to Shortlist */}
+                  {openShortlistDropdown && (
+                    <div className="absolute left-0 top-11 w-52 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95">
+                      <button
+                        onClick={() => { handleShortlist(selectedProfile); setOpenShortlistDropdown(false); }}
+                        className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-purple-50 flex items-center gap-2 font-medium"
+                      >
+                        <span className="w-2 h-2 rounded bg-purple-500" />
+                        <span>Salvar na Shortlist Principal</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setCandidateStatuses(prev => ({ ...prev, [selectedProfile.id]: 'Em Análise' }));
+                          showToast("Status alterado para Em Análise");
+                          setOpenShortlistDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-purple-50 flex items-center gap-2 font-medium"
+                      >
+                        <UserPlus size={12} className="text-slate-500" />
+                        <span>Mover para Em Análise</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setCandidateStatuses(prev => ({ ...prev, [selectedProfile.id]: 'Entrevistando' }));
+                          showToast("Status alterado para Entrevistando");
+                          setOpenShortlistDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-purple-50 flex items-center gap-2 font-medium border-t border-slate-100"
+                      >
+                        <Sparkles size={12} className="text-amber-500" />
+                        <span>Mover para Entrevistando</span>
+                      </button>
+                    </div>
+                  )}
+
                   <button
                     onClick={() => handleRevealContact(selectedProfile.id, "email")}
                     className="flex-1 bg-[#7C3AED] hover:bg-[#6d28d9] text-white font-semibold text-[12px] px-4 py-2 rounded-lg transition-colors shadow-sm"
@@ -1258,15 +1702,31 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                 {/* ── Visão Geral — Redesenhada (Property List Style) ── */}
                 {drawerTab === 'geral' && (
                   <div className="space-y-0 divide-y divide-slate-100">
-                    {/* Status */}
+                    {/* Status Interativo */}
                     <div className="flex items-center justify-between py-3">
                       <span className="text-[12px] text-slate-500 font-medium flex items-center gap-2">
                         <span className="w-4 h-4 rounded-full border border-slate-300 flex items-center justify-center">
-                          <span className="w-2 h-2 rounded-full bg-slate-300" />
+                          <span className="w-2 h-2 rounded-full bg-[#7C3AED]" />
                         </span>
                         Status
                       </span>
-                      <span className="text-[12px] text-slate-400 italic">Sem status</span>
+                      <select
+                        value={candidateStatuses[selectedProfile.id] || "Sem status"}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCandidateStatuses(prev => ({ ...prev, [selectedProfile.id]: val }));
+                          showToast(`Status atualizado para "${val}"`);
+                        }}
+                        className="text-[12px] font-semibold text-[#7C3AED] bg-purple-50 border border-purple-200 rounded-lg px-2.5 py-1 outline-none cursor-pointer hover:bg-purple-100 transition-colors"
+                      >
+                        <option value="Sem status">Sem status</option>
+                        <option value="Novo">Novo</option>
+                        <option value="Em Análise">Em Análise</option>
+                        <option value="Contatado">Contatado</option>
+                        <option value="Entrevistando">Entrevistando</option>
+                        <option value="Aprovado">Aprovado</option>
+                        <option value="Rejeitado">Rejeitado</option>
+                      </select>
                     </div>
 
                     {/* Email */}
@@ -1305,19 +1765,56 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       )}
                     </div>
 
-                    {/* Tags */}
+                    {/* Tags Interativas */}
                     <div className="flex items-start justify-between py-3 gap-4">
                       <span className="text-[12px] text-slate-500 font-medium flex items-center gap-2 flex-shrink-0">
                         <span className="text-slate-400">◇</span>
                         Tags
                       </span>
-                      <div className="flex flex-wrap gap-1 justify-end">
-                        {selectedProfile.skills && selectedProfile.skills.length > 0 ? (
-                          selectedProfile.skills.slice(0, 3).map((sk, i) => (
-                            <span key={i} className="text-[11px] text-slate-600 bg-slate-100 rounded-full px-2 py-0.5">{sk}</span>
-                          ))
+                      <div className="flex flex-wrap gap-1.5 justify-end items-center">
+                        {/* Tags existentes + custom */}
+                        {[...(selectedProfile.skills || []), ...(candidateTags[selectedProfile.id] || [])].map((sk, i) => (
+                          <span key={i} className="text-[11px] text-slate-700 bg-slate-100 rounded-full px-2.5 py-0.5 flex items-center gap-1 font-medium group/tag">
+                            {sk}
+                            {candidateTags[selectedProfile.id]?.includes(sk) && (
+                              <button
+                                onClick={() => handleRemoveTag(selectedProfile.id, sk)}
+                                className="text-slate-400 hover:text-rose-500 font-bold text-xs"
+                                title="Remover tag"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                        {isAddingTag ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={newTagInput}
+                              onChange={(e) => setNewTagInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleAddTag(selectedProfile.id);
+                                if (e.key === 'Escape') setIsAddingTag(false);
+                              }}
+                              placeholder="Nova tag..."
+                              className="text-[11px] px-2 py-0.5 border border-[#7C3AED] rounded-full outline-none w-24 bg-white"
+                            />
+                            <button
+                              onClick={() => handleAddTag(selectedProfile.id)}
+                              className="text-[11px] font-bold text-white bg-[#7C3AED] px-2 py-0.5 rounded-full"
+                            >
+                              +
+                            </button>
+                          </div>
                         ) : (
-                          <button className="text-[12px] text-[#7C3AED] font-semibold hover:underline">Adicionar tag</button>
+                          <button
+                            onClick={() => setIsAddingTag(true)}
+                            className="text-[12px] text-[#7C3AED] font-semibold hover:underline"
+                          >
+                            + Adicionar tag
+                          </button>
                         )}
                       </div>
                     </div>
@@ -2216,6 +2713,17 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* ── NOTIFICAÇÃO TOAST FLUTUANTE ── */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-[120] bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-semibold animate-in slide-in-from-bottom-5 duration-300 border border-slate-800">
+          <Sparkles size={14} className="text-purple-400" />
+          <span>{toastMessage}</span>
+          <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white ml-2">
+            <X size={14} />
+          </button>
         </div>
       )}
 
