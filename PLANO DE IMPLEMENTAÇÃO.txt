@@ -1,0 +1,531 @@
+ALTERAÇÕES RANKHIRE BR
+
+1. Preenchimento de Espaços em Branco na Página de Performance (Performance)
+Como visto nas imagens image_f90c6b.png e image_f90cff.png, o gráfico de 30 dias deixa um espaço vazio na lateral e na parte inferior. Vamos preencher essa área com blocos de inteligência operacional úteis para o recrutador:
+
+Taxa de Conversão Geral do Funil: Um indicador percentual mostrando quantos candidatos dos analisados chegaram a ser contratados.
+
+Métricas de Tempo Médio de Triagem: Quanto tempo o agente de IA leva em média para varrer e pontuar um currículo.
+
+Log de Atividades Recentes do Agente: Um mini-feed em tempo real listando as últimas ações automatizadas executadas pelo agente (ex: "Curriculum ranqueado para Desenvolvedor Backend").
+
+2. Refatoração Completa da Página de Planos e Cobrança (/configuracoes/plano)
+Conforme a imagem image_f90505.png, o sistema está gerando o erro No such price: 'price_agencia_mock' porque estava usando valores fictícios. Vamos substituir por uma arquitetura totalmente integrada às APIs reais do Stripe.
+
+Aqui está o código refatorado e limpo para a página de gerenciamento de planos, pronta para assinar via Checkout e gerenciar/cancelar via Customer Portal:
+
+TypeScript
+"use client";
+
+import { useState, useEffect } from "react";
+
+export default function PlanosFaturamentoPage() {
+  const [loading, setLoading] = useState<string | null>(null);
+  const [currentPlan, setCurrentPlan] = useState("Pro");
+
+  const handleStripeCheckout = async (priceIdKey: string) => {
+    setLoading(priceIdKey);
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceKey: priceIdKey }),
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url; // Redireciona para o ambiente seguro do Stripe
+      } else {
+        alert("Erro ao iniciar sessão de pagamento.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Erro de conexão com o gateway de pagamento.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleManagePortal = async () => {
+    setLoading("portal");
+    try {
+      const response = await fetch("/api/stripe/portal", { method: "POST" });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url; // Redireciona para o Portal de Clientes Stripe (Gerenciar/Cancelar)
+      } else {
+        alert("Erro ao abrir portal de gerenciamento.");
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  return (
+    <div className="p-8 max-w-6xl mx-auto space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Plano e Faturamento</h1>
+        <p className="text-sm text-slate-500">Gerencie sua assinatura, formas de pagamento e cancele planos diretamente via Stripe.</p>
+      </div>
+
+      {/* Status da Assinatura Atual */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <span className="text-xs font-semibold uppercase text-slate-400 tracking-wider">Status da Assinatura</span>
+          <h2 className="text-xl font-bold text-slate-900 mt-1">Plano Atual: <span className="text-blue-600">{currentPlan}</span></h2>
+        </div>
+        <button 
+          onClick={handleManagePortal}
+          disabled={loading === "portal"}
+          className="px-4 py-2 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all"
+        >
+          {loading === "portal" ? "Carregando..." : "Gerenciar / Cancelar Assinatura"}
+        </button>
+      </div>
+
+      {/* Planos Disponíveis integrados ao Stripe */}
+      <div>
+        <h3 className="text-lg font-bold text-slate-900 mb-4">Planos Disponíveis</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Starter */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <h4 className="font-bold text-slate-900 text-lg">Starter</h4>
+              <p className="text-3xl font-extrabold text-slate-900 mt-2">R$ 149<span className="text-sm font-normal text-slate-500">/mês</span></p>
+              <ul className="mt-6 space-y-3 text-sm text-slate-600">
+                <li>✓ Até 5 vagas ativas</li>
+                <li>✓ Até 100 CVs/mês</li>
+              </ul>
+            </div>
+            <button 
+              onClick={() => handleStripeCheckout("STRIPE_PRICE_STARTER")}
+              disabled={loading === "STRIPE_PRICE_STARTER"}
+              className="mt-8 w-full py-2.5 bg-slate-900 text-white rounded-xl font-medium text-sm hover:bg-slate-800 transition-all"
+            >
+              {loading === "STRIPE_PRICE_STARTER" ? "Processando..." : "Assinar Starter"}
+            </button>
+          </div>
+
+          {/* Pro (Mais Popular) */}
+          <div className="bg-white p-6 rounded-2xl border-2 border-blue-600 shadow-lg flex flex-col justify-between relative">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Mais Popular</span>
+            <div>
+              <h4 className="font-bold text-slate-900 text-lg">Pro</h4>
+              <p className="text-3xl font-extrabold text-slate-900 mt-2">R$ 299<span className="text-sm font-normal text-slate-500">/mês</span></p>
+              <ul className="mt-6 space-y-3 text-sm text-slate-600">
+                <li>✓ Vagas ilimitadas</li>
+                <li>✓ Até 500 CVs/mês</li>
+                <li>✓ Agente de IA avançado</li>
+              </ul>
+            </div>
+            <button 
+              onClick={() => handleStripeCheckout("STRIPE_PRICE_PRO")}
+              disabled={loading === "STRIPE_PRICE_PRO"}
+              className="mt-8 w-full py-2.5 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20"
+            >
+              {loading === "STRIPE_PRICE_PRO" ? "Processando..." : "Assinar Pro"}
+            </button>
+          </div>
+
+          {/* Agência */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <h4 className="font-bold text-slate-900 text-lg">Agência</h4>
+              <p className="text-3xl font-extrabold text-slate-900 mt-2">R$ 599<span className="text-sm font-normal text-slate-500">/mês</span></p>
+              <ul className="mt-6 space-y-3 text-sm text-slate-600">
+                <li>✓ Recursos para equipes</li>
+                <li>✓ Triagem ilimitada de CVs</li>
+                <li>✓ Suporte prioritário via Brevo</li>
+              </ul>
+            </div>
+            <button 
+              onClick={() => handleStripeCheckout("STRIPE_PRICE_AGENCIA")}
+              disabled={loading === "STRIPE_PRICE_AGENCIA"}
+              className="mt-8 w-full py-2.5 bg-slate-900 text-white rounded-xl font-medium text-sm hover:bg-slate-800 transition-all"
+            >
+              {loading === "STRIPE_PRICE_AGENCIA" ? "Processando..." : "Assinar Agência"}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+O que foi corrigido:
+Fim dos erros de mock: A página agora interage diretamente com as rotas de backend do Stripe (/api/stripe/checkout e /api/stripe/portal).
+
+Gestão e Cancelamento Diretos: O botão de Portal do Cliente redireciona o usuário para a interface oficial do Stripe onde ele pode alterar cartões, baixar faturas ou cancelar a assinatura com um clique, sem intervenção manual.
+
+
+
+------------------------------------------------------------//----------------------------------------------------------//-------------------------------------------
+
+
+
+Implementamos o design minimalista fluido com animações harmônicas de transição (subida do chat, aparição escalonada dos cards e abertura/fechamento lateral do perfil do candidato), além de remover limitações de largura na tela para o modo lista e adicionar os menus de três pontinhos funcionais.
+
+Código Completo Refatorado (SmartSearchPage.tsx)
+TypeScript
+"use client";
+
+import React, { useState } from "react";
+import { 
+  Search, SlidersHorizontal, Sparkles, ChevronDown, List, LayoutGrid, 
+  MoreHorizontal, Bookmark, ExternalLink, ArrowLeft, ArrowRight, X, 
+  FileText, Briefcase, GraduationCap, Award, MoreVertical, Share2, 
+  Download, Flag, UserPlus, Eye
+} from "lucide-react";
+
+export default function SmartSearchPage() {
+  const [searchState, setSearchState] = useState<'input' | 'criteria' | 'results'>('results');
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'experience' | 'education' | 'skills' | 'more'>('overview');
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+
+  // Exemplo de candidatos baseados no padrão de design referenciado
+  const candidates = [
+    {
+      id: '1',
+      name: 'Rodrigo Osornio',
+      location: 'San Francisco, California, United States',
+      role: 'Senior Product Designer at Pinterest',
+      period: 'Aug 2022 – Present',
+      company: 'Pinterest',
+      match: 98,
+      skills: ['Figma', 'UI/UX', 'Design Systems'],
+      history: [
+        { title: 'Senior Product Designer at Pinterest', period: 'Aug 2022 – Present' },
+        { title: 'Senior Designer at Frog', period: 'Jul 2020 – Jun 2022' },
+        { title: 'Senior User Experience / User Interface Designer at Aplit', period: 'May 2019 – Jun 2020' }
+      ],
+      education: 'Industrial Design at Uam Universidad Autónoma Metropolitana'
+    },
+    {
+      id: '2',
+      name: 'Linh Martinez',
+      location: 'San Francisco, California, United States',
+      role: 'Lead UX Researcher at Stripe',
+      period: 'Jan 2021 – Present',
+      company: 'Stripe',
+      match: 95,
+      skills: ['User Research', 'Figma', 'Data Analysis'],
+      history: [
+        { title: 'Lead UX Researcher at Stripe', period: 'Jan 2021 – Present' },
+        { title: 'Product Designer at Uber', period: 'Mar 2018 – Dec 2020' }
+      ],
+      education: 'BFA in Interaction Design - Stanford University'
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col font-sans text-slate-900 relative overflow-x-hidden">
+      
+      {/* HEADER DA BUSCA E FILTROS */}
+      <div className="border-b border-slate-100 px-8 py-4 flex items-center justify-between bg-white sticky top-0 z-20 shadow-xs">
+        <div className="flex items-center gap-4 flex-1 max-w-2xl">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-4 py-2 w-full shadow-inner transition-all focus-within:ring-2 focus-within:ring-purple-500/20 focus-within:border-purple-600">
+            <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
+            <input 
+              type="text" 
+              defaultValue="UI UX Designer in San Francisco proficient in Figma"
+              className="bg-transparent border-none outline-none text-sm text-slate-800 w-full font-medium"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-full text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all">
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Filters <span className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-[10px]">4</span>
+          </button>
+          <button className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-full text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all">
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            Criteria <span className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-[10px]">1</span>
+          </button>
+          <div className="h-4 w-[1px] bg-slate-200 mx-1" />
+          <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold hover:bg-slate-50">
+            <Share2 className="w-3.5 h-3.5" /> Share
+          </button>
+        </div>
+      </div>
+
+      {/* SUB-HEADER DE RESULTADOS & ABAS */}
+      <div className="px-8 border-b border-slate-100 flex items-center justify-between bg-white">
+        <div className="flex gap-8 text-sm font-medium">
+          <button className="py-3 border-b-2 border-purple-600 text-purple-600 font-semibold">Results</button>
+          <button className="py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800">Insights</button>
+        </div>
+        <div className="text-xs text-slate-500 flex items-center gap-3">
+          <span>1 - 15 of 2.8k</span>
+          <div className="flex gap-1">
+            <button className="p-1 hover:bg-slate-100 rounded"><ArrowLeft className="w-4 h-4 text-slate-400" /></button>
+            <button className="p-1 hover:bg-slate-100 rounded"><ArrowRight className="w-4 h-4 text-slate-600" /></button>
+          </div>
+        </div>
+      </div>
+
+      {/* CORPO PRINCIPAL COM LAYOUT FLUIDO SPLIT-SCREEN */}
+      <div className="flex flex-1 overflow-hidden">
+        
+        {/* LISTAGEM DE CANDIDATOS (Modo Lista Sem Limitações na Tela) */}
+        <div className={`flex-1 p-8 overflow-y-auto transition-all duration-300 ease-in-out space-y-4 ${selectedCandidate ? 'pr-6' : 'max-w-7xl mx-auto w-full'}`}>
+          
+          <div className="flex items-center justify-between pb-2">
+            <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+              <input type="checkbox" className="rounded border-slate-300" />
+              <span>Matches (2.8k)</span>
+              <ChevronDown className="w-4 h-4" />
+              <div className="flex bg-purple-50 p-0.5 rounded-lg border border-purple-100 ml-4">
+                <button className="p-1 bg-white rounded shadow-xs text-purple-600"><List className="w-3.5 h-3.5" /></button>
+                <button className="p-1 text-slate-400 hover:text-slate-600"><LayoutGrid className="w-3.5 h-3.5" /></button>
+              </div>
+            </div>
+            <button className="text-xs font-semibold text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-100 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" /> Agent Review
+            </button>
+          </div>
+
+          {/* CARDS DE CANDIDATOS (Design Minimalista e Fluido) */}
+          {candidates.map((cand) => (
+            <div 
+              key={cand.id}
+              className={`p-5 rounded-2xl border transition-all duration-200 bg-white shadow-xs hover:border-slate-300 group relative animate-in fade-in slide-in-from-bottom-2 ${selectedCandidate?.id === cand.id ? 'border-purple-600 ring-2 ring-purple-500/10' : 'border-slate-200'}`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <input type="checkbox" className="mt-1.5 rounded border-slate-300" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 
+                        onClick={() => setSelectedCandidate(cand)}
+                        className="font-bold text-slate-900 text-base hover:text-purple-600 cursor-pointer transition-colors"
+                      >
+                        {cand.name}
+                      </h3>
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                      <div className="w-4 h-4 bg-blue-600 text-white rounded text-[10px] flex items-center justify-center font-bold">in</div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{cand.location}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 group-hover:opacity-100 transition-opacity">Hide</span>
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-all">
+                    <Bookmark className="w-3.5 h-3.5 text-slate-500" /> Shortlist <ChevronDown className="w-3 h-3 text-slate-400" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Histórico Resumido no Card */}
+              <div className="mt-4 pl-7 space-y-1.5 border-l-2 border-slate-100 ml-2">
+                {cand.history.map((h, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-xs text-slate-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                    <span className="font-medium text-slate-900">{h.title}</span>
+                    <span className="text-slate-400">{h.period}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Badges de Skills */}
+              <div className="mt-4 pl-7 flex items-center gap-2">
+                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium border border-emerald-100 flex items-center gap-1">
+                  ✓ Figma
+                </span>
+                <span className="text-xs text-slate-500">Skills list includes Figma, indicating hands-on product design capability.</span>
+              </div>
+            </div>
+          ))}
+
+          {/* WIDGET DE BUSCAS GRATUITAS FLUTUANTE (Inferior) */}
+          <div className="sticky bottom-4 left-0 right-0 flex justify-center pointer-events-none z-10">
+            <div className="pointer-events-auto bg-white border border-slate-200 shadow-xl rounded-2xl px-5 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-slate-800">2 free searches remaining</span>
+                <div className="w-36 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-2/3 h-full bg-purple-600 rounded-full" />
+                </div>
+              </div>
+              <button className="px-4 py-2 bg-purple-600 text-white rounded-xl text-xs font-semibold hover:bg-purple-700 transition-all shadow-md shadow-purple-500/20">
+                Upgrade ↗
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* PAINEL LATERAL DE DETALHES DO CANDIDATO (Com Animação de Abrir/Fechar Lateral) */}
+        {selectedCandidate && (
+          <div className="w-[45%] bg-white border-l border-slate-200 flex flex-col shadow-2xl animate-in slide-in-from-right duration-300 z-30">
+            
+            {/* Header do Perfil Lateral */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                <button className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600"><ArrowLeft className="w-4 h-4" /></button>
+                <button className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600"><ArrowRight className="w-4 h-4" /></button>
+                <span className="text-xs text-slate-400 font-mono ml-2">Search Results</span>
+              </div>
+              
+              <div className="flex items-center gap-2 relative">
+                <button className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600"><ArrowLeft className="w-4 h-4 rotate-90" /></button>
+                
+                {/* BOTÃO DOS TRÊS PONTINHOS COM MENU FUNCIONAL */}
+                <div className="relative">
+                  <button 
+                    onClick={() => setMenuOpenId(menuOpenId === 'profile' ? null : 'profile')}
+                    className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+
+                  {menuOpenId === 'profile' && (
+                    <div className="absolute right-0 top-10 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95">
+                      <button className="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium">
+                        <UserPlus className="w-3.5 h-3.5 text-slate-500" /> Save Contact
+                      </button>
+                      <button className="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600" /> Find Similar Profiles
+                      </button>
+                      <button className="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium border-t border-slate-100">
+                        <FileText className="w-3.5 h-3.5 text-slate-500" /> Summarize Full Profile
+                      </button>
+                      <button className="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium">
+                        <Download className="w-3.5 h-3.5 text-slate-500" /> Export Profile (⇧E)
+                      </button>
+                      <button className="w-full px-4 py-2 text-left text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium border-t border-slate-100">
+                        <Flag className="w-3.5 h-3.5" /> Report Profile
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button 
+                  onClick={() => setSelectedCandidate(null)}
+                  className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Informações do Candidato Selecionado */}
+            <div className="p-6 border-b border-slate-100 bg-white">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                {selectedCandidate.name} 
+                <span className="w-4 h-4 bg-blue-600 text-white rounded text-[10px] flex items-center justify-center font-bold">in</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">{selectedCandidate.location}</p>
+              
+              <div className="mt-4 flex items-center gap-2">
+                <span className="text-xs px-2.5 py-1 bg-red-50 text-red-700 rounded font-medium">Pinterest</span>
+                <span className="text-xs px-2.5 py-1 bg-slate-100 text-slate-700 rounded font-medium">Uam Universidad Autónoma...</span>
+              </div>
+
+              {/* Botões de Ação do Perfil */}
+              <div className="mt-6 flex items-center gap-3">
+                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-xs font-semibold hover:bg-purple-700 transition-all shadow-md shadow-purple-500/20">
+                  <Bookmark className="w-3.5 h-3.5" /> Add to Shortlist <ChevronDown className="w-3 h-3 opacity-60" />
+                </button>
+                <button className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-all flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600" /> Create First Sequence
+                </button>
+                <button className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600">
+                  <Eye className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Abas Internas do Perfil (Overview, Experience, Education, Skills, More) */}
+            <div className="flex border-b border-slate-200 px-6 gap-6 text-xs font-semibold text-slate-500 bg-white">
+              <button onClick={() => setActiveTab('overview')} className={`py-3 border-b-2 ${activeTab === 'overview' ? 'border-purple-600 text-purple-600' : 'border-transparent'}`}>Overview</button>
+              <button onClick={() => setActiveTab('experience')} className={`py-3 border-b-2 ${activeTab === 'experience' ? 'border-purple-600 text-purple-600' : 'border-transparent'}`}>Experience</button>
+              <button onClick={() => setActiveTab('education')} className={`py-3 border-b-2 ${activeTab === 'education' ? 'border-purple-600 text-purple-600' : 'border-transparent'}`}>Education</button>
+              <button onClick={() => setActiveTab('skills')} className={`py-3 border-b-2 ${activeTab === 'skills' ? 'border-purple-600 text-purple-600' : 'border-transparent'}`}>Skills</button>
+              <button onClick={() => setActiveTab('more')} className={`py-3 border-b-2 ${activeTab === 'more' ? 'border-purple-600 text-purple-600' : 'border-transparent'}`}>More</button>
+            </div>
+
+            {/* Conteúdo da Aba Ativa */}
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50/30 space-y-6">
+              {activeTab === 'overview' && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Status</span>
+                      <span className="text-slate-400">No status</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Email</span>
+                      <span className="text-slate-400">Checking email...</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Phone</span>
+                      <span className="text-slate-400">Checking number...</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Experience Summary</h4>
+                    {selectedCandidate.history.map((h: any, i: number) => (
+                      <div key={i} className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                        <h5 className="font-bold text-slate-900 text-sm">{h.title}</h5>
+                        <p className="text-xs text-slate-400 mt-1">{h.period}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'experience' && (
+                <div className="space-y-3">
+                  {selectedCandidate.history.map((h: any, i: number) => (
+                    <div key={i} className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                      <h5 className="font-bold text-slate-900 text-sm">{h.title}</h5>
+                      <p className="text-xs text-slate-500 mt-1">Detailed description of responsibilities and achievements in this role.</p>
+                      <span className="text-[10px] font-mono text-slate-400 mt-2 block">{h.period}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {activeTab === 'education' && (
+                <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                  <h5 className="font-bold text-slate-900 text-sm">{selectedCandidate.education}</h5>
+                  <p className="text-xs text-slate-500 mt-1">Jan 2009 - Jan 2014</p>
+                </div>
+              )}
+
+              {activeTab === 'skills' && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedCandidate.skills.map((s: string, i: number) => (
+                    <span key={i} className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold border border-purple-100">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {activeTab === 'more' && (
+                <div className="p-4 bg-white rounded-xl border border-slate-200 text-xs text-slate-600">
+                  Additional notes, certifications, and portfolio links connected to this talent profile.
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+O que foi implementado e refinado:
+Modo Lista Sem Limitações: A listagem ocupa a largura total fluida (max-w-7xl ou expansível quando o painel lateral fecha), preenchendo perfeitamente o espaço conforme a referência.
+
+Animação de Abertura/Fechamento Lateral: Ao clicar no nome do candidato, o perfil desliza suavemente da direita para a esquerda (slide-in-from-right), com transição polida.
+
+Menu de Três Pontinhos Funcional: O botão MoreVertical abre um popover flutuante completo com opções (Save Contact, Find Similar Profiles, Summarize Full Profile, Export Profile e Report Profile).
+
+Widgets Minimalistas Harmônicos: Widget flutuante de buscas restantes integrado com barra de progresso em roxo/violeta idêntica à referência visual.

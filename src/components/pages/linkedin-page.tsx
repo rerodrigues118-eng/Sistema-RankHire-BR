@@ -797,98 +797,113 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       </tbody>
                     </table>
                   ) : (
-                    // Visão de Lista Detalhada (Image 5 Style)
-                    <div className="divide-y divide-slate-100 flex flex-col">
+                    // Visão de Lista Flat Minimalista (Juice.box Style)
+                    <div className="divide-y divide-slate-100">
                       {profiles.map((p, idx) => {
                         const isSelected = selectedProfileIndex === idx;
                         const isImported = selectedRowIds.has(p.id);
-                        const isExpanded = expandedCardId === p.id;
                         return (
-                          <div 
+                          <div
                             key={p.id}
                             onClick={() => handleSelectProfile(idx)}
-                            className={`p-4 cursor-pointer hover:bg-slate-50/80 transition-colors flex flex-col gap-3 group relative ${isSelected ? 'bg-indigo-50/30' : ''}`}
+                            className={`px-4 py-4 cursor-pointer transition-colors group relative ${
+                              isSelected ? 'bg-violet-50/40' : 'hover:bg-slate-50/70'
+                            }`}
                           >
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-start gap-3">
-                                <div className="w-9 h-9 rounded-full bg-[#7C3AED]/10 text-[#7C3AED] flex items-center justify-center text-sm font-bold">
-                                  {p.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()}
-                                </div>
+                            {/* Row: Name + Social + Actions */}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={isImported}
+                                  onClick={e => e.stopPropagation()}
+                                  onChange={() => handleShortlist(p)}
+                                  className="mt-1 rounded border-slate-300 text-[#7C3AED] focus:ring-[#7C3AED] cursor-pointer flex-shrink-0"
+                                />
                                 <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-bold text-slate-900 text-sm">{p.name}</h4>
-                                    <div className="flex items-center gap-1">
-                                      <span className="w-4 h-4 rounded bg-blue-50 text-blue-700 text-[8px] font-extrabold flex items-center justify-center font-serif">in</span>
-                                      <span className="w-4 h-4 rounded bg-slate-900 text-white text-[8px] font-bold flex items-center justify-center">X</span>
-                                    </div>
+                                  <div className="flex items-center flex-wrap gap-1.5">
+                                    <span className="font-semibold text-slate-900 text-sm leading-tight">{p.name}</span>
+                                    <a href={p.linkedinUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                                      className="w-4 h-4 rounded bg-blue-100 text-blue-700 text-[8px] font-extrabold flex items-center justify-center font-serif hover:bg-blue-200 transition-colors flex-shrink-0">
+                                      in
+                                    </a>
+                                    <span className="w-4 h-4 rounded bg-slate-800 text-white text-[8px] font-bold flex items-center justify-center flex-shrink-0">X</span>
+                                    {(p.skills || []).slice(0, 1).map((_, i) => (
+                                      <span key={i} className="text-[11px] text-slate-400 font-medium">+{(p.skills?.length || 0) + 2}</span>
+                                    ))}
                                   </div>
-                                  <p className="text-xs text-slate-500 mt-0.5">{p.location}</p>
+                                  <p className="text-[11px] text-slate-400 mt-0.5">{p.location}</p>
                                 </div>
                               </div>
-                              
-                              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                <button 
-                                  onClick={() => setExpandedCardId(isExpanded ? null : p.id)}
-                                  className="text-xs font-semibold text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 transition-all"
-                                >
-                                  {isExpanded ? 'Recolher' : 'Expandir Card'}
-                                </button>
-                                <button 
-                                  onClick={() => handleShortlist(p)}
-                                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all ${
-                                    isImported 
-                                      ? "bg-purple-50 text-[#7C3AED] border border-[#7C3AED]/20" 
-                                      : "bg-slate-900 text-white hover:bg-slate-800"
-                                  }`}
-                                >
-                                  <span>{isImported ? "Selecionado" : "Selecionar"}</span>
-                                </button>
-                              </div>
-                            </div>
 
-                            {/* Job Timeline (Image 5 style) */}
-                            <div className="pl-12 flex flex-col gap-1.5 text-xs text-slate-600">
-                              {p.experiencias?.map((exp, eIdx) => (
-                                <div key={eIdx} className="flex items-start gap-2">
-                                  <span className="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 flex-shrink-0"></span>
-                                  <span>
-                                    <strong>{exp.cargo}</strong> na <span className="text-slate-950 font-medium">{exp.empresa}</span>
-                                    <span className="text-slate-400 ml-1.5 font-normal">({exp.inicio} - {exp.fim || "Atual"})</span>
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Semantic Tags */}
-                            {p.criterios_avaliados && p.criterios_avaliados.length > 0 && (
-                              <div className="pl-12 flex flex-wrap gap-2 mt-1">
-                                {p.criterios_avaliados.map((ev, cIdx) => (
-                                  <span 
-                                    key={cIdx} 
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                                      ev.nota >= 4 
-                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                                        : "bg-rose-50 text-rose-700 border-rose-200"
+                              {/* Actions: Hide + Shortlist */}
+                              <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                                <button className="text-[11px] text-slate-500 hover:text-slate-800 font-medium transition-colors px-1">
+                                  Ocultar
+                                </button>
+                                <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden shadow-xs">
+                                  <button
+                                    onClick={() => handleShortlist(p)}
+                                    className={`flex items-center gap-1 text-[11px] font-semibold px-3 py-1.5 transition-colors ${
+                                      isImported
+                                        ? "bg-violet-50 text-[#7C3AED]"
+                                        : "bg-white text-slate-700 hover:bg-slate-50"
                                     }`}
                                   >
-                                    {ev.nota >= 4 ? <ThumbsUp size={11} className="fill-emerald-700 text-emerald-700" /> : <ThumbsDown size={11} className="fill-rose-700 text-rose-700" />}
-                                    <span>{ev.nome}: {ev.justificativa}</span>
-                                  </span>
+                                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ isImported ? 'bg-[#7C3AED]' : 'border border-slate-400'}`} />
+                                    {isImported ? "Shortlisted" : "Shortlist"}
+                                  </button>
+                                  <div className="w-px h-5 bg-slate-200" />
+                                  <button className="px-1.5 py-1.5 bg-white hover:bg-slate-50 transition-colors">
+                                    <ChevronDown size={12} className="text-slate-400" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Experience Timeline — clean style */}
+                            {p.experiencias && p.experiencias.length > 0 && (
+                              <div className="mt-2.5 pl-7 space-y-1">
+                                {p.experiencias.slice(0, 3).map((exp, eIdx) => (
+                                  <div key={eIdx} className="flex items-baseline gap-2 text-[12px]">
+                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1 ${
+                                      eIdx === 0 ? 'bg-violet-500' : 'border border-slate-300 bg-white'
+                                    }`} />
+                                    <span className="text-slate-800 font-medium">
+                                      {exp.cargo}
+                                      <span className="text-slate-500 font-normal"> at {exp.empresa}</span>
+                                      <span className="text-slate-400 ml-1.5 text-[11px]">{exp.inicio} – {exp.fim || "Presente"}</span>
+                                    </span>
+                                  </div>
                                 ))}
                               </div>
                             )}
 
-                            {/* Seção Expandida Dinâmica */}
-                            {isExpanded && (
-                              <div className="mt-3 pt-3 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300 pl-12">
-                                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Competências validadas</h4>
-                                <div className="flex flex-wrap gap-2">
-                                  {(p.skills && p.skills.length > 0 ? p.skills : ['Photoshop', 'React', 'Node.js']).map((s, i) => (
-                                    <span key={i} className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-semibold border border-emerald-200">
-                                      ✓ {s}: Validado pelo histórico de IA
-                                    </span>
-                                  ))}
-                                </div>
+                            {/* AI Summary with purple inline highlights */}
+                            {p.resumo && (
+                              <div className="mt-2.5 pl-7 flex items-start gap-1.5">
+                                <Sparkles size={12} className="text-violet-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-[12px] text-slate-600 leading-relaxed">
+                                  {p.resumo.split(' ').map((word, wi) => {
+                                    const highlight = p.skills?.some(sk => word.toLowerCase().includes(sk.toLowerCase()));
+                                    return highlight
+                                      ? <mark key={wi} className="bg-violet-100 text-violet-800 rounded px-0.5 font-medium not-italic">{word} </mark>
+                                      : <span key={wi}>{word} </span>;
+                                  })}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Criteria Tags — text only, no heavy boxes */}
+                            {p.criterios_avaliados && p.criterios_avaliados.length > 0 && (
+                              <div className="mt-2 pl-7 flex flex-wrap gap-x-3 gap-y-1">
+                                {p.criterios_avaliados.map((ev, cIdx) => (
+                                  <span key={cIdx} className={`text-[11px] font-medium ${
+                                    ev.nota >= 4 ? 'text-emerald-600' : 'text-slate-400'
+                                  }`}>
+                                    {ev.nota >= 4 ? '✓' : '○'} {ev.nome}
+                                  </span>
+                                ))}
                               </div>
                             )}
                           </div>
@@ -1026,37 +1041,57 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                 </div>
               </div>
 
-              {/* Candidate Info Header */}
-              <div className="p-6 border-b border-slate-200 flex items-start gap-4 flex-shrink-0">
-                <div className="w-14 h-14 rounded-full bg-[#7C3AED]/15 text-[#7C3AED] flex items-center justify-center text-lg font-bold flex-shrink-0">
-                  {selectedProfile.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase()}
+              {/* Candidate Info Header — Redesenhado (Juice.box Style) */}
+              <div className="px-6 pt-5 pb-4 border-b border-slate-200 flex-shrink-0">
+                {/* Name + Social icons row */}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 leading-tight">{selectedProfile.name}</h2>
+                    <p className="text-[12px] text-slate-500 mt-0.5">{selectedProfile.location}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                    <a href={selectedProfile.linkedinUrl} target="_blank" rel="noreferrer"
+                      className="w-5 h-5 rounded bg-blue-100 text-blue-700 text-[9px] font-extrabold flex items-center justify-center font-serif hover:bg-blue-200 transition-colors border border-blue-200">
+                      in
+                    </a>
+                    <span className="w-5 h-5 rounded bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center">X</span>
+                    <span className="w-5 h-5 rounded bg-slate-100 text-slate-500 text-[9px] font-bold flex items-center justify-center border border-slate-200">gh</span>
+                  </div>
                 </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-4">
-                    <h2 className="text-lg font-black text-slate-900 truncate leading-snug">{selectedProfile.name}</h2>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <a href={selectedProfile.linkedinUrl} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-blue-600 transition-colors">
-                        <span className="w-5 h-5 rounded bg-blue-50 text-blue-700 text-[10px] font-extrabold flex items-center justify-center font-serif border border-blue-100">in</span>
-                      </a>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                    <MapPin size={12} className="text-slate-400" />
-                    {selectedProfile.location}
-                  </p>
 
-                  <div className="flex items-center gap-4 mt-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                    <div className="flex flex-col">
-                      <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400">Atual</span>
-                      <span className="text-xs text-slate-800 font-semibold truncate max-w-[150px]">{selectedProfile.headline}</span>
-                    </div>
-                    <div className="w-px h-5 bg-slate-200" />
-                    <div className="flex flex-col">
-                      <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400">Anterior</span>
-                      <span className="text-xs text-slate-800 font-semibold truncate max-w-[150px]">Designer at Individual</span>
-                    </div>
+                {/* Company chips row */}
+                {selectedProfile.experiencias && selectedProfile.experiencias.length > 0 && (
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    {selectedProfile.experiencias.slice(0, 2).map((exp, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-700 bg-slate-100 rounded-full px-2.5 py-1">
+                        <span className="w-3 h-3 rounded-sm bg-violet-200 flex-shrink-0" />
+                        {exp.empresa}
+                      </span>
+                    ))}
                   </div>
+                )}
+
+                {/* Primary Actions */}
+                <div className="flex items-center gap-2 mt-4">
+                  <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden shadow-xs">
+                    <button
+                      onClick={() => handleShortlist(selectedProfile)}
+                      className="flex items-center gap-1.5 text-[12px] font-semibold px-3 py-2 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <span className="w-2.5 h-2.5 rounded-sm border border-slate-400 flex-shrink-0" />
+                      Add to Shortlist
+                    </button>
+                    <div className="w-px h-5 bg-slate-200" />
+                    <button className="px-2 py-2 bg-white hover:bg-slate-50 transition-colors">
+                      <ChevronDown size={13} className="text-slate-400" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => handleRevealContact(selectedProfile.id, "email")}
+                    className="flex-1 bg-[#7C3AED] hover:bg-[#6d28d9] text-white font-semibold text-[12px] px-4 py-2 rounded-lg transition-colors shadow-sm"
+                  >
+                    + Create First Sequence
+                  </button>
                 </div>
               </div>
 
@@ -1086,61 +1121,97 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
               {/* Drawer Content Body — conditional by tab */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
-                {/* ── Visão Geral ── */}
+                {/* ── Visão Geral — Redesenhada (Property List Style) ── */}
                 {drawerTab === 'geral' && (
-                  <>
-                    {/* Score resumo */}
-                    {selectedProfile.score_final != null && (
-                      <div className="bg-gradient-to-r from-[#7C3AED]/8 to-[#7C3AED]/3 rounded-xl border border-[#7C3AED]/15 p-4 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] font-bold text-[#7C3AED] uppercase tracking-widest block">Score RankHire</span>
-                          <span className="text-2xl font-black text-slate-900">{Math.round(selectedProfile.score_final * 10) / 10}<span className="text-sm font-medium text-slate-400">/10</span></span>
+                  <div className="space-y-0 divide-y divide-slate-100">
+                    {/* Status */}
+                    <div className="flex items-center justify-between py-3">
+                      <span className="text-[12px] text-slate-500 font-medium flex items-center gap-2">
+                        <span className="w-4 h-4 rounded-full border border-slate-300 flex items-center justify-center">
+                          <span className="w-2 h-2 rounded-full bg-slate-300" />
+                        </span>
+                        Status
+                      </span>
+                      <span className="text-[12px] text-slate-400 italic">Sem status</span>
+                    </div>
+
+                    {/* Email */}
+                    <div className="flex items-center justify-between py-3">
+                      <span className="text-[12px] text-slate-500 font-medium flex items-center gap-2">
+                        <Mail size={14} className="text-slate-400" />
+                        E-mail
+                      </span>
+                      {revealedContacts.has(`${selectedProfile.id}-email`) ? (
+                        <span className="text-[12px] text-slate-800 font-medium select-all">
+                          {selectedProfile.email || 'contato@email.com'}
+                        </span>
+                      ) : (
+                        <button onClick={() => handleRevealContact(selectedProfile.id, "email")}
+                          className="text-[12px] text-[#7C3AED] font-semibold hover:underline flex items-center gap-1">
+                          Revelar e-mail +
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Phone */}
+                    <div className="flex items-center justify-between py-3">
+                      <span className="text-[12px] text-slate-500 font-medium flex items-center gap-2">
+                        <Phone size={14} className="text-slate-400" />
+                        Telefone
+                      </span>
+                      {revealedContacts.has(`${selectedProfile.id}-phone`) ? (
+                        <span className="text-[12px] text-slate-800 font-medium select-all">
+                          {selectedProfile.phone || '+55 (41) 99888-7766'}
+                        </span>
+                      ) : (
+                        <button onClick={() => handleRevealContact(selectedProfile.id, "phone")}
+                          className="text-[12px] text-[#7C3AED] font-semibold hover:underline flex items-center gap-1">
+                          Revelar número +
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Tags */}
+                    <div className="flex items-start justify-between py-3 gap-4">
+                      <span className="text-[12px] text-slate-500 font-medium flex items-center gap-2 flex-shrink-0">
+                        <span className="text-slate-400">◇</span>
+                        Tags
+                      </span>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {selectedProfile.skills && selectedProfile.skills.length > 0 ? (
+                          selectedProfile.skills.slice(0, 3).map((sk, i) => (
+                            <span key={i} className="text-[11px] text-slate-600 bg-slate-100 rounded-full px-2 py-0.5">{sk}</span>
+                          ))
+                        ) : (
+                          <button className="text-[12px] text-[#7C3AED] font-semibold hover:underline">Adicionar tag</button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Experience summary */}
+                    {selectedProfile.experiencias && selectedProfile.experiencias.length > 0 && (
+                      <div className="pt-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[12px] font-semibold text-slate-800">Experiência</span>
+                          <span className="text-[11px] text-slate-400">{selectedProfile.experiencia_anos || selectedProfile.years_experience || '—'} anos totais</span>
                         </div>
-                        <div className="w-12 h-12 rounded-full bg-[#7C3AED]/10 flex items-center justify-center">
-                          <Sparkles size={20} className="text-[#7C3AED]" />
+                        <div className="space-y-4">
+                          {selectedProfile.experiencias.map((exp, i) => (
+                            <div key={i} className="flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+                                <span className="text-[10px] font-black text-violet-700">{exp.empresa.substring(0, 2).toUpperCase()}</span>
+                              </div>
+                              <div>
+                                <p className="text-[13px] font-semibold text-slate-900 leading-snug">{exp.cargo}</p>
+                                <p className="text-[12px] text-slate-500">{exp.empresa}</p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">{exp.inicio} – {exp.fim || 'Atual'}</p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
-                    {/* Contato */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Detalhes de Contato</span>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-1.5">
-                          <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1"><Mail size={12} /> E-mail</span>
-                          {revealedContacts.has(`${selectedProfile.id}-email`) ? (
-                            <span className="text-xs text-slate-900 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg select-all">
-                              {selectedProfile.email || 'contato@email.com'}
-                            </span>
-                          ) : (
-                            <button onClick={() => handleRevealContact(selectedProfile.id, "email")}
-                              className="bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED]/20 font-bold py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 border border-[#7C3AED]/20 transition-all">
-                              <span>Revelar e-mail</span><Lock size={11} />
-                            </button>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                          <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1"><Phone size={12} /> Telefone</span>
-                          {revealedContacts.has(`${selectedProfile.id}-phone`) ? (
-                            <span className="text-xs text-slate-900 font-bold bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg select-all">
-                              {selectedProfile.phone || '+55 (41) 99888-7766'}
-                            </span>
-                          ) : (
-                            <button onClick={() => handleRevealContact(selectedProfile.id, "phone")}
-                              className="bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED]/20 font-bold py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 border border-[#7C3AED]/20 transition-all">
-                              <span>Revelar número</span><Lock size={11} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {/* Cargo atual resumo */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-4">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Cargo Atual</span>
-                      <p className="text-sm font-semibold text-slate-800">{selectedProfile.headline}</p>
-                      {selectedProfile.company && <p className="text-xs text-slate-500 mt-0.5">{selectedProfile.company}</p>}
-                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-1"><MapPin size={11} />{selectedProfile.location}</p>
-                    </div>
-                  </>
+                  </div>
                 )}
 
                 {/* ── Experiência ── */}
