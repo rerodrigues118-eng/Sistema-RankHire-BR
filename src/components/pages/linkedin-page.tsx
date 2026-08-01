@@ -183,7 +183,9 @@ const INITIAL_MOCK_PROFILES: LinkedinProfile[] = [
 export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinPageProps) {
   // Page search query state
   const [queryText, setQueryText] = useState("");
-  const [hasSearched, setHasSearched] = useState(false);
+  // Máquina de estados de busca: idle → review → searching → results
+  type SearchPhase = 'idle' | 'review' | 'searching' | 'results';
+  const [phase, setPhase] = useState<SearchPhase>('idle');
   const [activeTab, setActiveTab] = useState<"results" | "insights">("results");
   const [viewMode, setViewMode] = useState<"table" | "list">("table");
   
@@ -245,10 +247,6 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   // Copy share link feedback
   const [shareCopied, setShareCopied] = useState(false);
 
-  // Search animation
-  const [searchStep, setSearchStep] = useState<'idle' | 'parsing' | 'scanning'>('idle');
-  const [searchStatusText, setSearchStatusText] = useState('');
-
   // Search history (max 3 per job)
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
@@ -307,7 +305,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         const { queryText: q, profiles: p, hasSearched: hs } = JSON.parse(saved);
         if (q) setQueryText(q);
         if (p?.length) setProfiles(p);
-        if (hs) setHasSearched(true);
+        if (hs) setPhase('results');
       }
       const hist = localStorage.getItem(`rankhire_history_${vagaKey}`);
       if (hist) setSearchHistory(JSON.parse(hist));
@@ -367,22 +365,17 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     setTimeout(() => setShareCopied(false), 2000);
   };
 
-  // Run new search — com animação sequencial + persistência
-  const handleRunSearch = async () => {
+  // Fase 1 → 2: submit inicial vai para tela de revisão de filtros
+  const handleInitialSubmit = () => {
+    if (!queryText.trim()) return;
+    setPhase('review');
+  };
+
+  // Fase 2 → 3 → 4: confirma filtros, executa busca real
+  const handleConfirmSearch = async () => {
     setIsEditQueryOpen(false);
+    setPhase('searching');
     const vagaKey = activeJob?.id || 'default';
-
-    // Etapa 1: overlay de análise de intenção
-    setSearchStep('parsing');
-    setSearchStatusText('Analisando intenção e requisitos com IA...');
-    await new Promise(r => setTimeout(r, 750));
-
-    // Etapa 2: overlay de varredura
-    setSearchStep('scanning');
-    setSearchStatusText('Varrendo base de talentos LinkedIn...');
-    await new Promise(r => setTimeout(r, 750));
-
-    setIsSearching(true);
     let resultProfiles = profiles;
 
     try {
@@ -408,14 +401,12 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         }
       }
 
-      // Persistir no localStorage
       try {
         localStorage.setItem(`rankhire_search_${vagaKey}`, JSON.stringify({
           queryText,
           profiles: resultProfiles,
           hasSearched: true,
         }));
-        // Salvar histórico (máx 3)
         const histKey = `rankhire_history_${vagaKey}`;
         const existing: string[] = JSON.parse(localStorage.getItem(histKey) || '[]');
         const updated = [queryText, ...existing.filter(q => q !== queryText)].slice(0, 3);
@@ -426,12 +417,15 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     } catch (err) {
       console.error("Erro ao buscar candidatos:", err);
     } finally {
-      setIsSearching(false);
-      setHasSearched(true);
-      setSearchStep('idle');
-      // Decrementa contador de buscas gratuitas
+      setPhase('results');
       setFreeSearchesLeft(prev => Math.max(0, prev - 1));
     }
+  };
+
+  // Atalho: re-run search a partir da barra comprimida no topo
+  const handleRunSearch = async () => {
+    if (phase === 'idle') { handleInitialSubmit(); return; }
+    await handleConfirmSearch();
   };
 
   // Criteria update handler
@@ -469,8 +463,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   return (
     <div className="flex flex-col h-full bg-[#FAFCFF] overflow-hidden relative">
 
-      {/* ── Overlay animado de busca ── */}
-      {(searchStep === 'parsing' || searchStep === 'scanning') && (
+      {/* Overlay de busca — fase searching */}
+      {phase === 'searching' && (
         <div className="absolute inset-0 z-40 bg-white/92 backdrop-blur-sm flex flex-col items-center justify-center gap-6">
           <div className="relative">
             <div className="w-16 h-16 rounded-full border-4 border-[#7C3AED]/15 border-t-[#7C3AED] animate-spin" />
@@ -478,11 +472,10 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
               <Sparkles size={20} className="text-[#7C3AED]" />
             </div>
           </div>
-          <p className="text-slate-700 font-semibold text-sm animate-pulse">{searchStatusText}</p>
+          <p className="text-slate-700 font-semibold text-sm animate-pulse">Varrendo base de talentos...</p>
           <div className="flex items-center gap-2">
-            {(['parsing', 'scanning'] as const).map(s => (
-              <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${searchStep === s ? 'w-10 bg-[#7C3AED]' : 'w-3 bg-slate-200'}`} />
-            ))}
+            <div className="h-1.5 w-10 rounded-full bg-[#7C3AED] transition-all duration-500" />
+            <div className="h-1.5 w-3 rounded-full bg-slate-200" />
           </div>
         </div>
       )}
@@ -511,7 +504,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
           </button>
           <button 
             onClick={() => {
-              setHasSearched(false);
+              setPhase('idle');
               setQueryText("");
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs shadow-sm transition-all"
@@ -529,10 +522,10 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         <div className={`transition-all duration-300 ease-in-out flex flex-col h-full overflow-hidden bg-white ${selectedProfile ? 'w-[65%]' : 'w-full'}`}>
           <div className="flex-1 overflow-y-auto flex flex-col">
             
-            {/* ── Search Bar Area (Se contrai para o topo) ── */}
+            {/* ── Search Bar Area ── */}
             <div className="w-full flex flex-col gap-3 px-8 py-4 border-b border-slate-100">
-              {!hasSearched ? (
-                // Estado Inicial (Vazio e Expansivo)
+              {phase === 'idle' ? (
+                // FASE 1: Estado Inicial (Chat expansivo centrado)
                 <div className="max-w-[760px] mx-auto w-full py-16 flex flex-col items-center">
                   <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/50 px-3.5 py-1 text-[11px] font-semibold text-indigo-700 shadow-sm">
                     <Sparkles className="w-3.5 h-3.5" />
@@ -562,11 +555,11 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         Filtros avançados
                       </button>
                       <button 
-                        onClick={handleRunSearch}
+                        onClick={handleInitialSubmit}
                         disabled={!queryText.trim()}
                         className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7C3AED] hover:opacity-95 shadow text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        {isSearching ? <RotateCcw size={16} className="animate-spin" /> : <ArrowUp size={16} />}
+                        <ArrowUp size={16} />
                       </button>
                     </div>
                   </div>
@@ -589,8 +582,84 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     </div>
                   )}
                 </div>
+              ) : phase === 'review' ? (
+                // FASE 2: Revisão de Filtros da IA
+                <div className="max-w-3xl mx-auto w-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-8 duration-500 py-8">
+                  {/* Query refletida */}
+                  <div className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-slate-950 flex items-center justify-center flex-shrink-0">
+                      <Sparkle size={14} className="text-white fill-white" />
+                    </div>
+                    <span className="text-slate-800 font-medium text-sm">{queryText}</span>
+                  </div>
+
+                  {/* Bloco de Filtros da IA */}
+                  <div className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-4 relative">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-slate-700">
+                        Defini esses{' '}
+                        <span className="text-[#7C3AED] font-semibold inline-flex items-center gap-1">
+                          <SlidersHorizontal className="w-3 h-3" /> Filtros
+                        </span>{' '}
+                        com base na sua busca ({profiles.length > 0 ? `${profiles.length} matches` : '43k matches'})
+                      </p>
+                      <button onClick={() => setIsFiltersOpen(true)} className="text-sm text-[#7C3AED] font-semibold hover:underline whitespace-nowrap ml-4">
+                        Editar filtros
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {filters.currentJobTitles && (
+                        <span className="px-3 py-1.5 bg-purple-100 text-purple-900 rounded-lg text-sm font-medium flex items-center gap-1.5">
+                          {filters.currentJobTitles}
+                          {criteria.length > 0 && <span className="text-purple-400 text-xs">+{criteria.length}</span>}
+                        </span>
+                      )}
+                      {filters.location && (
+                        <span className="text-sm text-slate-500">{filters.countries || 'Brasil'}</span>
+                      )}
+                      {filters.requiredKeywords && (
+                        <button onClick={() => setIsFiltersOpen(true)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 cursor-pointer text-slate-700">
+                          +{[filters.location, filters.minYears, filters.requiredKeywords].filter(Boolean).length} filtros
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bloco de Critérios */}
+                  <div className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2">
+                    <span className="text-sm text-slate-700">
+                      Adicione{' '}
+                      <span className="text-[#7C3AED] font-semibold inline-flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Critérios
+                      </span>{' '}
+                      para ranquear seus matches
+                    </span>
+                    <button onClick={() => setIsCriteriaOpen(true)} className="text-sm text-[#7C3AED] font-semibold hover:underline ml-1">
+                      Adicionar critérios
+                    </button>
+                    {criteria.length > 0 && (
+                      <span className="ml-auto text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
+                        ✓ {criteria.length} critério{criteria.length > 1 ? 's' : ''} definido{criteria.length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Ações */}
+                  <div className="flex justify-end items-center gap-6 pt-2">
+                    <button onClick={() => { setPhase('idle'); setQueryText(''); }} className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                      Resetar busca
+                    </button>
+                    <button
+                      onClick={handleConfirmSearch}
+                      className="px-6 py-3 bg-[#7C3AED] text-white rounded-xl font-semibold shadow-md hover:bg-[#6d28d9] transition-all active:scale-95"
+                    >
+                      Executar busca
+                    </button>
+                  </div>
+                </div>
+
               ) : (
-                // Estado de Resultado (Barra comprimida em formato pílula no topo)
+                // FASE 3 & 4: Barra comprimida (searching + results)
                 <div className="w-full flex flex-col gap-3">
                   <div className="flex items-center gap-2 w-full">
                     {/* Search Pill Input Bar */}
@@ -662,7 +731,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
             </div>
 
             {/* ── Main Workspace Body ── */}
-            {hasSearched && (
+            {(phase === 'searching' || phase === 'results') && (
               <div className="flex flex-col flex-1 bg-white overflow-hidden">
                 {/* Result Tabs Navigation */}
                 <div className="flex border-b border-slate-200 bg-slate-50/50">
@@ -688,7 +757,34 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   </button>
                 </div>
 
-                {/* Toolbar */}
+                {/* SKELETON LOADING — fase searching */}
+                {phase === 'searching' && (
+                  <div className="flex flex-col px-8 pb-6 pt-4 space-y-8 animate-in fade-in duration-300">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="w-full border-b border-slate-100 pb-8 flex gap-4">
+                        <div className="w-4 h-4 rounded bg-slate-200 animate-pulse mt-1 flex-shrink-0" />
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-4 w-44 bg-slate-200 rounded animate-pulse" />
+                            <div className="h-4 w-4 bg-slate-200 rounded-full animate-pulse" />
+                            <div className="h-4 w-4 bg-slate-200 rounded-full animate-pulse" />
+                            <div className="h-4 w-4 bg-slate-200 rounded-full animate-pulse" />
+                          </div>
+                          <div className="h-3 w-32 bg-slate-100 rounded animate-pulse" />
+                          <div className="space-y-1.5 mt-2">
+                            <div className="h-3 w-3/4 bg-slate-100 rounded animate-pulse" />
+                            <div className="h-3 w-1/2 bg-slate-100 rounded animate-pulse" />
+                            <div className="h-3 w-2/3 bg-slate-100 rounded animate-pulse" />
+                          </div>
+                          <div className="h-14 w-full bg-slate-50 rounded-lg animate-pulse mt-3" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Toolbar — só aparece na fase results */}
+                {phase === 'results' && (
                 <div className="px-4 py-2 border-b border-slate-200 bg-white flex items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-3">
                     <input 
@@ -735,9 +831,11 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     </div>
                   </div>
                 </div>
+                )}
 
-                {/* Candidates List/Table Representation */}
-                <div className="flex-1 overflow-y-auto">
+                {/* Candidates List/Table — fase results */}
+                {phase === 'results' && (<>
+                <div className="flex-1 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
                   {viewMode === "table" ? (
                     // Tabela Compacta (Image 1)
                     <table className="w-full text-left text-xs border-collapse">
@@ -922,7 +1020,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     </div>
                   )}
                 </div>
-
+                
                 {/* ── Widget de Buscas Gratuitas Funcional ── */}
                 <div className="sticky bottom-0 bg-white border-t border-slate-200 px-5 py-3 flex items-center justify-between gap-4 flex-shrink-0">
                   <div className="flex-1 space-y-1.5">
@@ -944,6 +1042,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     <ArrowRight size={13} />
                   </button>
                 </div>
+                </>)}
 
               </div>
             )}
@@ -1769,7 +1868,11 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                 Cancelar
               </button>
               <button
-                onClick={() => { setIsFiltersOpen(false); handleRunSearch(); }}
+                onClick={() => { 
+                  setIsFiltersOpen(false); 
+                  if (phase === 'results') handleConfirmSearch();
+                  else if (queryText.trim()) setPhase('review');
+                }}
                 className="px-5 py-2 bg-[#7C3AED] text-white rounded-lg text-sm font-semibold shadow-md shadow-[#7C3AED]/20 hover:opacity-95 transition-all flex items-center gap-2"
               >
                 Salvar e Aplicar
