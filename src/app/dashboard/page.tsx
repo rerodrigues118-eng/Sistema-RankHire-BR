@@ -619,8 +619,8 @@ export default function Home() {
       <div className="flex h-screen bg-[var(--bg-page)] overflow-hidden font-sans">
         <Sidebar activePage={activePage} onNavigate={handleSetActivePage} />
         <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[var(--bg-base)]">
-          <main className="flex-1 overflow-y-auto p-6 text-[var(--text-primary)]">
-            <TrialBanner />
+          <main className={`flex-1 overflow-y-auto text-[var(--text-primary)] ${activePage === "linkedin" ? "p-0 overflow-hidden" : "p-6"}`}>
+            {activePage !== "linkedin" && <TrialBanner />}
             {bootstrapError && (
               <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 {bootstrapError}
