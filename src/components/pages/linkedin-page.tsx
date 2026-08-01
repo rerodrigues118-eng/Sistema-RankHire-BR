@@ -523,14 +523,14 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
       </div>
 
       {/* ── Outer Layout (Split-Screen Container) ── */}
-      <div className="flex-1 flex overflow-hidden w-full relative">
+      <div className="flex-1 flex overflow-hidden w-full relative bg-white">
         
         {/* ── Left Panel: Main Workspace Content ── */}
-        <div className={`transition-all duration-300 ease-in-out flex flex-col h-full overflow-hidden ${selectedProfile ? 'w-3/4 border-r border-slate-200' : 'w-full'}`}>
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+        <div className={`transition-all duration-300 ease-in-out flex flex-col h-full overflow-hidden bg-white ${selectedProfile ? 'w-[65%]' : 'w-full'}`}>
+          <div className="flex-1 overflow-y-auto flex flex-col">
             
             {/* ── Search Bar Area (Se contrai para o topo) ── */}
-            <div className="w-full flex flex-col gap-4">
+            <div className="w-full flex flex-col gap-3 px-8 py-4 border-b border-slate-100">
               {!hasSearched ? (
                 // Estado Inicial (Vazio e Expansivo)
                 <div className="max-w-[760px] mx-auto w-full py-16 flex flex-col items-center">
@@ -661,9 +661,9 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
               )}
             </div>
 
-            {/* ── Main Workspace Body (Fidelidade do Painel) ── */}
+            {/* ── Main Workspace Body ── */}
             {hasSearched && (
-              <div className="flex flex-col flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="flex flex-col flex-1 bg-white overflow-hidden">
                 {/* Result Tabs Navigation */}
                 <div className="flex border-b border-slate-200 bg-slate-50/50">
                   <button 
@@ -951,7 +951,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         </div>
 
         {/* ── Right Panel: Split-Screen Candidate Detail Drawer ── */}
-        <div className={`transition-all duration-300 ease-in-out h-full overflow-hidden flex ${selectedProfile ? 'w-1/4 min-w-[320px] bg-white flex flex-col shadow-xl animate-in slide-in-from-right duration-300 z-40 border-l border-slate-200' : 'w-0'}`}>
+        <div className={`transition-all duration-300 ease-in-out h-full overflow-hidden flex ${selectedProfile ? 'w-[35%] min-w-[400px] bg-white flex flex-col shadow-2xl animate-in slide-in-from-right duration-300 z-40 border-l border-slate-200' : 'w-0'}`}>
           {selectedProfile && (
             <div className="flex-1 flex flex-col h-full overflow-hidden relative">
               
