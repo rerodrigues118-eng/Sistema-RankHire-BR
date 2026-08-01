@@ -127,6 +127,8 @@ export interface Candidate {
   disponibilidade?: string;
   regime?: string;
   aiSummary?: string;
+  formacao?: string;
+  graduacao?: string;
   // Campos extraídos pela IA via PDF
   emailContato?: string | null;
   telefone?: string | null;
