@@ -187,7 +187,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   type SearchPhase = 'idle' | 'review' | 'searching' | 'results';
   const [phase, setPhase] = useState<SearchPhase>('idle');
   const [activeTab, setActiveTab] = useState<"results" | "insights">("results");
-  const [viewMode, setViewMode] = useState<"table" | "list">("table");
+  const [viewMode, setViewMode] = useState<"table" | "list">("list");
   
   // Modals state
   const [isCriteriaOpen, setIsCriteriaOpen] = useState(false);
@@ -480,40 +480,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         </div>
       )}
       
-      {/* ── Topbar (Fidelidade Visual do Topo) ── */}
-      <div className="h-12 border-b border-slate-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
-        {/* Breadcrumbs */}
-        <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-medium">
-          <span>{activeJob?.department || "RH"}</span>
-          <ChevronRight size={14} className="text-slate-300" />
-          <span>Buscas</span>
-          <ChevronRight size={14} className="text-slate-300" />
-          <span className="text-slate-800 font-semibold truncate max-w-[240px]">
-            {activeJob?.title || "Nova Busca"}
-          </span>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setIsShareOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-xs shadow-sm transition-all"
-          >
-            <Share2 size={13} className="text-slate-500" />
-            <span>Compartilhar</span>
-          </button>
-          <button 
-            onClick={() => {
-              setPhase('idle');
-              setQueryText("");
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs shadow-sm transition-all"
-          >
-            <Plus size={13} />
-            <span>Nova busca</span>
-          </button>
-        </div>
-      </div>
 
       {/* ── Outer Layout (Split-Screen Container) ── */}
       <div className="flex-1 flex overflow-hidden w-full relative bg-white">
@@ -704,28 +671,50 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   </button>
                 </div>
 
-                {/* Suggestion Expansion Chips */}
-                {profiles.length > 0 && (
-                  <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
-                    <span className="flex items-center gap-1 font-medium"><Sparkles size={11} /> Expandir pool:</span>
-                    {filters.excludeCompany && (
-                      <button 
-                        onClick={() => setFilters(prev => ({ ...prev, excludeCompany: "" }))}
-                        className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors"
-                      >
-                        Remover filtro: empresa excluída
-                      </button>
-                    )}
-                    {filters.requiredKeywords && (
-                      <button 
-                        onClick={() => setFilters(prev => ({ ...prev, requiredKeywords: "" }))}
-                        className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors"
-                      >
-                        Remover filtro: {filters.requiredKeywords.split(",")[0].trim()}
-                      </button>
-                    )}
+                {/* Suggestion Expansion Chips & Ações Realocadas */}
+                <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 flex-wrap">
+                  {profiles.length > 0 ? (
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1 font-medium"><Sparkles size={11} /> Expandir pool:</span>
+                      {filters.excludeCompany && (
+                        <button 
+                          onClick={() => setFilters(prev => ({ ...prev, excludeCompany: "" }))}
+                          className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors"
+                        >
+                          Remover filtro: empresa excluída
+                        </button>
+                      )}
+                      {filters.requiredKeywords && (
+                        <button 
+                          onClick={() => setFilters(prev => ({ ...prev, requiredKeywords: "" }))}
+                          className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors"
+                        >
+                          Remover filtro: {filters.requiredKeywords.split(",")[0].trim()}
+                        </button>
+                      )}
+                    </div>
+                  ) : <div />}
+
+                  <div className="flex items-center gap-2 ml-auto">
+                    <button 
+                      onClick={() => setIsShareOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-xs shadow-sm transition-all bg-white"
+                    >
+                      <Share2 size={13} className="text-slate-500" />
+                      <span>Compartilhar</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setPhase('idle');
+                        setQueryText("");
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs shadow-sm transition-all"
+                    >
+                      <Plus size={13} />
+                      <span>Nova busca</span>
+                    </button>
                   </div>
-                )}
+                </div>
                 </div>
               )}
             </div>
