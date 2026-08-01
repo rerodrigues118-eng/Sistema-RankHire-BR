@@ -80,6 +80,7 @@ export interface LinkedinProfile {
     descricao?: string;
   }>;
   formacao?: string | Array<{ curso?: string; grau?: string; instituicao: string; ano?: string }>;
+  educacao?: Array<{ curso: string; instituicao: string }>;
   idiomas?: string[];
   sobre?: string;
   email?: string;
@@ -188,6 +189,12 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   const [phase, setPhase] = useState<SearchPhase>('idle');
   const [activeTab, setActiveTab] = useState<"results" | "insights">("results");
   const [viewMode, setViewMode] = useState<"table" | "list">("list");
+  
+  // Dynamic header on scroll state
+  const [isScrolled, setIsScrolled] = useState(false);
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setIsScrolled(e.currentTarget.scrollTop > 30);
+  };
   
   // Modals state
   const [isCriteriaOpen, setIsCriteriaOpen] = useState(false);
@@ -487,10 +494,12 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         
         {/* ── Left Panel: Main Workspace Content ── */}
         <div className={`transition-all duration-300 ease-in-out flex flex-col h-full overflow-hidden bg-white ${selectedProfile ? 'w-[65%]' : 'w-full'}`}>
-          <div className="flex-1 overflow-y-auto flex flex-col">
+          <div className="flex-1 overflow-y-auto flex flex-col relative" onScroll={handleScroll}>
             
             {/* ── Search Bar Area ── */}
-            <div className="w-full flex flex-col gap-3 px-8 py-4 border-b border-slate-100">
+            <div className={`w-full flex flex-col gap-3 px-8 border-b border-slate-100 transition-all duration-300 bg-white z-20 ${
+              isScrolled ? 'py-2 shadow-xs sticky top-0' : 'py-4'
+            }`}>
               {phase === 'idle' ? (
                 // FASE 1: Estado Inicial (Chat expansivo centrado)
                 <div className="max-w-[760px] mx-auto w-full py-16 flex flex-col items-center">
@@ -632,12 +641,14 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     {/* Search Pill Input Bar */}
                     <div 
                       onClick={() => setIsEditQueryOpen(true)}
-                      className="flex-1 bg-white border border-slate-200 rounded-full h-11 px-4 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-all shadow-sm"
+                      className={`flex-1 bg-white border border-slate-200 rounded-full flex items-center justify-between cursor-pointer hover:border-slate-300 transition-all shadow-sm ${
+                        isScrolled ? 'h-9 px-3 text-xs' : 'h-11 px-4'
+                      }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         {/* Circle logo badge */}
-                        <div className="w-6 h-6 rounded-full bg-slate-950 flex items-center justify-center flex-shrink-0">
-                          <Sparkle size={12} className="text-white fill-white" />
+                        <div className="w-5 h-5 rounded-full bg-slate-950 flex items-center justify-center flex-shrink-0">
+                          <Sparkle size={10} className="text-white fill-white" />
                         </div>
                         <span className="text-[13px] text-slate-800 font-medium truncate">
                           {queryText}
@@ -647,74 +658,80 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     </div>
 
                     {/* Filtros & Critérios Quick Buttons */}
-                  <button 
-                    onClick={() => setIsFiltersOpen(true)}
-                    className="flex items-center gap-1.5 h-11 px-4 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm"
-                  >
-                    <SlidersHorizontal size={13} className="text-slate-500" />
-                    <span className="text-[12px] font-semibold text-slate-700">Filtros</span>
-                    {Object.values(filters).filter(v => v && v !== "any" && (typeof v !== "object" || Object.values(v).some(Boolean))).length > 0 && (
-                      <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                        {Object.values(filters).filter(v => v && v !== "any" && (typeof v !== "object" || Object.values(v as Record<string,unknown>).some(Boolean))).length}
-                      </span>
-                    )}
-                  </button>
-                  <button 
-                    onClick={() => setIsCriteriaOpen(true)}
-                    className="flex items-center gap-1.5 h-11 px-4 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm"
-                  >
-                    <Sparkles size={13} className="text-slate-500" />
-                    <span className="text-[12px] font-semibold text-slate-700">Critérios</span>
-                    {criteria.length > 0 && (
-                      <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{criteria.length}</span>
-                    )}
-                  </button>
-                </div>
-
-                {/* Suggestion Expansion Chips & Ações Realocadas */}
-                <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 flex-wrap">
-                  {profiles.length > 0 ? (
-                    <div className="flex items-center gap-2">
-                      <span className="flex items-center gap-1 font-medium"><Sparkles size={11} /> Expandir pool:</span>
-                      {filters.excludeCompany && (
-                        <button 
-                          onClick={() => setFilters(prev => ({ ...prev, excludeCompany: "" }))}
-                          className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors"
-                        >
-                          Remover filtro: empresa excluída
-                        </button>
-                      )}
-                      {filters.requiredKeywords && (
-                        <button 
-                          onClick={() => setFilters(prev => ({ ...prev, requiredKeywords: "" }))}
-                          className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors"
-                        >
-                          Remover filtro: {filters.requiredKeywords.split(",")[0].trim()}
-                        </button>
-                      )}
-                    </div>
-                  ) : <div />}
-
-                  <div className="flex items-center gap-2 ml-auto">
                     <button 
-                      onClick={() => setIsShareOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-xs shadow-sm transition-all bg-white"
+                      onClick={() => setIsFiltersOpen(true)}
+                      className={`flex items-center gap-1.5 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm ${
+                        isScrolled ? 'h-9 px-3 text-xs' : 'h-11 px-4'
+                      }`}
                     >
-                      <Share2 size={13} className="text-slate-500" />
-                      <span>Compartilhar</span>
+                      <SlidersHorizontal size={13} className="text-slate-500" />
+                      <span className="text-[12px] font-semibold text-slate-700">Filtros</span>
+                      {Object.values(filters).filter(v => v && v !== "any" && (typeof v !== "object" || Object.values(v).some(Boolean))).length > 0 && (
+                        <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                          {Object.values(filters).filter(v => v && v !== "any" && (typeof v !== "object" || Object.values(v as Record<string,unknown>).some(Boolean))).length}
+                        </span>
+                      )}
                     </button>
                     <button 
-                      onClick={() => {
-                        setPhase('idle');
-                        setQueryText("");
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs shadow-sm transition-all"
+                      onClick={() => setIsCriteriaOpen(true)}
+                      className={`flex items-center gap-1.5 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm ${
+                        isScrolled ? 'h-9 px-3 text-xs' : 'h-11 px-4'
+                      }`}
                     >
-                      <Plus size={13} />
-                      <span>Nova busca</span>
+                      <Sparkles size={13} className="text-slate-500" />
+                      <span className="text-[12px] font-semibold text-slate-700">Critérios</span>
+                      {criteria.length > 0 && (
+                        <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{criteria.length}</span>
+                      )}
                     </button>
                   </div>
-                </div>
+
+                  {/* Suggestion Expansion Chips & Ações Realocadas (Ocultas ao scrollar) */}
+                  {!isScrolled && (
+                    <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 flex-wrap animate-in fade-in duration-300">
+                      {profiles.length > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 font-medium"><Sparkles size={11} /> Expandir pool:</span>
+                          {filters.excludeCompany && (
+                            <button 
+                              onClick={() => setFilters(prev => ({ ...prev, excludeCompany: "" }))}
+                              className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors"
+                            >
+                              Remover filtro: empresa excluída
+                            </button>
+                          )}
+                          {filters.requiredKeywords && (
+                            <button 
+                              onClick={() => setFilters(prev => ({ ...prev, requiredKeywords: "" }))}
+                              className="px-2.5 py-1 bg-white border border-[#7C3AED]/20 text-[#7C3AED] rounded-full font-semibold hover:bg-purple-50 transition-colors"
+                            >
+                              Remover filtro: {filters.requiredKeywords.split(",")[0].trim()}
+                            </button>
+                          )}
+                        </div>
+                      ) : <div />}
+
+                      <div className="flex items-center gap-2 ml-auto">
+                        <button 
+                          onClick={() => setIsShareOpen(true)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 text-xs shadow-sm transition-all bg-white"
+                        >
+                          <Share2 size={13} className="text-slate-500" />
+                          <span>Compartilhar</span>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setPhase('idle');
+                            setQueryText("");
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs shadow-sm transition-all"
+                        >
+                          <Plus size={13} />
+                          <span>Nova busca</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -958,33 +975,52 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                               </div>
                             </div>
 
-                            {/* Experience Timeline — clean style */}
+                            {/* Experience Timeline — Enriched Vertical Line Style */}
                             {p.experiencias && p.experiencias.length > 0 && (
-                              <div className="mt-2.5 pl-7 space-y-1">
-                                {p.experiencias.slice(0, 3).map((exp, eIdx) => (
-                                  <div key={eIdx} className="flex items-baseline gap-2 text-[12px]">
-                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1 ${
-                                      eIdx === 0 ? 'bg-violet-500' : 'border border-slate-300 bg-white'
-                                    }`} />
-                                    <span className="text-slate-800 font-medium">
-                                      {exp.cargo}
-                                      <span className="text-slate-500 font-normal"> at {exp.empresa}</span>
-                                      <span className="text-slate-400 ml-1.5 text-[11px]">{exp.inicio} – {exp.fim || "Presente"}</span>
-                                    </span>
-                                  </div>
-                                ))}
+                              <div className="mt-3.5 pl-7">
+                                <div className="relative pl-6 border-l border-slate-200 space-y-2.5 ml-1">
+                                  {p.experiencias.map((exp, eIdx) => (
+                                    <div key={eIdx} className="relative flex items-baseline gap-2 text-[12px]">
+                                      <div className={`absolute -left-[31px] top-0.5 w-4 h-4 rounded flex items-center justify-center font-bold text-[9px] text-white shadow-xs ${
+                                        eIdx === 0 ? 'bg-[#7C3AED]' : 'bg-slate-400'
+                                      }`}>
+                                        {exp.empresa ? exp.empresa.charAt(0).toUpperCase() : 'E'}
+                                      </div>
+                                      <span className="text-slate-800 font-medium">
+                                        {exp.cargo} <span className="text-slate-500 font-normal">na</span> <span className="font-semibold text-slate-900">{exp.empresa}</span>
+                                        <span className="text-slate-400 ml-1.5 text-[11px] font-normal">{exp.inicio} – {exp.fim || "Presente"}</span>
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {(p.educacao?.length || (Array.isArray(p.formacao) && p.formacao.length) || typeof p.formacao === 'string') && (
+                                    <div className="relative flex items-center gap-2 text-[12px] pt-0.5">
+                                      <div className="absolute -left-[31px] w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[9px] shadow-xs">
+                                        🎓
+                                      </div>
+                                      <span className="text-slate-700 font-medium">
+                                        {p.educacao?.[0]
+                                          ? `${p.educacao[0].curso} na ${p.educacao[0].instituicao}`
+                                          : typeof p.formacao === 'string'
+                                          ? p.formacao
+                                          : Array.isArray(p.formacao) && p.formacao[0]
+                                          ? `${p.formacao[0].curso || p.formacao[0].grau || 'Formação'} na ${p.formacao[0].instituicao}`
+                                          : 'Formação Superior'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
 
                             {/* AI Summary with purple inline highlights */}
                             {p.resumo && (
-                              <div className="mt-2.5 pl-7 flex items-start gap-1.5">
-                                <Sparkles size={12} className="text-violet-400 mt-0.5 flex-shrink-0" />
-                                <p className="text-[12px] text-slate-600 leading-relaxed">
+                              <div className="mt-3.5 pl-7 flex items-start gap-2">
+                                <Sparkles size={14} className="text-[#7C3AED] mt-0.5 flex-shrink-0" />
+                                <p className="text-[12px] text-slate-700 leading-relaxed">
                                   {p.resumo.split(' ').map((word, wi) => {
                                     const highlight = p.skills?.some(sk => word.toLowerCase().includes(sk.toLowerCase()));
                                     return highlight
-                                      ? <mark key={wi} className="bg-violet-100 text-violet-800 rounded px-0.5 font-medium not-italic">{word} </mark>
+                                      ? <mark key={wi} className="bg-purple-100 text-purple-900 font-medium px-1.5 py-0.5 rounded not-italic">{word} </mark>
                                       : <span key={wi}>{word} </span>;
                                   })}
                                 </p>
