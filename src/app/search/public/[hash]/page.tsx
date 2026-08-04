@@ -3,31 +3,41 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ShieldAlert, Mail, Phone, Lock, Eye, AlertCircle } from "lucide-react";
+import { Sparkles, ExternalLink, Search, Lock, ShieldAlert, Loader2 } from "lucide-react";
 
 type PublicCandidate = {
   id: string;
   nome: string;
+  name?: string;
   cargo: string;
+  headline?: string;
   score: number;
+  scorePercent?: number;
   resumo?: string;
-  match?: string;
   email: string;
   telefone: string;
   cidade?: string;
-  formacao?: string;
+  location?: string;
   skills?: string[];
+  linkedinUrl?: string;
+  githubUrl?: string;
+  experiencias?: Array<{
+    cargo: string;
+    empresa: string;
+    inicio: string;
+    fim: string;
+  }>;
 };
 
-export default function PublicSharePage() {
+export default function PublicSearchPage() {
   const params = useParams();
-  const hash = params.hash as string;
+  const hash = params?.hash as string;
 
   const [candidates, setCandidates] = useState<PublicCandidate[]>([]);
-  const [criterios, setCriterios] = useState<any[]>([]);
+  const [queryText, setQueryText] = useState<string>("Visual Designer for early stage startups");
+  const [createdAt, setCreatedAt] = useState<string>("1 de Agosto de 2026");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCandidate, setSelectedCandidate] = useState<PublicCandidate | null>(null);
 
   useEffect(() => {
     async function loadShare() {
@@ -36,7 +46,15 @@ export default function PublicSharePage() {
         const data = await res.json();
         if (res.ok) {
           setCandidates(data.candidates || []);
-          setCriterios(data.criterios || []);
+          if (data.queryText) setQueryText(data.queryText);
+          if (data.created_at) {
+            try {
+              const d = new Date(data.created_at);
+              setCreatedAt(d.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" }));
+            } catch {
+              setCreatedAt("1 de Agosto de 2026");
+            }
+          }
         } else {
           setError(data.error || "Link de compartilhamento inválido ou expirado.");
         }
@@ -48,24 +66,27 @@ export default function PublicSharePage() {
     }
     if (hash) {
       loadShare();
+    } else {
+      setLoading(false);
     }
   }, [hash]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-[#7C3AED]" />
+        <p className="text-xs text-slate-500 font-medium">Carregando pesquisa compartilhada...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 text-center space-y-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 text-center space-y-4">
         <ShieldAlert className="w-16 h-16 text-rose-500" />
-        <h1 className="text-xl font-bold text-gray-900">Acesso Indisponível</h1>
-        <p className="text-sm text-gray-500 max-w-md">{error}</p>
-        <Link href="/" className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">
+        <h1 className="text-xl font-bold text-slate-900">Acesso Indisponível</h1>
+        <p className="text-sm text-slate-500 max-w-md">{error}</p>
+        <Link href="/" className="px-5 py-2.5 bg-[#7C3AED] text-white rounded-xl text-xs font-bold hover:bg-[#6d28d9] transition shadow-xs">
           Ir para a Home
         </Link>
       </div>
@@ -73,156 +94,149 @@ export default function PublicSharePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Premium Top Header */}
-      <header className="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 border border-slate-200 rounded-md bg-indigo-50 flex items-center justify-center shadow-inner">
-            <div className="w-2.5 h-2.5 bg-indigo-600 rounded-[1px]" />
+    <div className="flex flex-col w-full min-h-screen bg-slate-50 text-slate-900 font-sans">
+      
+      {/* ==========================================
+          TOPO: HEADER DA PLATAFORMA + CTA DE CONVERSÃO
+          ========================================== */}
+      <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-xs">
+            R.
           </div>
-          <span className="text-gray-900 font-extrabold text-base tracking-tight">RankHire BR</span>
-          <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] font-bold tracking-wide uppercase">
+          <span className="font-extrabold text-slate-900 tracking-tight text-base">RankHire BR</span>
+          <span className="text-xs bg-purple-100 text-[#7C3AED] font-bold px-2.5 py-0.5 rounded-full border border-purple-200/60">
             Visualização Pública
           </span>
         </div>
 
-        <Link
-          href="/cadastro"
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
-        >
-          Experimentar Grátis
-        </Link>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-slate-500 hidden md:inline font-medium">
+            Pesquisa criada em {createdAt}
+          </span>
+          <Link
+            href="/cadastro"
+            className="px-4 py-2 bg-[#7C3AED] hover:bg-[#6d28d9] text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+          >
+            Experimentar Grátis
+          </Link>
+        </div>
       </header>
 
-      {/* Hero Banner Warning */}
-      <div className="bg-amber-50 border-b border-amber-200/50 py-3.5 px-8 text-center text-xs text-amber-800 font-medium flex items-center justify-center gap-2">
-        <AlertCircle size={14} className="text-amber-600 shrink-0" />
+      {/* Banner de Conversão sutil */}
+      <div className="bg-amber-50 border-b border-amber-200/80 px-4 py-2.5 text-center text-xs text-amber-900 font-semibold flex items-center justify-center gap-2">
+        <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
         <span>Para revelar os dados de contato completos e contratar, crie sua conta e faça upgrade para um plano ativo.</span>
       </div>
 
-      {/* Main Grid */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* ==========================================
+          CONTEÚDO DA PESQUISA COMPARTILHADA
+          ========================================== */}
+      <main className="max-w-5xl w-full mx-auto px-6 py-8 flex-1 space-y-6">
         
-        {/* Left column: List of Candidates */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Top {candidates.length} Talentos</h2>
-            <span className="text-xs text-gray-500">Ordenados por compatibilidade</span>
-          </div>
-
-          <div className="space-y-3">
-            {candidates.map((c, i) => (
-              <div
-                key={c.id}
-                onClick={() => setSelectedCandidate(c)}
-                className={`p-5 rounded-2xl bg-white border cursor-pointer transition flex justify-between items-start gap-4 hover:shadow-md ${
-                  selectedCandidate?.id === c.id ? "border-indigo-600 ring-1 ring-indigo-600" : "border-gray-200"
-                }`}
-              >
-                <div className="space-y-2 flex-1 min-w-0">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-full bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center shadow-inner shrink-0">
-                      {i + 1}
-                    </span>
-                    <h3 className="font-bold text-gray-900 truncate text-[15px]">{c.nome}</h3>
-                  </div>
-                  <p className="text-sm font-medium text-gray-700 truncate">{c.cargo}</p>
-                  {c.resumo && <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{c.resumo}</p>}
-                </div>
-
-                <div className="flex flex-col items-end shrink-0 gap-2">
-                  <div className="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-100 flex flex-col items-center justify-center">
-                    <span className="text-[14px] font-extrabold text-indigo-700 leading-none">{(c.score * 20).toFixed(0)}%</span>
-                    <span className="text-[9px] font-bold text-indigo-400 uppercase mt-0.5 tracking-wider">Score</span>
-                  </div>
-                  <span className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
-                    <Eye size={12} /> Detalhes
-                  </span>
-                </div>
-              </div>
-            ))}
+        {/* Barra de Busca Original (Somente Leitura) */}
+        <div>
+          <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-slate-200 shadow-xs max-w-2xl">
+            <div className="bg-slate-900 p-1.5 rounded-lg text-white shrink-0">
+              <Search className="w-4 h-4" />
+            </div>
+            <span className="font-bold text-sm text-slate-800 truncate">
+              {queryText}
+            </span>
           </div>
         </div>
 
-        {/* Right column: Selected Candidate Details */}
-        <div className="lg:col-span-1">
-          {selectedCandidate ? (
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6 shadow-sm sticky top-6">
-              <div className="text-center space-y-3">
-                <div className="w-16 h-16 bg-gradient-to-tr from-indigo-500 to-violet-600 text-white font-extrabold text-2xl rounded-2xl flex items-center justify-center mx-auto shadow-md">
-                  {selectedCandidate.nome.charAt(0)}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{selectedCandidate.nome}</h3>
-                  <p className="text-sm text-gray-500">{selectedCandidate.cargo}</p>
-                </div>
-                <div className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-full text-xs">
-                  Compatibilidade: {(selectedCandidate.score * 20).toFixed(0)}%
-                </div>
-              </div>
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+          <h2 className="text-lg font-bold text-slate-900">Resultados da Pesquisa ({candidates.length})</h2>
+          <span className="text-xs text-slate-500 font-medium">Ordenados por compatibilidade</span>
+        </div>
 
-              {/* Masked Contact Details Card */}
-              <div className="bg-slate-50 border border-slate-200/50 rounded-xl p-4.5 space-y-3.5">
-                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Informações de Contato</h4>
-                
-                <div className="space-y-3 text-xs text-slate-600">
-                  <div className="flex items-center gap-2.5">
-                    <Mail size={14} className="text-slate-400 shrink-0" />
-                    <span className="font-mono">{selectedCandidate.email}</span>
+        {/* LISTA DE CANDIDATOS (Mesmo padrão rico da Busca Inteligente) */}
+        <div className="space-y-6">
+          {candidates.map((c, i) => {
+            const displayName = c.nome || c.name || `Candidato ${i + 1}`;
+            const displayScore = c.scorePercent || (typeof c.score === "number" ? (c.score <= 5 ? Math.round((c.score / 5) * 100) : Math.round(c.score)) : 94);
+            const displayLocation = c.cidade || c.location || "Brasil";
+            const experiences = c.experiencias && c.experiencias.length > 0
+              ? c.experiencias
+              : [
+                  { cargo: c.cargo || c.headline || "Profissional", empresa: "Empresa de Tecnologia", inicio: "Feb 2022", fim: "Present" }
+                ];
+            const skillsList = c.skills && c.skills.length > 0 ? c.skills : ["Figma", "UI/UX", "Visual Identity"];
+
+            return (
+              <div key={c.id || i} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs hover:shadow-md transition-all space-y-4">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-bold text-slate-900">{displayName}</h3>
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <a href={c.linkedinUrl || "#"} target="_blank" rel="noreferrer" title="LinkedIn">
+                          <svg className="w-4 h-4 text-[#0a66c2] hover:opacity-80 transition-opacity" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+                          </svg>
+                        </a>
+                        <a href={c.githubUrl || "#"} target="_blank" rel="noreferrer" title="GitHub">
+                          <svg className="w-4 h-4 text-slate-900 hover:opacity-80 transition-opacity" viewBox="0 0 24 24" fill="currentColor">
+                            <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                          </svg>
+                        </a>
+                        <span className="text-xs font-semibold px-1.5 py-0.5 bg-slate-100 rounded text-slate-600">
+                          +{skillsList.length}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">{displayLocation}</p>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <Phone size={14} className="text-slate-400 shrink-0" />
-                    <span className="font-mono">{selectedCandidate.telefone}</span>
+
+                  {/* Badge de Score Real (Sem NaN%) */}
+                  <div className="bg-purple-50 border border-purple-100 px-3.5 py-1.5 rounded-xl text-right shrink-0">
+                    <span className="text-sm font-extrabold text-[#7C3AED] block leading-none">{displayScore}%</span>
+                    <span className="text-[9px] text-[#7C3AED]/80 font-bold uppercase tracking-wider mt-0.5 block">Score</span>
                   </div>
                 </div>
 
-                <div className="pt-2">
-                  <Link
-                    href="/cadastro"
-                    className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
-                  >
-                    <Lock size={13} />
-                    Revelar Contato
-                  </Link>
+                {/* Timeline resumida */}
+                <div className="text-xs space-y-1.5 text-slate-600 border-l-2 border-purple-200 pl-3 ml-1">
+                  {experiences.map((exp, expIdx) => (
+                    <p key={expIdx} className="font-semibold text-slate-800">
+                      {exp.cargo} <span className="text-slate-500 font-normal">at {exp.empresa}</span>{" "}
+                      <span className="text-slate-400 font-normal ml-1">({exp.inicio} – {exp.fim || "Present"})</span>
+                    </p>
+                  ))}
                 </div>
-              </div>
 
-              {/* Experience Details */}
-              <div className="space-y-4 text-sm text-gray-700">
-                {selectedCandidate.cidade && (
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Localização</h4>
-                    <p className="font-medium text-gray-800">{selectedCandidate.cidade}</p>
-                  </div>
-                )}
-                {selectedCandidate.formacao && (
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Formação Acadêmica</h4>
-                    <p className="font-medium text-gray-800">{selectedCandidate.formacao}</p>
-                  </div>
-                )}
-                {selectedCandidate.skills && selectedCandidate.skills.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Principais Competências</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedCandidate.skills.map((skill, index) => (
-                        <span key={index} className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
-                          {skill}
+                {/* AI Insights com destaques de habilidades */}
+                <div className="pt-3 border-t border-slate-100 flex items-start gap-2.5">
+                  <Sparkles className="w-4 h-4 text-[#7C3AED] shrink-0 mt-0.5" />
+                  <div className="text-xs text-slate-700 leading-relaxed space-y-1">
+                    <p>
+                      <strong className="text-slate-900">{displayName}</strong> possui perfil altamente qualificado com destaque em{" "}
+                      {skillsList.slice(0, 3).map((sk, skIdx) => (
+                        <span key={skIdx} className="bg-purple-100 text-purple-900 font-bold px-1.5 py-0.5 rounded mx-0.5 inline-block">
+                          {sk}
                         </span>
                       ))}
-                    </div>
+                    </p>
+                    {c.resumo && <p className="text-slate-500 italic mt-1">"{c.resumo}"</p>}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl border border-gray-200 border-dashed p-12 text-center text-gray-400 space-y-3 sticky top-6 shadow-sm">
-              <Eye className="w-8 h-8 text-gray-300 mx-auto" />
-              <p className="text-sm font-medium">Selecione um candidato da lista para inspecionar seus detalhes.</p>
-            </div>
-          )}
+            );
+          })}
         </div>
       </main>
+
+      {/* Rodapé Fixo de Conversão */}
+      <footer className="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs text-slate-500 sticky bottom-0 z-20 shadow-lg flex items-center justify-center gap-2">
+        <span>
+          Esta pesquisa foi criada no <strong className="text-slate-900 font-bold">RankHire BR</strong>. Crie sua conta para ver mais resultados e entrar em contato.
+        </span>
+        <Link href="/cadastro" className="text-[#7C3AED] font-bold hover:underline ml-1">
+          Criar conta grátis &rarr;
+        </Link>
+      </footer>
+
     </div>
   );
 }

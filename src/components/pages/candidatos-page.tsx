@@ -5,6 +5,39 @@ import Link from "next/link";
 import React, { useState, useMemo } from "react";
 import type { Candidate } from "@/lib/types";
 import { Search, SlidersHorizontal, Filter, MoreHorizontal, ExternalLink, MessageCircle, Star, Lock } from "lucide-react";
+
+function FiltrosAvancados({ filtrosAtivos }: { filtrosAtivos?: Record<string, unknown> | null }) {
+  const filtros = filtrosAtivos || { localidade: "", senioridade: "", modalidade: "" };
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="mb-3 text-sm font-semibold text-slate-800">Filtros Gerais de Sourcing</h3>
+      <div className="grid gap-3 md:grid-cols-2">
+        <input
+          type="text"
+          placeholder="Localidade..."
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          defaultValue={String((filtros as Record<string, unknown>).localidade || "")}
+        />
+        <select
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          defaultValue={String((filtros as Record<string, unknown>).senioridade || "")}
+        >
+          <option value="">Qualquer Nível</option>
+          <option value="junior">Júnior</option>
+          <option value="pleno">Pleno</option>
+          <option value="senior">Sênior</option>
+        </select>
+        <input
+          type="text"
+          placeholder="Modalidade..."
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 md:col-span-2"
+          defaultValue={String((filtros as Record<string, unknown>).modalidade || "")}
+        />
+      </div>
+    </div>
+  );
+}
 import { useEmpresa } from "@/hooks/useEmpresa";
 
 interface CandidatosPageProps {
@@ -112,6 +145,8 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
         </button>
       </div>
 
+      <FiltrosAvancados filtrosAtivos={null} />
+
       {/* ── Barra de Filtros ─────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 py-2">
         <div className="relative flex-1 max-w-md">
@@ -121,7 +156,7 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
             placeholder="Pesquise por nome, empresa ou cargo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input-rh w-full pl-9 bg-white"
+            className="input-rh w-full pl-10 bg-white"
           />
         </div>
 

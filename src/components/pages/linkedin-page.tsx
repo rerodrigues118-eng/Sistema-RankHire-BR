@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { Candidate, Job } from "@/lib/types";
 import { AVATAR_COLORS } from "@/lib/mock-data";
+import { shouldRevealContacts } from "@/lib/planos";
 import {
   Search, SlidersHorizontal, Sparkles, ExternalLink, Plus, 
   AlertCircle, X, Check, ChevronDown, ChevronUp, Copy,
@@ -250,6 +251,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   // Paywall reveal state
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [revealedContacts, setRevealedContacts] = useState<Set<string>>(new Set());
+  const [canRevealContacts, setCanRevealContacts] = useState(true);
 
   // Copy share link feedback
   const [shareCopied, setShareCopied] = useState(false);
@@ -333,6 +335,25 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   };
 
   useEffect(() => {
+    async function loadPlanAccess() {
+      try {
+        const res = await fetch('/api/empresas', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const empresa = data?.empresa;
+        const canReveal = shouldRevealContacts(empresa, false);
+        setCanRevealContacts(canReveal);
+        setIsSubscribed(canReveal);
+      } catch {
+        setCanRevealContacts(true);
+        setIsSubscribed(true);
+      }
+    }
+
+    loadPlanAccess();
+  }, []);
+
+  useEffect(() => {
     if (isShareOpen && !shareLink) {
       (async () => {
         setGeneratingShare(true);
@@ -342,7 +363,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               vagaId: activeJob?.id || "550e8400-e29b-41d4-a716-446655440000",
-              criterios: criteria,
+              queryText: queryText || activeJob?.title || "Visual Designer for early stage startups",
+              criterios: { criteria, queryText: queryText || activeJob?.title },
               candidates: profiles,
             }),
           });
@@ -417,7 +439,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   };
 
   const handleRevealContact = (id: string, type: "email" | "phone") => {
-    if (isSubscribed) {
+    if (canRevealContacts || isSubscribed) {
       setRevealedContacts(prev => new Set(prev).add(`${id}-${type}`));
     } else {
       setIsPaywallOpen(true);
@@ -1813,9 +1835,9 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         <Mail size={14} className="text-slate-400" />
                         E-mail
                       </span>
-                      {revealedContacts.has(`${selectedProfile.id}-email`) ? (
+                      {revealedContacts.has(`${selectedProfile.id}-email`) || canRevealContacts ? (
                         <span className="text-[12px] text-slate-800 font-medium select-all">
-                          {selectedProfile.email || 'contato@email.com'}
+                          {selectedProfile.email || (canRevealContacts ? 'contato@email.com' : 'Acesso restrito no plano atual')}
                         </span>
                       ) : (
                         <button onClick={() => handleRevealContact(selectedProfile.id, "email")}
@@ -1831,9 +1853,9 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         <Phone size={14} className="text-slate-400" />
                         Telefone
                       </span>
-                      {revealedContacts.has(`${selectedProfile.id}-phone`) ? (
+                      {revealedContacts.has(`${selectedProfile.id}-phone`) || canRevealContacts ? (
                         <span className="text-[12px] text-slate-800 font-medium select-all">
-                          {selectedProfile.phone || '+55 (41) 99888-7766'}
+                          {selectedProfile.phone || (canRevealContacts ? '+55 (41) 99888-7766' : 'Acesso restrito no plano atual')}
                         </span>
                       ) : (
                         <button onClick={() => handleRevealContact(selectedProfile.id, "phone")}
@@ -2650,142 +2672,186 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
       )}
       {/* ── MODAL DE UPGRADE COM BACKDROP BLUR ── */}
       {isUpgradeModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-y-auto flex flex-col relative animate-in zoom-in-95 duration-300">
 
             {/* Botão Fechar */}
             <button
               onClick={() => setIsUpgradeModalOpen(false)}
-              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors z-10"
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors z-10 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
             {/* Cabeçalho */}
-            <div className="px-8 pt-7 pb-4 flex flex-col items-center justify-center border-b border-slate-100">
-              <div className="w-full flex items-center gap-2 text-sm font-bold text-slate-700 mb-5">
-                <span className="text-orange-500 text-lg leading-none">♔</span>
-                Upgrade para desbloquear mais buscas
+            <div className="px-8 pt-7 pb-4 flex flex-col items-center justify-center border-b border-slate-100 text-center">
+              <div className="w-full flex items-center justify-center gap-2 text-sm font-bold text-slate-700 mb-3">
+                <span className="text-amber-500 text-lg leading-none">♔</span>
+                Encontre o plano ideal para o seu time
               </div>
+              <p className="text-slate-500 text-xs max-w-lg mb-4">Escale suas contratações com inteligência artificial e buscas ilimitadas.</p>
+              
               {/* Toggle Mensal / Anual */}
-              <div className="flex p-1 bg-slate-100 rounded-full text-sm font-semibold border border-slate-200">
+              <div className="flex p-1 bg-slate-100 rounded-full text-xs font-semibold border border-slate-200">
                 <button
                   onClick={() => setBillingCycle('Monthly')}
-                  className={`px-6 py-2 rounded-full transition-all ${billingCycle === 'Monthly' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                  className={`px-5 py-1.5 rounded-full transition-all cursor-pointer ${billingCycle === 'Monthly' ? 'bg-white shadow-xs text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-900'}`}
                 >
                   Mensal
                 </button>
                 <button
                   onClick={() => setBillingCycle('Yearly')}
-                  className={`px-6 py-2 rounded-full transition-all flex items-center gap-2 ${billingCycle === 'Yearly' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+                  className={`px-5 py-1.5 rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${billingCycle === 'Yearly' ? 'bg-white shadow-xs text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-900'}`}
                 >
-                  Anual <span className="text-emerald-600 text-xs font-bold tracking-wide">• Economize 15%</span>
+                  Anual <span className="text-emerald-600 text-[10px] font-extrabold tracking-wide">• Economize 15%</span>
                 </button>
               </div>
             </div>
 
-            {/* Cards dos Planos */}
-            <div className="p-8 pt-6 grid grid-cols-3 gap-5">
+            {/* Cards dos Planos (Dimensionado max-w-6xl, grid 3 colunas) */}
+            <div className="p-6 md:p-8 max-w-6xl w-full mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
 
-              {/* PLANO STARTER */}
-              <div className="border border-slate-200 rounded-3xl p-6 flex flex-col bg-white">
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Starter</h3>
-                <p className="text-sm text-slate-500 mb-6 min-h-[40px]">Plano self-serve com buscas ilimitadas, ideal para uso individual.</p>
-                <div className="flex items-baseline gap-2 mb-4">
-                  <span className="text-4xl font-extrabold text-slate-900">{billingCycle === 'Yearly' ? 'R$499' : 'R$599'}</span>
-                  <div className="flex flex-col text-xs text-slate-500 font-medium">
-                    <span>/ mês</span>
-                    <span>{billingCycle === 'Yearly' ? '(cobrado anualmente)' : '(cobrado mensalmente)'}</span>
+              {/* PLANO 1: Starter */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 flex flex-col justify-between transition-all hover:shadow-md">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Starter</h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed min-h-[32px]">
+                    Plano self-serve com buscas ilimitadas, ideal para uso individual.
+                  </p>
+                  
+                  <div className="mt-4 mb-4">
+                    <span className="text-3xl font-extrabold text-slate-900">{billingCycle === 'Yearly' ? 'R$ 499' : 'R$ 599'}</span>
+                    <span className="text-xs text-slate-500 font-medium"> / mês {billingCycle === 'Yearly' ? '(cobrado anualmente)' : '(cobrado mensalmente)'}</span>
+                  </div>
+
+                  <div className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 mb-4 pb-3 border-b border-slate-100">
+                    <User className="w-4 h-4 text-slate-400" />
+                    <span>Inclui 1 assento</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Tudo do plano Gratuito, e mais:</p>
+                    <ul className="space-y-2 text-xs text-slate-600">
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> Perfis e buscas ilimitados</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> 500 créditos de contato (e-mail + telefone)</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> 500 créditos de exportação</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> Outreach por e-mail + templates IA</li>
+                    </ul>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600 mb-6 font-medium">
-                  <User className="w-4 h-4 text-slate-400" /> Inclui 1 assento
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-900 mb-4">Tudo do plano Gratuito, e mais:</p>
-                  <ul className="space-y-3 text-sm text-slate-700 font-medium">
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Perfis e buscas ilimitados</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 500 créditos de contato (e-mail + telefone)</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 500 créditos de exportação</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Outreach por e-mail + templates IA</li>
-                  </ul>
-                </div>
-                <button className="w-full mt-8 py-3.5 rounded-xl border border-slate-200 text-slate-900 font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2">
-                  Assinar Starter <ArrowRight className="w-4 h-4" />
+
+                <button 
+                  onClick={() => {
+                    showToast("Redirecionando para assinatura do plano Starter...");
+                    setIsUpgradeModalOpen(false);
+                  }}
+                  className="w-full mt-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition cursor-pointer shadow-xs"
+                >
+                  Começar com Starter
                 </button>
               </div>
 
-              {/* PLANO GROWTH */}
-              <div className="border border-slate-200 rounded-3xl p-6 flex flex-col bg-white">
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Growth</h3>
-                <p className="text-sm text-slate-500 mb-6 min-h-[40px]">Colaborativo, ideal para pequenas equipes, agências e startups.</p>
-                <div className="flex items-baseline gap-2 mb-4">
-                  <span className="text-4xl font-extrabold text-slate-900">{billingCycle === 'Yearly' ? 'R$899' : 'R$1.099'}</span>
-                  <div className="flex flex-col text-xs text-slate-500 font-medium">
-                    <span>/ mês</span>
-                    <span>{billingCycle === 'Yearly' ? '(cobrado anualmente)' : '(cobrado mensalmente)'}</span>
+              {/* PLANO 2: Growth */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 flex flex-col justify-between transition-all hover:shadow-md">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Growth</h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed min-h-[32px]">
+                    Colaborativo, ideal para pequenas equipes, agências e startups.
+                  </p>
+                  
+                  <div className="mt-4 mb-4">
+                    <span className="text-3xl font-extrabold text-slate-900">{billingCycle === 'Yearly' ? 'R$ 899' : 'R$ 1.099'}</span>
+                    <span className="text-xs text-slate-500 font-medium"> / mês {billingCycle === 'Yearly' ? '(cobrado anualmente)' : '(cobrado mensalmente)'}</span>
+                  </div>
+
+                  <div className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 mb-4 pb-3 border-b border-slate-100">
+                    <User className="w-4 h-4 text-slate-400" />
+                    <span>Até 5 assentos (pago por assento)</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Tudo do Starter, e mais:</p>
+                    <ul className="space-y-2 text-xs text-slate-600">
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> Insights de talentos</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> 1.500 créditos de contato (e-mail + telefone)</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> 1.500 créditos de exportação</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> 3 caixas de entrada por usuário</li>
+                    </ul>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600 mb-6 font-medium">
-                  <User className="w-4 h-4 text-slate-400" /> Até 5 assentos (pago por assento)
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-900 mb-4">Tudo do Starter, e mais:</p>
-                  <ul className="space-y-3 text-sm text-slate-700 font-medium">
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Insights de talentos</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 1.500 créditos de contato (e-mail + telefone)</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 1.500 créditos de exportação</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 3 caixas de entrada por usuário</li>
-                  </ul>
-                </div>
-                <div className="mt-6 mb-4">
-                  <p className="text-xs text-slate-500 mb-2 font-medium">Número de assentos</p>
-                  <div className="flex items-center justify-between border border-slate-200 rounded-lg p-1">
-                    <button onClick={() => setGrowthSeats(Math.max(1, growthSeats - 1))} className="px-3 py-1 hover:bg-slate-50 rounded text-slate-500 font-bold">−</button>
-                    <span className="font-semibold text-slate-900">{growthSeats}</span>
-                    <button onClick={() => setGrowthSeats(Math.min(5, growthSeats + 1))} className="px-3 py-1 hover:bg-slate-50 rounded text-slate-500 font-bold">+</button>
+
+                <div className="mt-6 space-y-3">
+                  <div className="flex items-center justify-between text-xs text-slate-500 px-1 border border-slate-200 rounded-xl p-1.5 bg-slate-50">
+                    <span>Número de assentos</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setGrowthSeats(Math.max(1, growthSeats - 1))} className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 cursor-pointer">-</button>
+                      <span className="font-bold text-slate-900 w-4 text-center">{growthSeats}</span>
+                      <button onClick={() => setGrowthSeats(Math.min(5, growthSeats + 1))} className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 cursor-pointer">+</button>
+                    </div>
                   </div>
+                  <button 
+                    onClick={() => {
+                      showToast(`Redirecionando para assinatura do plano Growth (${growthSeats} assento(s))...`);
+                      setIsUpgradeModalOpen(false);
+                    }}
+                    className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition cursor-pointer shadow-xs"
+                  >
+                    Começar com Growth
+                  </button>
                 </div>
-                <button className="w-full py-3.5 rounded-xl border border-slate-200 text-slate-900 font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2">
-                  Assinar Growth <ArrowRight className="w-4 h-4" />
-                </button>
               </div>
 
-              {/* PLANO BUSINESS (Em Destaque) */}
-              <div className="border border-purple-100 bg-purple-50/40 rounded-3xl p-6 flex flex-col relative shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-2xl font-bold text-slate-900">Business</h3>
-                  <span className="bg-[#7C3AED] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">Para você</span>
+              {/* PLANO 3: Business (Destaque) */}
+              <div className="bg-white rounded-2xl border-2 border-[#7C3AED] shadow-lg p-6 flex flex-col justify-between relative transition-all">
+                <div className="absolute -top-3 right-6 bg-[#7C3AED] text-white text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
+                  Para Você
                 </div>
-                <p className="text-sm text-slate-500 mb-6 min-h-[40px]">Plano completo para grandes empresas ou agências de recrutamento.</p>
-                <div className="flex items-baseline gap-2 mb-4">
-                  <span className="text-3xl font-extrabold text-slate-900">Fale com a equipe</span>
+
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Business</h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed min-h-[32px]">
+                    Plano completo para grandes empresas ou agências de recrutamento.
+                  </p>
+                  
+                  <div className="mt-4 mb-4">
+                    <span className="text-2xl font-extrabold text-slate-900">Fale com a equipe</span>
+                  </div>
+
+                  <div className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 mb-4 pb-3 border-b border-slate-100">
+                    <User className="w-4 h-4 text-[#7C3AED]" />
+                    <span>Assentos ilimitados</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Tudo do Growth, e mais:</p>
+                    <ul className="space-y-2 text-xs text-slate-600">
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> Análises de uso</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> Assentos para gestores de contratação</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> Sourcing por rede</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> Integração com ATS ou CRM</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> Créditos de contato ilimitados</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> Suporte prioritário (e-mail, chat, Slack)</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> Customer Success Manager dedicado</li>
+                      <li className="flex items-start gap-2"><Check className="w-4 h-4 text-[#7C3AED] shrink-0" /> 6 caixas de entrada por usuário</li>
+                    </ul>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600 mb-6 font-medium">
-                  <User className="w-4 h-4 text-slate-400" /> Assentos ilimitados
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-900 mb-4">Tudo do Growth, e mais:</p>
-                  <ul className="space-y-3 text-sm text-slate-700 font-medium">
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Análises de uso</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Assentos para gestores de contratação</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Sourcing por rede</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Integração com ATS ou CRM</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Créditos de contato ilimitados</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Suporte prioritário (e-mail, chat, Slack)</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> Customer Success Manager dedicado</li>
-                    <li className="flex gap-3"><Check className="w-4 h-4 shrink-0 text-slate-900" /> 6 caixas de entrada por usuário</li>
-                  </ul>
-                </div>
-                <button className="w-full mt-8 py-3.5 rounded-xl bg-[#7C3AED] text-white font-bold hover:bg-[#6d28d9] transition-colors flex justify-center items-center gap-2 shadow-md">
-                  Solicitar Demo <ArrowRight className="w-4 h-4" />
+
+                <button 
+                  onClick={() => {
+                    showToast("Abrindo contato com o time de vendas...");
+                    window.location.href = "mailto:contato@rankhire.com.br?subject=Interesse%20no%20Plano%20Business";
+                  }}
+                  className="w-full mt-6 py-2.5 bg-[#7C3AED] text-white rounded-xl text-xs font-semibold hover:bg-[#6d28d9] transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  Falar com Vendas <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
 
             </div>
 
             {/* Rodapé */}
-            <div className="px-8 py-5 text-center text-sm text-slate-600 font-medium border-t border-slate-100">
+            <div className="px-8 py-4 text-center text-xs text-slate-600 font-medium border-t border-slate-100 bg-slate-50/50">
               Não sabe qual plano escolher?{' '}
               <a href="mailto:contato@rankhire.com.br" className="text-[#7C3AED] font-bold hover:underline">Fale com o time de vendas</a>
             </div>

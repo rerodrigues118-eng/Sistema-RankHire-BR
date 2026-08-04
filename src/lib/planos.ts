@@ -111,7 +111,8 @@ export function getPlanAccessState(
   const normalizedPlan = planKey === 'trial_starter' ? 'trial' : planKey;
   const planConfig = PLANOS[normalizedPlan] || PLANOS.trial;
   const isTrial = normalizedPlan === 'trial';
-  const isActiveSubscription = isAdminRole(userRole) || empresa?.subscription_status === 'active' || empresa?.subscription_status === 'trialing';
+  const normalizedStatus = String(empresa?.subscription_status || '').trim().toLowerCase();
+  const isActiveSubscription = isAdminRole(userRole) || normalizedStatus === 'active' || normalizedStatus === 'paid' || normalizedStatus === 'pagante';
   const pdfLimit = getPdfLimitFromPlan(planKey, empresa, userRole) ?? planConfig.limite_pdfs_mes;
   const canUploadPdf = isAdminRole(userRole) ? true : pdfLimit === null ? true : usedThisMonth < pdfLimit;
   const canUseLinkedIn = isAdminRole(userRole) ? true : !planConfig.linkedin_bloqueado && isActiveSubscription;
@@ -141,6 +142,20 @@ export function podeLinkedIn(empresa: EmpresaSimples): boolean {
   return !plano.linkedin_bloqueado && empresa.subscription_status === 'active';
 }
 
+export function shouldRevealContacts(
+  empresa: Partial<EmpresaSimples> | undefined,
+  isAdmin: boolean,
+  role?: string | null
+): boolean {
+  if (isAdmin || isAdminRole(role ?? empresa?.role)) return true;
+  const planKey = (empresa?.plano || 'trial').toLowerCase();
+  const normalizedPlan = planKey === 'trial_starter' ? 'trial' : planKey;
+  const isTrial = normalizedPlan === 'trial';
+  const normalizedStatus = String(empresa?.subscription_status || '').trim().toLowerCase();
+  const isActiveSubscription = normalizedStatus === 'active' || normalizedStatus === 'paid' || normalizedStatus === 'pagante';
+  return !isTrial && isActiveSubscription;
+}
+
 // Return PDF export/upload limit for a given company plan key or empresa object.
 export function getPdfLimitFromPlan(
   planKey?: string | null,
@@ -167,7 +182,7 @@ export function getPdfLimitFromPlan(
   }
 
   // Known named plans
-  if (normalized === 'trial') return 15;
+  if (normalized === 'trial') return 10;
   if (normalized === 'starter') return 100;
   if (normalized === 'pro') return 500;
   if (normalized === 'agencia') return null; // effectively unlimited

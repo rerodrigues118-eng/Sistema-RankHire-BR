@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import type { Candidate, Job, KanbanStatus } from "@/lib/types";
 import { getAvatarBg } from "@/lib/mock-data";
+import { shouldRevealContacts } from "@/lib/planos";
 import {
   X, ExternalLink, Star, ChevronDown, ChevronUp, MapPin, Building, Briefcase,
   Mail, Phone, CircleDollarSign, Calendar, FileText, Edit2, Check, History, Link as LinkIcon,
@@ -159,6 +160,7 @@ export default function CandidateDrawer({
   const [revealedContacts, setRevealedContacts] = useState<Set<string>>(new Set());
   const [menuOpen, setMenuOpen] = useState(false);
   const [openShortlistDropdown, setOpenShortlistDropdown] = useState(false);
+  const [canRevealContacts, setCanRevealContacts] = useState(true);
 
   // Toast
   const [toast, setToast] = useState<{ type: ToastType; message: string } | null>(null);
@@ -200,6 +202,22 @@ export default function CandidateDrawer({
       setIsExporting(false);
     }
   };
+
+  useEffect(() => {
+    async function loadPlanAccess() {
+      try {
+        const res = await fetch('/api/empresas', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const empresa = data?.empresa;
+        setCanRevealContacts(shouldRevealContacts(empresa, false));
+      } catch {
+        setCanRevealContacts(true);
+      }
+    }
+
+    loadPlanAccess();
+  }, []);
 
   useEffect(() => {
     if (candidateRafRef.current !== null) {
@@ -648,9 +666,9 @@ export default function CandidateDrawer({
                   <Mail size={14} className="text-slate-400" />
                   E-mail
                 </span>
-                {revealedContacts.has(`${localCandidate.id}-email`) || localCandidate.email ? (
+                {revealedContacts.has(`${localCandidate.id}-email`) || localCandidate.email || canRevealContacts ? (
                   <span className="text-[12px] text-slate-800 font-medium select-all">
-                    {localCandidate.email || 'contato@email.com'}
+                    {localCandidate.email || (canRevealContacts ? 'contato@email.com' : 'Acesso restrito no plano atual')}
                   </span>
                 ) : (
                   <button 
@@ -668,9 +686,9 @@ export default function CandidateDrawer({
                   <Phone size={14} className="text-slate-400" />
                   Telefone
                 </span>
-                {revealedContacts.has(`${localCandidate.id}-phone`) || localCandidate.phone ? (
+                {revealedContacts.has(`${localCandidate.id}-phone`) || localCandidate.phone || canRevealContacts ? (
                   <span className="text-[12px] text-slate-800 font-medium select-all">
-                    {localCandidate.phone || '+55 (41) 99888-7766'}
+                    {localCandidate.phone || (canRevealContacts ? '+55 (41) 99888-7766' : 'Acesso restrito no plano atual')}
                   </span>
                 ) : (
                   <button 

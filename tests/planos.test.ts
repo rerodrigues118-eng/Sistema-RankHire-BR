@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getPlanAccessState } from '../src/lib/planos';
+import { getPlanAccessState, shouldRevealContacts } from '../src/lib/planos';
 
 test('trial starter blocks PDF uploads at the limit', () => {
   const state = getPlanAccessState({ plano: 'trial_starter', subscription_status: 'trialing' } as any, 10);
@@ -18,4 +18,9 @@ test('starter plan allows uploads and LinkedIn for active subscriptions', () => 
   assert.equal(state.canUploadPdf, true);
   assert.equal(state.canUseLinkedIn, true);
   assert.equal(state.pdfLimit, 100);
+});
+
+test('trial users should not see contact detail by default', () => {
+  assert.equal(shouldRevealContacts({ plano: 'trial', subscription_status: 'trialing' } as any, false), false);
+  assert.equal(shouldRevealContacts({ plano: 'starter', subscription_status: 'active' } as any, false), true);
 });
