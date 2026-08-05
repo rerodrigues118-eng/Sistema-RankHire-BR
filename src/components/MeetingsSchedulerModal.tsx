@@ -202,3 +202,5 @@ export default function MeetingsSchedulerModal({
     </AnimatePresence>
   );
 }
+
+export const AgendarEntrevistaModal = MeetingsSchedulerModal;

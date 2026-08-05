@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { motion, AnimatePresence } from "framer-motion";
 import type { PageId } from "@/lib/types";
 import { PAGE_HREFS } from "@/lib/routes";
 import {
@@ -29,7 +30,7 @@ import { useNotifications } from "@/context/NotificationContext";
 import NotificationPopover from "@/components/NotificationPopover";
 
 interface SidebarProps {
-  activePage: PageId;
+  activePage?: PageId;
   onNavigate?: (page: PageId) => void;
 }
 
@@ -67,13 +68,46 @@ const NAV_SECTIONS = [
 
 export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
   const { isSidebarCollapsed, toggleSidebar } = useNotifications();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const [userEmail, setUserEmail] = useState<string>("Carregando...");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [planoBadge, setPlanoBadge] = useState<{ label: string; color: string }>({ label: "TRIAL", color: "gray" });
   const [isTrial, setIsTrial] = useState(false);
-  const router = useRouter();
+
+  // Helper for strict route active matching
+  const getIsActive = (itemId: PageId) => {
+    if (itemId === "dashboard") {
+      return pathname === "/dashboard" || pathname === "/";
+    }
+    if (itemId === "vagas") {
+      return pathname?.startsWith("/vagas");
+    }
+    if (itemId === "linkedin") {
+      return pathname?.startsWith("/busca-inteligente");
+    }
+    if (itemId === "agente-ia") {
+      return pathname?.startsWith("/agente-ia") || pathname?.startsWith("/agentes");
+    }
+    if (itemId === "pdf-ranker") {
+      return pathname?.startsWith("/pdf-ranker");
+    }
+    if (itemId === "candidatos") {
+      return pathname?.startsWith("/candidatos");
+    }
+    if (itemId === "pipeline") {
+      return pathname?.startsWith("/pipeline");
+    }
+    if (itemId === "analytics") {
+      return pathname?.startsWith("/analytics");
+    }
+    if (itemId === "settings") {
+      return pathname?.startsWith("/configuracoes");
+    }
+    return activePage === itemId;
+  };
 
   useEffect(() => {
     async function checkRole() {
@@ -161,155 +195,137 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
   };
 
   return (
-    <aside
-      style={{
-        width: isSidebarCollapsed ? "68px" : "220px",
-        minWidth: isSidebarCollapsed ? "68px" : "220px",
-        background: "var(--bg-sidebar)",
-        borderRight: "1px solid var(--border-sidebar)",
+    <motion.aside
+      initial={false}
+      animate={{
+        width: isSidebarCollapsed ? "80px" : "256px",
       }}
-      className="flex flex-col h-screen select-none relative transition-all duration-300 ease-in-out z-30"
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      style={{
+        background: "var(--bg-sidebar, #ffffff)",
+        borderRight: "1px solid var(--border-sidebar, #e5e7eb)",
+      }}
+      className="flex flex-col h-screen select-none relative z-30 font-sans flex-shrink-0 overflow-hidden"
     >
-      {/* Header / Logo + Bell + Collapse Button */}
-      {!isSidebarCollapsed ? (
-        <div className="pt-4 pb-3 px-3 flex items-center justify-between border-b border-gray-100/80">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div className="w-7 h-7 bg-[var(--text-primary)] rounded-[6px] flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-[14px]">R.</span>
+      {/* Header / Logo + Bell + Collapse Toggle */}
+      <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100 flex-shrink-0">
+        {!isSidebarCollapsed ? (
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 shadow-xs">
+                <span className="text-white font-bold text-sm tracking-tight">R.</span>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-bold text-slate-900 leading-tight truncate">
+                  RankHire BR
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium truncate">
+                  recrutamento IA
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[14px] font-semibold text-[var(--text-primary)] leading-tight truncate">
-                RankHire BR
-              </span>
-              <span className="text-[10px] text-[var(--text-muted)] truncate">
-                recrutamento IA
-              </span>
+            <div className="flex items-center gap-1">
+              <NotificationPopover />
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                title="Recolher menu lateral"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                <PanelLeftClose size={18} />
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            <NotificationPopover />
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              title="Recolher menu lateral"
-              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-            >
-              <PanelLeftClose size={18} />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="pt-4 pb-3 px-2 flex flex-col items-center gap-3 border-b border-gray-100/80">
-          <div className="w-7 h-7 bg-[var(--text-primary)] rounded-[6px] flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-[14px]">R.</span>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <NotificationPopover />
+        ) : (
+          <div className="w-full flex items-center justify-center gap-2">
             <button
               type="button"
               onClick={toggleSidebar}
               title="Expandir menu lateral"
-              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
             >
-              <PanelLeftOpen size={18} />
+              <PanelLeftOpen size={20} />
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Busca rápida */}
       {!isSidebarCollapsed && (
-        <div className="px-3 my-3">
-          <button className="w-full flex items-center justify-between bg-[var(--bg-input)] hover:bg-[#E5E7EB] transition-colors rounded-md px-2.5 py-1.5 text-[12px] text-[var(--text-secondary)]">
+        <div className="px-3 my-3 flex-shrink-0">
+          <button className="w-full flex items-center justify-between bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition rounded-lg px-3 py-2 text-xs text-slate-600 font-medium">
             <div className="flex items-center gap-2">
-              <SearchIcon size={14} />
+              <SearchIcon size={14} className="text-slate-400" />
               <span>Busca rápida</span>
             </div>
-            <span className="border border-[var(--border-default)] bg-white rounded-[4px] px-1.5 py-0.5 text-[10px] font-mono">
+            <span className="border border-slate-200 bg-white rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-400">
               ⌘K
             </span>
           </button>
         </div>
       )}
 
-      {/* Nav sections */}
+      {/* Navigation Sections */}
       <nav className="flex-1 overflow-y-auto scrollbar-hide py-2">
         {NAV_SECTIONS.map((section) => (
           <div key={section.label} className="mb-3 last:mb-0">
             {!isSidebarCollapsed && (
-              <span className="block px-4 pb-1 pt-3 text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">
+              <span className="block px-4 pb-1.5 pt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 {section.label}
               </span>
             )}
             <ul className="flex flex-col gap-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = activePage === item.id;
-                const isLocked =
-                  isTrial && (item.id === "candidatos" || item.id === "agente-ia");
+                const isActive = getIsActive(item.id);
+                const isLocked = isTrial && (item.id === "candidatos" || item.id === "agente-ia");
                 const href = isLocked ? "/dashboard" : PAGE_HREFS[item.id] ?? "/dashboard";
 
                 if (isSidebarCollapsed) {
                   return (
                     <li key={item.id} className="w-full flex justify-center py-1">
                       <Link
-                        href={isLocked ? "/dashboard" : href}
-                        title={
-                          isLocked
-                            ? `${item.label} — disponível nos planos pagos`
-                            : item.label
-                        }
-                        className={`p-2.5 rounded-lg transition-colors relative flex items-center justify-center ${
-                          isActive
-                            ? "bg-[var(--green-bg)] text-[#059669] font-medium"
-                            : isLocked
-                            ? "text-[var(--text-muted)] opacity-60"
-                            : "text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[#374151]"
-                        }`}
+                        href={href}
                         onClick={(e) => {
                           if (isLocked) e.preventDefault();
+                          if (onNavigate) onNavigate(item.id);
                         }}
+                        title={isLocked ? `${item.label} — disponível nos planos pagos` : item.label}
+                        className={`p-2.5 rounded-xl transition relative flex items-center justify-center ${
+                          isActive
+                            ? "bg-emerald-50 text-emerald-600 font-semibold"
+                            : isLocked
+                            ? "text-slate-300 opacity-60"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
                       >
-                        <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                        {isLocked && (
-                          <Lock
-                            size={10}
-                            className="absolute top-1 right-1 text-amber-500"
-                          />
-                        )}
+                        <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
+                        {isLocked && <Lock size={10} className="absolute top-1 right-1 text-amber-500" />}
                       </Link>
                     </li>
                   );
                 }
 
                 return (
-                  <li key={item.id} className="w-full">
+                  <li key={item.id} className="w-full px-2">
                     <Link
-                      href={isLocked ? "/dashboard" : href}
-                      title={
-                        isLocked
-                          ? `${item.label} — disponível nos planos pagos`
-                          : item.label
-                      }
-                      className={
-                        isActive
-                          ? "flex items-center gap-2.5 w-full text-left transition-colors text-[13px] bg-[var(--green-bg)] text-[#059669] font-medium border-l-2 border-[var(--green)] py-2 pr-3 pl-[10px] ml-1.5 rounded-r-[6px]"
-                          : isLocked
-                          ? "flex items-center gap-2.5 w-full text-left transition-colors text-[13px] text-[var(--text-muted)] opacity-70 py-2 px-3 mx-2 rounded-[6px] w-[calc(100%-16px)]"
-                          : "flex items-center gap-2.5 w-full text-left transition-colors text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[#374151] py-2 px-3 mx-2 rounded-[6px] w-[calc(100%-16px)]"
-                      }
+                      href={href}
                       onClick={(e) => {
                         if (isLocked) e.preventDefault();
+                        if (onNavigate) onNavigate(item.id);
                       }}
+                      title={isLocked ? `${item.label} — disponível nos planos pagos` : item.label}
+                      className={`flex items-center gap-3 w-full text-left transition rounded-xl text-xs py-2.5 px-3 font-medium ${
+                        isActive
+                          ? "bg-emerald-50 text-emerald-700 font-bold border-l-3 border-emerald-500"
+                          : isLocked
+                          ? "text-slate-400 opacity-70 hover:bg-slate-50"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      }`}
                     >
-                      <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
+                      <Icon size={17} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-emerald-600" : "text-slate-400"} />
                       <span className="truncate flex-1">{item.label}</span>
-                      {isLocked && (
-                        <Lock
-                          size={12}
-                          className="flex-shrink-0 text-amber-500 ml-auto"
-                        />
-                      )}
+                      {isLocked && <Lock size={12} className="flex-shrink-0 text-amber-500 ml-auto" />}
                     </Link>
                   </li>
                 );
@@ -319,12 +335,12 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         ))}
       </nav>
 
-      {/* User footer */}
-      <div className="p-2 border-t border-[var(--border-sidebar)] m-2 rounded-lg bg-gray-50/50">
+      {/* User Footer */}
+      <div className="p-3 border-t border-slate-100 flex-shrink-0 bg-slate-50/50">
         {!isSidebarCollapsed ? (
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-slate-200">
                 {avatarUrl ? (
                   <Image
                     src={avatarUrl}
@@ -335,30 +351,20 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                     unoptimized
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-[#059669] text-white flex items-center justify-center text-[12px] font-medium">
+                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
                     {(displayName || userEmail || "U").charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex flex-col">
                 <span
-                  className="text-[12px] font-medium text-[var(--text-primary)] truncate leading-tight"
+                  className="text-xs font-bold text-slate-800 truncate leading-tight"
                   title={displayName || userEmail}
                 >
                   {displayName || userEmail}
                 </span>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span
-                    className={`text-[10px] font-semibold px-1.5 rounded-sm ${
-                      planoBadge.color === "gold"
-                        ? "bg-[rgba(212,175,55,0.15)] text-[var(--gold)]"
-                        : planoBadge.color === "green"
-                        ? "bg-[rgba(6,214,160,0.15)] text-[#06D6A0]"
-                        : planoBadge.color === "blue"
-                        ? "bg-[rgba(27,79,216,0.15)] text-[#1B4FD8]"
-                        : "bg-[rgba(107,114,128,0.15)] text-[#6B7280]"
-                    }`}
-                  >
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
                     {planoBadge.label}
                   </span>
                 </div>
@@ -366,15 +372,15 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
             </div>
             <button
               onClick={handleLogout}
-              className="text-[var(--text-muted)] hover:text-red-500 transition-colors p-1"
+              className="text-slate-400 hover:text-rose-600 transition p-1.5 rounded-lg hover:bg-rose-50 cursor-pointer"
               title="Sair"
             >
-              <LogOut size={14} />
+              <LogOut size={16} />
             </button>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-1">
-            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-slate-200">
               {avatarUrl ? (
                 <Image
                   src={avatarUrl}
@@ -385,21 +391,21 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                   unoptimized
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-[#059669] text-white flex items-center justify-center text-[12px] font-medium">
+                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
                   {(displayName || userEmail || "U").charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
             <button
               onClick={handleLogout}
-              className="text-[var(--text-muted)] hover:text-red-500 transition-colors p-1"
+              className="text-slate-400 hover:text-rose-600 transition p-1.5 rounded-lg hover:bg-rose-50 cursor-pointer"
               title="Sair"
             >
-              <LogOut size={14} />
+              <LogOut size={16} />
             </button>
           </div>
         )}
       </div>
-    </aside>
+    </motion.aside>
   );
 }

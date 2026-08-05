@@ -1,57 +1,69 @@
 "use client";
 
 import Link from "next/link";
-
 import React, { useState, useMemo } from "react";
-import type { Candidate } from "@/lib/types";
-import { Search, SlidersHorizontal, Filter, MoreHorizontal, ExternalLink, MessageCircle, Star, Lock } from "lucide-react";
-
-function FiltrosAvancados({ filtrosAtivos }: { filtrosAtivos?: Record<string, unknown> | null }) {
-  const filtros = filtrosAtivos || { localidade: "", senioridade: "", modalidade: "" };
-
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-slate-800">Filtros Gerais de Sourcing</h3>
-      <div className="grid gap-3 md:grid-cols-2">
-        <input
-          type="text"
-          placeholder="Localidade..."
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-          defaultValue={String((filtros as Record<string, unknown>).localidade || "")}
-        />
-        <select
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-          defaultValue={String((filtros as Record<string, unknown>).senioridade || "")}
-        >
-          <option value="">Qualquer Nível</option>
-          <option value="junior">Júnior</option>
-          <option value="pleno">Pleno</option>
-          <option value="senior">Sênior</option>
-        </select>
-        <input
-          type="text"
-          placeholder="Modalidade..."
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 md:col-span-2"
-          defaultValue={String((filtros as Record<string, unknown>).modalidade || "")}
-        />
-      </div>
-    </div>
-  );
-}
+import type { Candidate, KanbanStatus } from "@/lib/types";
+import {
+  Search, SlidersHorizontal, Filter, MoreHorizontal, ExternalLink,
+  Star, Lock, Video, Calendar, Eye, Sparkles, Check, ChevronDown
+} from "lucide-react";
 import { useEmpresa } from "@/hooks/useEmpresa";
+import MeetingsSchedulerModal from "@/components/MeetingsSchedulerModal";
 
 interface CandidatosPageProps {
   candidates: Candidate[];
   onSelectCandidate: (candidate: Candidate) => void;
+  onMoveCandidate?: (id: string, newStatus: KanbanStatus) => void;
 }
 
-export default function CandidatosPage({ candidates, onSelectCandidate }: CandidatosPageProps) {
+function FiltrosAvancados() {
+  return (
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+      <h3 className="mb-3 text-xs font-bold text-slate-800 uppercase tracking-wider">Filtros Gerais de Sourcing</h3>
+      <div className="grid gap-3.5 md:grid-cols-3">
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Localidade</label>
+          <input
+            type="text"
+            placeholder="Ex: Parana, Curitiba..."
+            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-violet-500 focus:bg-white transition"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Senioridade</label>
+          <select className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-violet-500 focus:bg-white transition cursor-pointer">
+            <option value="">Qualquer Nível</option>
+            <option value="junior">Júnior</option>
+            <option value="pleno">Pleno</option>
+            <option value="senior">Sênior</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Modalidade</label>
+          <input
+            type="text"
+            placeholder="Ex: Remoto, Híbrido..."
+            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-violet-500 focus:bg-white transition"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCandidate }: CandidatosPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(true);
   const { empresa, isLoading: isLoadingEmpresa } = useEmpresa();
 
-  // Detect trial plan for CRM restriction
+  // Scheduler Modal state
+  const [schedulingCandidate, setSchedulingCandidate] = useState<Candidate | null>(null);
+  const [isSchedulerOpen, setIsSchedulerOpen] = useState(false);
+
+  // Trial lock check
   const isCrmLocked = !isLoadingEmpresa && empresa && (() => {
     const plano = (empresa.plano || 'trial').toLowerCase();
     const subStatus = empresa.subscription_status || '';
@@ -63,7 +75,6 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
   const filteredCandidates = useMemo(() => {
     let list = [...candidates];
 
-    // Management page only keeps favorited candidates
     if (showOnlyFavorites) {
       list = list.filter((c) => c.shortlist || c.status === "shortlist");
     }
@@ -85,46 +96,48 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
   }, [candidates, searchTerm, statusFilter, showOnlyFavorites]);
 
   const renderStatusBadge = (status: string) => {
-    const map: Record<string, { label: string, color: string, bg: string }> = {
-      triado: { label: "Triado", color: "#6B7280", bg: "#F3F4F6" }, 
-      shortlist: { label: "Shortlist", color: "#00B4D8", bg: "rgba(0,180,216,0.1)" }, 
-      entrevista: { label: "Entrevista", color: "#D4AF37", bg: "rgba(212,175,55,0.1)" }, 
-      oferecido: { label: "Oferecido", color: "#8B5CF6", bg: "rgba(139,92,246,0.1)" }, 
-      contratado: { label: "Contratado", color: "#059669", bg: "rgba(5,150,105,0.1)" }, 
+    const map: Record<string, { label: string, color: string, bg: string, border: string }> = {
+      triado: { label: "Triado", color: "#4B5563", bg: "#F3F4F6", border: "#E5E7EB" },
+      shortlist: { label: "Shortlist", color: "#0284C7", bg: "#F0F9FF", border: "#BAE6FD" },
+      entrevista: { label: "Entrevista", color: "#B45309", bg: "#FEF3C7", border: "#FDE68A" },
+      oferecido: { label: "Oferecido", color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE" },
+      contratado: { label: "Contratado", color: "#047857", bg: "#ECFDF5", border: "#A7F3D0" },
     };
-    
+
     const conf = map[status] || map.triado;
     return (
-      <span className="px-2.5 py-1 rounded-[6px] text-[11px] font-medium whitespace-nowrap" style={{ color: conf.color, backgroundColor: conf.bg }}>
+      <span
+        className="px-3 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap uppercase tracking-wider"
+        style={{ color: conf.color, backgroundColor: conf.bg, borderColor: conf.border }}
+      >
         {conf.label}
       </span>
     );
   };
 
+  const handleOpenScheduler = (c: Candidate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSchedulingCandidate(c);
+    setIsSchedulerOpen(true);
+  };
+
   if (isCrmLocked) {
     return (
       <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-6 lg:px-8">
-        <div className="flex flex-col items-center justify-center min-h-96 gap-5 rounded-[28px] border border-slate-200 bg-white p-10">
+        <div className="flex flex-col items-center justify-center min-h-96 gap-5 rounded-[28px] border border-slate-200 bg-white p-10 shadow-sm text-center">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg">
             <Lock className="w-8 h-8 text-white" />
           </div>
-          <div className="text-center">
+          <div>
             <h2 className="text-2xl font-bold text-slate-900 mb-2">CRM de Candidatos</h2>
-            <p className="text-gray-500 max-w-md leading-relaxed">
+            <p className="text-slate-500 max-w-md leading-relaxed text-xs">
               O CRM completo está disponível nos planos <strong>Starter, Pro e Agência</strong>.
               No Trial, os candidatos ficam apenas no Pipeline (triagem temporária).
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-3 text-center max-w-sm">
-            {["Histórico permanente", "Etiquetas IA", "Exportar CSV"].map(f => (
-              <div key={f} className="bg-slate-50 rounded-xl p-3">
-                <p className="text-[12px] font-medium text-slate-600">{f}</p>
-              </div>
-            ))}
-          </div>
           <Link
             href="/configuracoes"
-            className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-8 py-3 rounded-full font-semibold text-[15px] hover:from-indigo-700 hover:to-violet-700 transition shadow-md hover:shadow-lg"
+            className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-8 py-3 rounded-full font-semibold text-xs hover:from-indigo-700 hover:to-violet-700 transition shadow-md hover:shadow-lg"
           >
             Ver Planos →
           </Link>
@@ -134,29 +147,30 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pt-2 pb-10">
+    <div className="max-w-7xl mx-auto space-y-6 pt-2 pb-10 px-6">
+      {/* Top Header */}
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-[24px] font-semibold text-[#111827] tracking-tight">Candidatos</h1>
-          <p className="text-[14px] text-[#6B7280] mt-1">Gestão centralizada de talentos importados, avaliados e ranqueados.</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Candidatos (CRM)</h1>
+          <p className="text-xs text-slate-500 mt-1">Gestão centralizada de talentos importados, avaliados e ranqueados.</p>
         </div>
-        <button className="btn-ghost flex items-center gap-2 bg-white">
-          <Filter className="w-4 h-4" /> Exportar CSV
+        <button className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-2">
+          <Filter className="w-3.5 h-3.5 text-slate-400" /> Exportar CSV
         </button>
       </div>
 
-      <FiltrosAvancados filtrosAtivos={null} />
+      <FiltrosAvancados />
 
-      {/* ── Barra de Filtros ─────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 py-2">
+      {/* Filter Bar */}
+      <div className="flex items-center justify-between gap-4 py-1">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Pesquise por nome, empresa ou cargo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input-rh w-full pl-10 bg-white"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:border-violet-500 transition shadow-xs"
           />
         </div>
 
@@ -164,22 +178,22 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
           <button
             type="button"
             onClick={() => setShowOnlyFavorites((prev) => !prev)}
-            className={`flex items-center gap-2 px-3 py-[9px] rounded-lg text-[13px] font-medium border transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition ${
               showOnlyFavorites
-                ? "bg-[#FFFBEA] border-[#F5C000] text-[#B45309]"
-                : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB]"
+                ? "bg-amber-50 border-amber-300 text-amber-800"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
             }`}
           >
-            <Star className={`w-4 h-4 ${showOnlyFavorites ? "fill-[#F5C000] text-[#F5C000]" : ""}`} strokeWidth={1.8} />
+            <Star className={`w-4 h-4 ${showOnlyFavorites ? "fill-amber-400 text-amber-500" : ""}`} strokeWidth={1.8} />
             {showOnlyFavorites ? "Apenas favoritos" : "Mostrar todos"}
           </button>
 
-          <div className="flex items-center gap-2 text-[13px]">
-            <span className="text-[#6B7280]">Status:</span>
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+            <span>Status:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="input-rh py-[9px] bg-white cursor-pointer"
+              className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-violet-500 cursor-pointer shadow-xs"
             >
               <option value="all">Todos os status</option>
               <option value="triado">Triado</option>
@@ -190,88 +204,99 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
             </select>
           </div>
 
-          <button className="btn-ghost bg-white flex items-center gap-2 h-auto py-[9px]">
-            <SlidersHorizontal className="w-4 h-4" /> Mais filtros
+          <button className="px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition">
+            <SlidersHorizontal className="w-4 h-4 text-slate-400" /> Mais filtros
           </button>
         </div>
       </div>
 
-      {/* ── Tabela CRM ──────────────────────────────────────── */}
-      <div className="bg-[#FFFFFF] rounded-[12px] border border-[#E5E7EB] overflow-hidden shadow-sm">
+      {/* Candidates Enterprise Table */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
-              <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB] text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider">
-                <th className="px-5 py-4 font-medium">Nome completo</th>
-                <th className="px-5 py-4 font-medium">Score</th>
-                <th className="px-5 py-4 font-medium">Função atual</th>
-                <th className="px-5 py-4 font-medium">Status do Pipeline</th>
-                <th className="px-5 py-4 font-medium">Etiquetas IA</th>
-                <th className="px-5 py-4 font-medium text-right">Ações</th>
+              <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <th className="px-5 py-4">Nome completo</th>
+                <th className="px-5 py-4">Fit Score</th>
+                <th className="px-5 py-4">Função atual</th>
+                <th className="px-5 py-4">Status no Pipeline</th>
+                <th className="px-5 py-4">Etiquetas IA</th>
+                <th className="px-5 py-4 text-right">Ações Rápidas</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E7EB]">
+            <tbody className="divide-y divide-slate-100">
               {filteredCandidates.map((c) => (
-                <tr 
-                  key={c.id} 
+                <tr
+                  key={c.id}
                   onClick={() => onSelectCandidate(c)}
-                  className="group cursor-pointer hover:bg-[#F9FAFB] transition-colors bg-[#FFFFFF]"
+                  className="group cursor-pointer hover:bg-slate-50/70 transition-colors bg-white"
                 >
-                  {/* Nome e Avatar */}
+                  {/* Name & Avatar */}
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-medium flex-shrink-0" style={{ backgroundColor: c.avatarColor + "15", color: c.avatarColor }}>
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-xs border border-slate-100"
+                        style={{ backgroundColor: c.avatarColor + "15", color: c.avatarColor }}
+                      >
                         {c.initials}
                       </div>
                       <div>
-                        <p className="text-[13px] font-medium text-[#111827] group-hover:text-[#06D6A0] transition-colors">{c.name}</p>
-                        <p className="text-[12px] text-[#6B7280]">{c.city}</p>
+                        <p className="text-xs font-bold text-slate-900 group-hover:text-violet-700 transition">{c.name}</p>
+                        <p className="text-[11px] text-slate-400">{c.city || "Paraná, Brasil"}</p>
                       </div>
                     </div>
                   </td>
 
                   {/* Score */}
                   <td className="px-5 py-3.5">
-                    <div className="inline-flex items-center bg-[#FEF9C3] px-2 py-0.5 rounded border border-[#FEF08A]">
-                      <span className="text-[12px] font-semibold text-[#854D0E]">{c.score > 0 ? c.score.toFixed(1) : "—"}</span>
-                    </div>
+                    <span className="inline-flex items-center bg-amber-50 text-amber-800 border border-amber-200/80 px-2.5 py-0.5 rounded-full text-xs font-bold">
+                      {c.score > 0 ? c.score.toFixed(1) : "—"}
+                    </span>
                   </td>
 
-                  {/* Função / Empresa */}
+                  {/* Function & Company */}
                   <td className="px-5 py-3.5">
-                    <p className="text-[13px] text-[#111827] truncate max-w-[150px]">{c.role}</p>
-                    <p className="text-[12px] text-[#6B7280] truncate max-w-[150px]">{c.company}</p>
+                    <p className="text-xs font-medium text-slate-800 truncate max-w-[180px]">{c.role}</p>
+                    <p className="text-[11px] text-slate-400 truncate max-w-[180px]">{c.company}</p>
                   </td>
 
-                  {/* Status */}
+                  {/* Pipeline Status */}
                   <td className="px-5 py-3.5">
                     {renderStatusBadge(c.status)}
                   </td>
 
-                  {/* Etiquetas */}
+                  {/* AI Tags */}
                   <td className="px-5 py-3.5 max-w-[200px]">
-                    <div className="flex items-center gap-2">
-                      {c.etiqueta ? (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={{ backgroundColor: c.etiqueta.cor, color: '#fff' }}>
-                          {c.etiqueta.nome}
-                        </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {c.confirmedTags && c.confirmedTags.length > 0 ? (
+                        c.confirmedTags.slice(0, 2).map((tag, idx) => (
+                          <span key={idx} className="text-[10px] font-semibold bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full border border-violet-100">
+                            {tag}
+                          </span>
+                        ))
                       ) : (
-                        <span className="text-[11px] text-[#9CA3AF]">—</span>
+                        <span className="text-[11px] text-slate-400">—</span>
                       )}
                     </div>
                   </td>
 
-                  {/* Ações */}
+                  {/* Action Buttons */}
                   <td className="px-5 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                      <button className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-[#06D6A0] hover:bg-[#F0FDF9] transition-colors">
-                        <MessageCircle className="w-4 h-4" />
+                    <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => handleOpenScheduler(c, e)}
+                        className="px-2.5 py-1 bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
+                        title="Agendar Entrevista"
+                      >
+                        <Video className="w-3.5 h-3.5" /> Agendar
                       </button>
-                      <Link href={c.linkedinUrl && c.linkedinUrl !== "#" ? c.linkedinUrl : "#"} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-[#06D6A0] hover:bg-[#F0FDF9] transition-colors">
-                        <ExternalLink className="w-4 h-4" />
-                      </Link>
-                      <button className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] transition-colors">
-                        <MoreHorizontal className="w-4 h-4" />
+
+                      <button
+                        onClick={() => onSelectCandidate(c)}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
+                        title="Ver Perfil 360°"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Perfil
                       </button>
                     </div>
                   </td>
@@ -280,9 +305,9 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
 
               {filteredCandidates.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-[13px] text-[#6B7280] bg-white">
+                  <td colSpan={6} className="px-6 py-16 text-center text-xs text-slate-500 bg-white">
                     {showOnlyFavorites
-                      ? "Nenhum candidato favoritado. Use a estrela no PDF Ranker para salvar no CRM."
+                      ? "Nenhum candidato favoritado no CRM."
                       : "Nenhum candidato corresponde aos filtros selecionados."}
                   </td>
                 </tr>
@@ -291,6 +316,16 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
           </table>
         </div>
       </div>
+
+      {/* Meetings Scheduler Modal */}
+      <MeetingsSchedulerModal
+        isOpen={isSchedulerOpen}
+        onClose={() => setIsSchedulerOpen(false)}
+        candidate={schedulingCandidate}
+        onConfirmSchedule={(candId, date, time) => {
+          if (onMoveCandidate) onMoveCandidate(candId, "entrevista");
+        }}
+      />
     </div>
   );
 }
