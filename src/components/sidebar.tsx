@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { PageId } from "@/lib/types";
+import { PAGE_HREFS } from "@/lib/routes";
 import {
   LayoutDashboard,
   FileText,
@@ -246,7 +247,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                 const isActive = activePage === item.id;
                 const isLocked =
                   isTrial && (item.id === "candidatos" || item.id === "agente-ia");
-                const href = item.id === "dashboard" ? "/dashboard" : `/dashboard?page=${item.id}`;
+                const href = isLocked ? "/dashboard" : PAGE_HREFS[item.id] ?? "/dashboard";
 
                 if (isSidebarCollapsed) {
                   return (

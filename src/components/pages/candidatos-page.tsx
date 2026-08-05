@@ -123,7 +123,7 @@ export default function CandidatosPage({ candidates, onSelectCandidate }: Candid
             ))}
           </div>
           <Link
-            href="/dashboard?page=settings"
+            href="/configuracoes"
             className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-8 py-3 rounded-full font-semibold text-[15px] hover:from-indigo-700 hover:to-violet-700 transition shadow-md hover:shadow-lg"
           >
             Ver Planos →

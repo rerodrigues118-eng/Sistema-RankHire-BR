@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AppShell from "@/components/AppShell";
 import "./globals.css";
 // Using system fonts instead of fetching Google Fonts during build
 
@@ -29,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

@@ -301,7 +301,7 @@ export default function VagasPage({
 
   const handleOpenJob = (job: Job) => {
     setViewingJobId(job.id);
-    router.push(`/dashboard?page=vagas`);
+    router.push('/vagas');
     if (selectedJobId !== job.id) {
       onSelectJob(job.id);
     }
@@ -458,13 +458,13 @@ export default function VagasPage({
 
             <div className="flex flex-wrap gap-3 mb-6">
               <button
-                onClick={() => router.push("/dashboard?page=candidatos")}
+                onClick={() => router.push("/candidatos")}
                 className="btn-primary bg-[#111827] hover:bg-[#111827]/90 text-white py-2 px-4 rounded-xl text-sm font-semibold"
               >
                 Ver candidatos
               </button>
               <button
-                onClick={() => router.push("/dashboard?page=pipeline")}
+                onClick={() => router.push("/pipeline")}
                 className="btn-ghost py-2 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-semibold"
               >
                 Ver pipeline
@@ -472,7 +472,7 @@ export default function VagasPage({
               <button
                 onClick={() => {
                   onSelectJob(viewingJob.id);
-                  router.push("/dashboard?page=pdf-ranker");
+                  router.push("/pdf-ranker");
                 }}
                 className="btn-ghost py-2 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-semibold"
               >

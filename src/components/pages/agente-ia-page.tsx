@@ -565,7 +565,7 @@ export default function AgenteIAPage() {
           <p className="text-gray-600 text-center max-w-md leading-6">
             O Agente IA está disponível nos planos Pro e Agência. Faça upgrade para ter um recrutador virtual trabalhando para você automaticamente.
           </p>
-          <Link href="/dashboard?page=settings">
+          <Link href="/configuracoes">
             <button className="bg-[#1B4FD8] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#163fb3] transition">
               Ver planos →
             </button>

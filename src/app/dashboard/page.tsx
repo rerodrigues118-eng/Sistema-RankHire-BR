@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { Candidate, Job, JobStatus, KanbanStatus, PageId, UploadFile } from "@/lib/types";
+import { PAGE_HREFS, getPageFromPath } from "@/lib/routes";
 import { AVATAR_COLORS } from "@/lib/mock-data";
 import Sidebar from "@/components/sidebar";
 import DashboardPage from "@/components/pages/dashboard-page";
@@ -19,48 +20,30 @@ import TrialBanner from "@/components/TrialBanner";
 import { createClient } from "@/lib/supabase/client";
 import { NotificationProvider } from "@/context/NotificationContext";
 
-export default function Home() {
+export function DashboardShell({ initialPage = "dashboard" }: { initialPage?: PageId }) {
+  const pathname = usePathname();
   const [activePage, setActivePage] = useState<PageId>(() => {
-    try { return (sessionStorage.getItem('rh_activePage') as PageId) || 'dashboard'; } catch { return 'dashboard'; }
+    const pageFromPath = getPageFromPath(pathname ?? "/dashboard");
+    const storedPage = (() => {
+      try { return sessionStorage.getItem('rh_activePage') as PageId | null; } catch { return null; }
+    })();
+    return pageFromPath ?? storedPage ?? initialPage;
   });
   const [selectedJobId, setSelectedJobId] = useState<string | null>(() => {
     try { return localStorage.getItem('rankhire_vaga_selecionada') || null; } catch { return null; }
   });
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const pageParam = searchParams.get("page");
-
-  const isValidPageId = (page: string | null): page is PageId =>
-    !!page && [
-      "dashboard",
-      "vagas",
-      "pdf-ranker",
-      "linkedin",
-      "agente-ia",
-      "pipeline",
-      "candidatos",
-      "analytics",
-      "settings",
-    ].includes(page);
 
   useEffect(() => {
-    const safePage = isValidPageId(pageParam) ? pageParam : null;
-    if (safePage) {
-      setActivePage(safePage);
-      try { sessionStorage.setItem('rh_activePage', safePage); } catch { /* ignore */ }
-      return;
+    const pageFromPath = getPageFromPath(pathname ?? "/dashboard");
+    if (pageFromPath && pageFromPath !== activePage) {
+      setActivePage(pageFromPath);
     }
+  }, [activePage, pathname]);
 
-    const storedPage = (() => {
-      try { return sessionStorage.getItem("rh_activePage"); } catch { return null; }
-    })();
-    const fallbackPage = isValidPageId(storedPage) ? storedPage : "dashboard";
-
-    setActivePage(fallbackPage);
-    if (fallbackPage !== "dashboard") {
-      router.replace(`/dashboard?page=${fallbackPage}`);
-    }
-  }, [pageParam, router]);
+  useEffect(() => {
+    try { sessionStorage.setItem('rh_activePage', activePage); } catch { /* ignore */ }
+  }, [activePage]);
   const [drawerCandidate, setDrawerCandidate] = useState<Candidate | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -97,8 +80,7 @@ export default function Home() {
   const handleSetActivePage = useCallback((page: PageId) => {
     setActivePage(page);
     try { sessionStorage.setItem('rh_activePage', page); } catch { /* ignore */ }
-    const href = page === "dashboard" ? "/dashboard" : `/dashboard?page=${page}`;
-    router.push(href);
+    router.push(PAGE_HREFS[page] ?? "/dashboard");
   }, [router]);
 
   // Persiste a vaga selecionada no sessionStorage
@@ -638,33 +620,28 @@ export default function Home() {
 
   if (isBootstrapping) {
     return (
-      <NotificationProvider>
-        <div className="flex h-screen overflow-hidden bg-white">
-          <Sidebar activePage={activePage} onNavigate={handleSetActivePage} />
-          <div className="flex-1 flex items-center justify-center bg-[var(--bg-base)]">
-            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-              <div className="h-4 w-48 rounded bg-slate-200 animate-pulse" />
-              <div className="mt-3 h-3 w-72 rounded bg-slate-100 animate-pulse" />
-            </div>
+      <div className="flex h-full min-h-screen overflow-hidden bg-white">
+        <div className="flex-1 flex items-center justify-center bg-[var(--bg-base)]">
+          <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+            <div className="h-4 w-48 rounded bg-slate-200 animate-pulse" />
+            <div className="mt-3 h-3 w-72 rounded bg-slate-100 animate-pulse" />
           </div>
         </div>
-      </NotificationProvider>
+      </div>
     );
   }
 
   return (
-    <NotificationProvider>
-      <div className="flex h-screen bg-[var(--bg-page)] overflow-hidden font-sans">
-        <Sidebar activePage={activePage} />
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[var(--bg-base)]">
-          <main className={`flex-1 overflow-y-auto text-[var(--text-primary)] ${activePage === "linkedin" ? "p-0 overflow-hidden" : "p-6"}`}>
-            {activePage !== "linkedin" && <TrialBanner />}
-            {bootstrapError && (
-              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                {bootstrapError}
-              </div>
-            )}
-            <div className="w-full h-full relative">
+    <div className="flex h-full min-h-screen bg-[var(--bg-page)] overflow-hidden font-sans">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[var(--bg-base)]">
+        <main className={`flex-1 overflow-y-auto text-[var(--text-primary)] ${activePage === "linkedin" ? "p-0 overflow-hidden" : "p-6"}`}>
+          {activePage !== "linkedin" && <TrialBanner />}
+          {bootstrapError && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {bootstrapError}
+            </div>
+          )}
+          <div className="w-full h-full relative">
               <div className={activePage === "dashboard" ? "block h-full" : "hidden"}>
                 <DashboardPage
                   activeJob={activeJob}
@@ -792,30 +769,33 @@ export default function Home() {
               </div>
             </div>
           </main>
-        </div>
-
-        <CandidateDrawer
-          isOpen={Boolean(drawerCandidate)}
-          onClose={handleCloseDrawer}
-          candidate={drawerCandidate}
-          activeJob={activeJob}
-          onToggleShortlist={handleToggleShortlist}
-          onMoveCandidate={handleMoveCandidateStatus}
-          onUpdateCandidate={handleUpdateCandidate}
-          quota={quota}
-          onExportSuccess={() => {
-            setQuota((prev) => {
-              if (!prev) return null;
-              if (prev.isAdmin || prev.limit === null) return prev;
-              return {
-                ...prev,
-                used: prev.used + 1,
-                remaining: prev.remaining !== null ? Math.max(0, prev.remaining - 1) : null,
-              };
-            });
-          }}
-        />
       </div>
-    </NotificationProvider>
+
+      <CandidateDrawer
+        isOpen={Boolean(drawerCandidate)}
+        onClose={handleCloseDrawer}
+        candidate={drawerCandidate}
+        activeJob={activeJob}
+        onToggleShortlist={handleToggleShortlist}
+        onMoveCandidate={handleMoveCandidateStatus}
+        onUpdateCandidate={handleUpdateCandidate}
+        quota={quota}
+        onExportSuccess={() => {
+          setQuota((prev) => {
+            if (!prev) return null;
+            if (prev.isAdmin || prev.limit === null) return prev;
+            return {
+              ...prev,
+              used: prev.used + 1,
+              remaining: prev.remaining !== null ? Math.max(0, prev.remaining - 1) : null,
+            };
+          });
+        }}
+      />
+    </div>
   );
+}
+
+export default function Home() {
+  return <DashboardShell initialPage="dashboard" />;
 }
