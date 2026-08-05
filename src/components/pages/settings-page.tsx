@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CreditCard, X } from "lucide-react";
 import ProfileConfig from "@/components/ProfileConfig";
 import CompanySection from "../CompanySection";
-import PlanosConfigPage from "@/app/configuracoes/plano/page";
+import PlanosConfigPage from "@/app/(sistema)/configuracoes/plano/page";
 
 export default function SettingsPage() {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);

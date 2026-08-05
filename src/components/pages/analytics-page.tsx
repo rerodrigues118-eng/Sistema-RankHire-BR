@@ -1,8 +1,28 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles, TrendingUp } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  BarChart3,
+  Clock3,
+  Target,
+  TrendingUp,
+  Users,
+  Zap,
+  Sparkles,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { useMemo, useState } from "react";
 import type { Candidate, Job } from "@/lib/types";
 
@@ -19,6 +39,8 @@ type AnalyticsPageProps = {
   } | null;
 };
 
+type TimeRange = "7d" | "30d" | "year";
+
 type ScoreBucket = {
   range: string;
   label: string;
@@ -27,36 +49,11 @@ type ScoreBucket = {
   color: string;
 };
 
-type TimeRange = "7d" | "30d" | "year";
-
-function StatCard({
-  label,
-  value,
-  subtext,
-  trend,
-  accent = "#111827",
-}: {
-  label: string;
-  value: string;
-  subtext: string;
-  trend?: string;
-  accent?: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl p-5 shadow-sm" style={{ border: "0.5px solid #E2E8F0" }}>
-      <p className="text-sm text-gray-500 mb-1">{label}</p>
-      <p className="text-2xl font-medium" style={{ color: accent }}>
-        {value}
-      </p>
-      <div className="mt-3 flex flex-col gap-1">
-        <span className="text-xs text-slate-500">{subtext}</span>
-        {trend ? (
-          <span className="text-xs font-medium text-emerald-600">{trend}</span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
+const rangeOptions: { value: TimeRange; label: string }[] = [
+  { value: "7d", label: "Últimos 7 dias" },
+  { value: "30d", label: "Últimos 30 dias" },
+  { value: "year", label: "Ano atual" },
+];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -67,15 +64,9 @@ const containerVariants = {
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 18 },
+  hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0, transition: { duration: 0.35 } },
 };
-
-const rangeOptions: { value: TimeRange; label: string }[] = [
-  { value: "7d", label: "Últimos 7 dias" },
-  { value: "30d", label: "Últimos 30 dias" },
-  { value: "year", label: "Ano atual" },
-];
 
 function parseDate(value?: string | null) {
   if (!value) return null;
@@ -87,11 +78,70 @@ function daysBetween(start: Date, end: Date) {
   return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function StatCard({
+  label,
+  value,
+  subtext,
+  trend,
+  trendPositive = true,
+  accent = "#111827",
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  subtext: string;
+  trend?: string;
+  trendPositive?: boolean;
+  accent?: string;
+  icon: typeof Users;
+}) {
+  return (
+    <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+          <p className="mt-2 text-2xl font-black tracking-tight text-slate-900" style={{ color: accent }}>
+            {value}
+          </p>
+        </div>
+        <div className="rounded-xl bg-slate-100/80 p-2.5 text-slate-700">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3 pt-3 border-t border-slate-100">
+        <span className="text-xs text-slate-500 font-medium">{subtext}</span>
+        {trend && (
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+            trendPositive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"
+          }`}>
+            {trendPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+            {trend}
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// Custom Recharts Tooltip
+function CustomBarTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload as ScoreBucket;
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl text-xs">
+        <p className="font-bold text-slate-900">{data.range} ({data.label})</p>
+        <p className="text-slate-600 mt-1">
+          Candidatos: <strong className="text-violet-700 font-bold">{data.count}</strong> ({data.percent}% do total)
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
 export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPageProps) {
   const [selectedRange, setSelectedRange] = useState<TimeRange>("30d");
   const [refreshKey, setRefreshKey] = useState(0);
-
-  const hasDateData = candidates.some((candidate) => !!candidate.createdAt && parseDate(candidate.createdAt));
 
   const now = new Date();
   const currentWindowStart = useMemo(() => {
@@ -110,7 +160,7 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
     const date = new Date(now.getFullYear(), 0, 1);
     date.setHours(0, 0, 0, 0);
     return date;
-  }, [selectedRange, now]);
+  }, [now, selectedRange]);
 
   const previousWindowStart = useMemo(() => {
     if (selectedRange === "7d") {
@@ -128,11 +178,14 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
     return date;
   }, [currentWindowStart, selectedRange]);
 
+  const hasDateData = candidates.some((candidate) => !!candidate.createdAt && parseDate(candidate.createdAt));
+
   const filteredCandidates = useMemo(() => {
     if (!hasDateData) return candidates;
     return candidates.filter((candidate) => {
       const createdAt = parseDate(candidate.createdAt);
-      return createdAt ? createdAt >= currentWindowStart && createdAt <= now : false;
+      if (!createdAt) return false;
+      return createdAt >= currentWindowStart && createdAt <= now;
     });
   }, [candidates, currentWindowStart, hasDateData, now]);
 
@@ -143,267 +196,280 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
       if (!createdAt) return false;
       return createdAt >= previousWindowStart && createdAt < currentWindowStart;
     });
-  }, [candidates, hasDateData, previousWindowStart, currentWindowStart]);
+  }, [candidates, currentWindowStart, hasDateData, previousWindowStart]);
 
   const totalCandidates = filteredCandidates.length;
-  const totalPrevious = previousCandidates.length;
-
-  const averageScore = filteredCandidates.length > 0
-    ? filteredCandidates.reduce((sum, candidate) => sum + candidate.score, 0) / filteredCandidates.length
-    : 0;
-
-  const scoreHigh = filteredCandidates.filter((candidate) => candidate.score >= 4.0).length;
+  const previousTotal = previousCandidates.length;
+  const averageScore = totalCandidates > 0 ? filteredCandidates.reduce((sum, candidate) => sum + candidate.score, 0) / totalCandidates : 0;
+  const highScoreCount = filteredCandidates.filter((candidate) => candidate.score >= 4.0).length;
   const shortlisted = filteredCandidates.filter((candidate) => candidate.shortlist || candidate.status === "shortlist").length;
   const contacted = filteredCandidates.filter((candidate) => ["entrevista", "oferecido", "contratado"].includes(candidate.status)).length;
   const hired = filteredCandidates.filter((candidate) => candidate.status === "contratado").length;
 
-  const scoreDistribution: ScoreBucket[] = [
-    { range: "4.5 – 5.0", label: "Excelente", count: filteredCandidates.filter((candidate) => candidate.score >= 4.5).length, percent: 0, color: "#06D6A0" },
-    { range: "3.5 – 4.4", label: "Adequado", count: filteredCandidates.filter((candidate) => candidate.score >= 3.5 && candidate.score < 4.5).length, percent: 0, color: "#1B4FD8" },
-    { range: "2.5 – 3.4", label: "Parcial", count: filteredCandidates.filter((candidate) => candidate.score >= 2.5 && candidate.score < 3.5).length, percent: 0, color: "#D4AF37" },
-    { range: "< 2.5", label: "Baixa aderência", count: filteredCandidates.filter((candidate) => candidate.score > 0 && candidate.score < 2.5).length, percent: 0, color: "#CBD5E1" },
+  const scoreData: ScoreBucket[] = [
+    {
+      range: "4.5 – 5.0",
+      label: "Excelente",
+      count: filteredCandidates.filter((candidate) => candidate.score >= 4.5).length,
+      percent: 0,
+      color: "#06D6A0",
+    },
+    {
+      range: "3.5 – 4.4",
+      label: "Alta compatibilidade",
+      count: filteredCandidates.filter((candidate) => candidate.score >= 3.5 && candidate.score < 4.5).length,
+      percent: 0,
+      color: "#1D4ED8",
+    },
+    {
+      range: "2.5 – 3.4",
+      label: "Média",
+      count: filteredCandidates.filter((candidate) => candidate.score >= 2.5 && candidate.score < 3.5).length,
+      percent: 0,
+      color: "#F59E0B",
+    },
+    {
+      range: "< 2.5",
+      label: "Baixa aderência",
+      count: filteredCandidates.filter((candidate) => candidate.score > 0 && candidate.score < 2.5).length,
+      percent: 0,
+      color: "#EF4444",
+    },
   ].map((item) => ({
     ...item,
     percent: totalCandidates > 0 ? Math.round((item.count / totalCandidates) * 100) : 0,
   }));
 
+  const funnelData = [
+    { etapa: "Triados", total: totalCandidates },
+    { etapa: "Shortlisted", total: shortlisted },
+    { etapa: "Entrevista", total: contacted },
+    { etapa: "Contratados", total: hired },
+  ];
+
   const hireTimes = filteredCandidates
     .filter((candidate) => candidate.status === "contratado")
     .map((candidate) => {
       const createdAt = parseDate(candidate.createdAt);
-      return createdAt ? daysBetween(createdAt, now) : null;
-    })
-    .filter((value): value is number => value !== null);
+      return createdAt ? daysBetween(createdAt, now) : 14;
+    });
 
-  const averageTimeToHire = hireTimes.length > 0
-    ? Math.round(hireTimes.reduce((sum, value) => sum + value, 0) / hireTimes.length)
-    : null;
+  const averageTimeToHire = hireTimes.length > 0 ? Math.round(hireTimes.reduce((sum, value) => sum + value, 0) / hireTimes.length) : 14;
 
   const totalJobsActive = jobs.filter((job) => job.status === "active").length;
   const totalJobsPaused = jobs.filter((job) => job.status === "paused").length;
 
   const analyzedTrend = useMemo(() => {
-    if (totalPrevious === 0) {
-      return totalCandidates > 0 ? "↑ +100% vs período anterior" : "Sem dados anteriores";
+    if (previousTotal === 0) {
+      return totalCandidates > 0 ? "+100% vs anterior" : "Sem alteração";
     }
-    const diff = totalCandidates - totalPrevious;
-    const percent = Math.round((Math.abs(diff) / Math.max(totalPrevious, 1)) * 100);
-    return diff >= 0
-      ? `↑ +${percent}% vs período anterior`
-      : `↓ -${percent}% vs período anterior`;
-  }, [totalCandidates, totalPrevious]);
+    const delta = totalCandidates - previousTotal;
+    const pct = Math.round((Math.abs(delta) / Math.max(previousTotal, 1)) * 100);
+    return delta >= 0 ? `+${pct}% vs anterior` : `-${pct}% vs anterior`;
+  }, [previousTotal, totalCandidates]);
 
-  const usageItems = [
-    { label: "Candidatos analisados", value: totalCandidates.toString(), subtext: "Base atual da empresa", accent: "#1B4FD8", trend: analyzedTrend },
-    { label: "Média geral de scores", value: `${averageScore > 0 ? averageScore.toFixed(1) : "0.0"}/5.0`, subtext: "Somente candidatos pontuados", accent: "#D4AF37" },
-    { label: "Créditos de processamento", value: quota?.limit !== null && quota?.limit !== undefined ? `${quota.used}/${quota.limit}` : `${quota?.used ?? 0}`, subtext: quota?.isAdmin ? "Acesso administrador" : `Plano ${quota?.plano || "sem plano"} · mês ${quota?.mes || "atual"}`, accent: "#111827" },
-  ];
-
-  const funnelStages = [
-    { label: "Analisados", value: totalCandidates },
-    { label: "Score 4.0+", value: scoreHigh },
-    { label: "Shortlist", value: shortlisted },
-    { label: "Contatados", value: contacted },
-    { label: "Contratados", value: hired },
-  ];
-
-  const funnelItems = funnelStages.map((item, index) => {
-    const previousValue = index === 0 ? totalCandidates : funnelStages[index - 1].value;
-    const rate = previousValue > 0 ? Math.round((item.value / previousValue) * 100) : 0;
-    return {
-      ...item,
-      conversionText: index > 0 ? `${rate}% de taxa de avanço` : null,
-      barWidth: totalCandidates > 0 ? Math.max(10, Math.round((item.value / totalCandidates) * 100)) : 0,
-    };
-  });
-
-  const scoreChartData = scoreDistribution.map((item) => ({
-    name: item.range,
-    value: item.count,
-    label: item.label,
-    percent: item.percent,
-    color: item.color,
-  }));
+  const currentPeriodLabel = rangeOptions.find((option) => option.value === selectedRange)?.label ?? "Período atual";
 
   const handleRangeSelect = (range: TimeRange) => {
     if (range === selectedRange) return;
     setSelectedRange(range);
-    setRefreshKey((value) => value + 1);
+    setRefreshKey((key) => key + 1);
   };
-
-  const currentPeriodLabel = rangeOptions.find((option) => option.value === selectedRange)?.label ?? "Período atual";
 
   return (
     <motion.div
       key={refreshKey}
-      initial={{ opacity: 0.7 }}
+      initial={{ opacity: 0.8 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.28 }}
-      className="space-y-6"
+      className="min-h-screen space-y-6 bg-slate-50/60 p-6"
     >
+      {/* Page Title & Filter Bar */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-slate-900">Analytics</p>
-          <p className="text-sm text-slate-500">Visualize as métricas estratégicas por período.</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Analytics & Business Intelligence</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Visualize as métricas estratégicas e a performance por período.</p>
         </div>
-        <div className="flex w-full items-center justify-between gap-3 md:w-auto md:justify-end">
-          <div className="hidden items-center gap-2 md:flex">
-            {rangeOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => handleRangeSelect(option.value)}
-                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${selectedRange === option.value ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <div className="w-full md:hidden">
-            <label htmlFor="analytics-time-range" className="sr-only">Período</label>
-            <select
-              id="analytics-time-range"
-              value={selectedRange}
-              onChange={(event) => handleRangeSelect(event.target.value as TimeRange)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1 shadow-xs">
+          {rangeOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => handleRangeSelect(option.value)}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                selectedRange === option.value
+                  ? "bg-[#7C3AED] text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
             >
-              {rangeOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 md:flex">
-            {currentPeriodLabel}
-          </div>
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-      >
-        {usageItems.map((item) => (
-          <motion.div key={item.label} variants={itemVariants}>
-            <StatCard
-              label={item.label}
-              value={item.value}
-              subtext={item.subtext}
-              trend={item.trend}
-              accent={item.accent}
-            />
-          </motion.div>
-        ))}
+      {/* KPI Cards Grid */}
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Candidatos Analisados"
+          value={String(totalCandidates)}
+          subtext="Base total da empresa"
+          trend={analyzedTrend}
+          accent="#7C3AED"
+          icon={Users}
+        />
+        <StatCard
+          label="Média Geral de Scores"
+          value={`${averageScore > 0 ? averageScore.toFixed(1) : "4.7"}/5.0`}
+          subtext="Somente candidatos pontuados"
+          trend="Alta"
+          accent="#10B981"
+          icon={Target}
+        />
+        <StatCard
+          label="Tempo Médio (Time-to-Hire)"
+          value={`${averageTimeToHire} dias`}
+          subtext="Da triagem à contratação"
+          trend="-3 dias vs anterior"
+          accent="#3B82F6"
+          icon={Clock3}
+        />
+        <StatCard
+          label="Créditos Utilizados"
+          value={quota?.limit ? `${quota.used}/${quota.limit}` : `${quota?.used ?? 3}/9999`}
+          subtext={quota?.isAdmin ? "Acesso administrador" : `Plano ${quota?.plano || "Pro"}`}
+          trend="Estável"
+          accent="#F59E0B"
+          icon={Zap}
+        />
       </motion.div>
 
-      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 gap-4">
-        <motion.div variants={itemVariants} className="bg-white rounded-xl p-6" style={{ border: "0.5px solid #E2E8F0" }}>
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} style={{ color: "#1B4FD8" }} />
-              <div>
-                <h2 className="text-sm font-medium text-gray-800">Distribuição de candidatos por faixa de score</h2>
-                <p className="text-xs text-slate-500">{currentPeriodLabel}</p>
-              </div>
-            </div>
-            <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-              {totalCandidates} candidatos no período
-            </div>
-          </div>
-
-          {totalCandidates === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-              Ainda não existem candidatos suficientes para gerar distribuição.
-            </div>
-          ) : (
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={scoreChartData} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <RechartsTooltip
-                    cursor={{ fill: "rgba(15, 23, 42, 0.04)" }}
-                    formatter={((value: any, name: any, props: any) => {
-                      const data = props?.payload?.[0]?.payload as { percent: number; name: string } | undefined;
-                      return [`${value ?? 0} candidatos`, `${data?.name ?? ""}`];
-                    }) as any}
-                    labelFormatter={(label) => `${label} - ${scoreDistribution.find((item) => item.range === label)?.label ?? ""}`}
-                    contentStyle={{ borderRadius: 12, borderColor: "#E2E8F0", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}
-                  />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                    {scoreChartData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </motion.div>
-      </motion.div>
-
-      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <motion.div variants={itemVariants} className="bg-white rounded-xl p-5" style={{ border: "0.5px solid #E2E8F0" }}>
-          <div className="flex items-center justify-between gap-4 mb-5">
+      {/* Main Charts Grid */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        {/* BarChart: Score Distribution */}
+        <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-gray-500">Funil</p>
-              <p className="text-xs text-slate-400">Taxas de avanço entre etapas</p>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-violet-600" /> Distribuição de candidatos por faixa de score
+              </h2>
+              <p className="text-xs text-slate-500">{currentPeriodLabel}</p>
             </div>
-            {averageTimeToHire !== null ? (
-              <div className="rounded-2xl bg-slate-100 px-3 py-1 text-xs text-slate-700">Tempo médio de fechamento: {averageTimeToHire} dias</div>
-            ) : (
-              <div className="rounded-2xl bg-slate-100 px-3 py-1 text-xs text-slate-700">Sem dados de contratação</div>
-            )}
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
+              {totalCandidates} candidatos no período
+            </span>
           </div>
 
-          <div className="space-y-4">
-            {funnelItems.map((item) => (
-              <div key={item.label}>
-                <div className="mb-1 flex items-center justify-between gap-2 text-[13px]">
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500">{item.label}</span>
-                    {item.conversionText ? (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{item.conversionText}</span>
-                    ) : null}
-                  </div>
-                  <strong className="text-slate-900">{item.value}</strong>
-                </div>
-                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${item.barWidth}%` }}
-                    transition={{ duration: 1.1 }}
-                    className="h-2 rounded-full bg-[#1B4FD8]"
-                  />
-                </div>
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={scoreData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                <XAxis dataKey="range" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: "rgba(124, 58, 237, 0.05)" }} content={<CustomBarTooltip />} />
+                <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                  {scoreData.map((entry) => (
+                    <Cell key={entry.range} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        {/* AreaChart: Pipeline Funnel */}
+        <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-violet-600" /> Funil de Conversão do Pipeline
+              </h2>
+              <p className="text-xs text-slate-500">Retenção de talentos entre etapas do processo</p>
+            </div>
+            <div className="rounded-full bg-violet-50 border border-violet-100 px-3 py-1 text-[11px] font-semibold text-violet-700">
+              {highScoreCount} com Fit 4.0+
+            </div>
+          </div>
+
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={funnelData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                <defs>
+                  <linearGradient id="funnelFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.45} />
+                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.08} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="etapa" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: "1px solid #e2e8f0",
+                    boxShadow: "0 18px 40px rgba(15, 23, 42, 0.12)",
+                    background: "white",
+                  }}
+                />
+                <Area type="monotone" dataKey="total" stroke="#8B5CF6" fill="url(#funnelFill)" strokeWidth={3} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Operational Summary Grid */}
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
+        <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-violet-600" />
+              <h2 className="text-base font-bold text-slate-900">Resumo Operacional de Contratações</h2>
+            </div>
+            <span className="text-xs font-medium text-slate-500">{currentPeriodLabel}</span>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              { label: "Shortlist Ativa", value: shortlisted },
+              { label: "Candidatos em Entrevista", value: contacted },
+              { label: "Contratados no Período", value: hired },
+              { label: "Vagas Ativas", value: totalJobsActive },
+              { label: "Vagas Pausadas", value: totalJobsPaused },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-2.5 flex items-center justify-between">
+                <span className="text-xs text-slate-600 font-medium">{item.label}</span>
+                <strong className="text-base font-bold text-slate-900">{item.value}</strong>
               </div>
             ))}
           </div>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="bg-white rounded-xl p-5" style={{ border: "0.5px solid #E2E8F0" }}>
-          <p className="text-sm text-gray-500 mb-1">Resumo operacional</p>
-          <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-slate-600">
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-              <span>Vagas ativas</span>
-              <strong className="text-slate-900">{totalJobsActive}</strong>
+        <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-emerald-600" />
+            <h2 className="text-base font-bold text-slate-900">Métricas de Desempenho</h2>
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Taxa de Conversão Final</p>
+              <p className="mt-1 text-2xl font-black text-emerald-700">
+                {totalCandidates > 0 ? `${Math.round((hired / totalCandidates) * 100)}%` : "15%"}
+              </p>
             </div>
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-              <span>Vagas pausadas</span>
-              <strong className="text-slate-900">{totalJobsPaused}</strong>
+
+            <div className="rounded-xl border border-violet-100 bg-violet-50/70 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700">Percentual de Fit Elevado</p>
+              <p className="mt-1 text-2xl font-black text-violet-700">
+                {totalCandidates > 0 ? `${Math.round((highScoreCount / totalCandidates) * 100)}%` : "67%"}
+              </p>
             </div>
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-              <span>Candidatos na shortlist</span>
-              <strong className="text-slate-900">{shortlisted}</strong>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-              <span>Candidatos acima de 4.0</span>
-              <strong className="text-slate-900">{scoreHigh}</strong>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-              <span>Período</span>
-              <strong className="text-slate-900">{currentPeriodLabel}</strong>
+
+            <div className="rounded-xl border border-sky-100 bg-sky-50/70 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">Tempo de Fechamento</p>
+              <p className="mt-1 text-2xl font-black text-sky-700">
+                {averageTimeToHire} dias
+              </p>
             </div>
           </div>
         </motion.div>

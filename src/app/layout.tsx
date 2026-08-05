@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import AppShell from "@/components/AppShell";
 import "./globals.css";
-// Using system fonts instead of fetching Google Fonts during build
 
 export const metadata: Metadata = {
   title: "RankHire BR - Recrutamento Inteligente",
@@ -28,10 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans">
-        <AppShell>{children}</AppShell>
-      </body>
+    <html lang="pt-BR" className="h-full antialiased">
+      <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );
 }
