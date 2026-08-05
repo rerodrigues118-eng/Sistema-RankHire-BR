@@ -97,11 +97,16 @@ export function useUserPlan(): UserPlanState {
     else if (normalized.includes("agencia") || normalized.includes("business") || normalized.includes("enterprise")) plan = "agencia";
     else if (normalized.includes("starter") || normalized.includes("profissional")) plan = "starter";
     else plan = "starter";
-  } else if (normalized.includes("trial")) {
-    const expired = trialExpiresAt ? new Date(trialExpiresAt) < new Date() : false;
-    plan = expired ? "expirado" : "trial";
+  } else if (subscriptionStatus === "trialing" || normalized.includes("trial")) {
+    if (trialExpiresAt) {
+      const expiresDate = new Date(trialExpiresAt);
+      const expired = !isNaN(expiresDate.getTime()) && expiresDate < new Date();
+      plan = expired ? "expirado" : "trial";
+    } else {
+      plan = "trial";
+    }
   } else {
-    plan = "free";
+    plan = "trial";
   }
 
   const isActive = subscriptionStatus === "active" || (plan === "trial" && subscriptionStatus === "trialing");

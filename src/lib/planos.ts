@@ -90,15 +90,29 @@ export const PLANOS: Record<string, PlanoInfo> = {
 };
 
 export function getPlanoAtual(empresa: EmpresaSimples) {
-  if (empresa.subscription_status === 'active') {
+  const status = String(empresa.subscription_status || '').trim().toLowerCase();
+  const planoKey = String(empresa.plano || '').trim().toLowerCase();
+
+  if (status === 'active' || status === 'paid' || status === 'pagante') {
+    return empresa.plano || 'pro';
+  }
+
+  if (status === 'trialing' || planoKey === 'trial' || planoKey === 'trial_starter') {
+    if (!empresa.trial_expires_at) {
+      return 'trial';
+    }
+    const expiresDate = new Date(empresa.trial_expires_at);
+    if (isNaN(expiresDate.getTime()) || expiresDate > new Date()) {
+      return 'trial';
+    }
+    return 'expirado';
+  }
+
+  if (planoKey && planoKey !== 'free') {
     return empresa.plano;
   }
-  if (empresa.plano === 'trial' || empresa.plano === 'trial_starter') {
-    const expirou = new Date(empresa.trial_expires_at) < new Date();
-    if (expirou) return 'expirado';
-    return 'trial';
-  }
-  return 'expirado';
+
+  return 'trial';
 }
 
 export function getPlanAccessState(

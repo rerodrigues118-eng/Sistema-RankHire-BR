@@ -147,18 +147,18 @@ export default function DashboardPage({
   const scoreBase = candidates.filter((candidate) => typeof candidate.score === "number" && candidate.score > 0);
   const averageScore = scoreBase.length > 0
     ? scoreBase.reduce((sum, candidate) => sum + candidate.score, 0) / scoreBase.length
-    : 4.6;
+    : 0;
   const activeJobs = dashboardSummary.totalVagas != null
     ? dashboardSummary.totalVagas
-    : jobs.filter((job) => job.status === "active").length || jobs.length;
+    : jobs.filter((job) => job.status === "active").length;
 
   const checklistDoneCount = checklist.filter((c) => c.done).length;
   const vagasPorStatus = dashboardSummary.vagasPorStatus ?? [];
   const candidatosPorOrigem = dashboardSummary.candidatosPorOrigem ?? [];
 
-  // Dados da curva de atividade
+  // Activity Chart (Last 30 days) — 0 count if no activity
   const effectiveActivityData = React.useMemo(() => {
-    if (activityData.length > 0 && activityData.some((d) => d.count > 0)) {
+    if (activityData.length > 0) {
       return activityData;
     }
     const now = new Date();
@@ -166,22 +166,17 @@ export default function DashboardPage({
     for (let i = 29; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dateStr = d.toISOString().slice(0, 10);
-      const dayNum = d.getDate();
-      let count = 0;
-      if (i === 0) count = Math.max(1, totalCandidates % 5);
-      else if (i % 4 === 0) count = (dayNum % 3) + 1;
-      else if (i % 7 === 0) count = (dayNum % 4) + 2;
-      days.push({ date: dateStr, count });
+      days.push({ date: dateStr, count: 0 });
     }
     return days;
-  }, [activityData, totalCandidates]);
+  }, [activityData]);
 
-  // Visual Pipeline Funnel (Fluxo Sequencial de Etapas)
+  // Visual Pipeline Funnel (Strictly real candidate counts)
   const funnelStages = React.useMemo(() => {
-    const baseMapeados = Math.max(totalCandidates, 12);
-    const contatados = candidates.filter(c => c.status === "shortlist" || (c as any).status === "contatado").length || Math.ceil(baseMapeados * 0.65);
-    const entrevistados = candidates.filter(c => c.status === "entrevista").length || Math.ceil(baseMapeados * 0.35);
-    const aprovados = candidates.filter(c => c.status === "contratado" || c.status === "oferecido").length || Math.ceil(baseMapeados * 0.15);
+    const baseMapeados = totalCandidates;
+    const contatados = candidates.filter(c => c.status === "shortlist" || (c as any).status === "contatado").length;
+    const entrevistados = candidates.filter(c => c.status === "entrevista").length;
+    const aprovados = candidates.filter(c => c.status === "contratado" || c.status === "oferecido").length;
 
     const stages = [
       {
