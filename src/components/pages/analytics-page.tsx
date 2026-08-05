@@ -68,7 +68,7 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 18 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35 } },
 };
 
 const rangeOptions: { value: TimeRange; label: string }[] = [
@@ -238,7 +238,7 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
       key={refreshKey}
       initial={{ opacity: 0.7 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.28, ease: "easeOut" }}
+      transition={{ duration: 0.28 }}
       className="space-y-6"
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -324,10 +324,10 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
                   <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
                   <RechartsTooltip
                     cursor={{ fill: "rgba(15, 23, 42, 0.04)" }}
-                    formatter={(value: number, name: string, props: any) => {
-                      const data = props.payload[0]?.payload as { percent: number; name: string };
-                      return [`${value} candidatos`, `${data?.name}`];
-                    }}
+                    formatter={((value: any, name: any, props: any) => {
+                      const data = props?.payload?.[0]?.payload as { percent: number; name: string } | undefined;
+                      return [`${value ?? 0} candidatos`, `${data?.name ?? ""}`];
+                    }) as any}
                     labelFormatter={(label) => `${label} - ${scoreDistribution.find((item) => item.range === label)?.label ?? ""}`}
                     contentStyle={{ borderRadius: 12, borderColor: "#E2E8F0", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}
                   />
@@ -373,7 +373,7 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${item.barWidth}%` }}
-                    transition={{ duration: 1.1, ease: "easeOut" }}
+                    transition={{ duration: 1.1 }}
                     className="h-2 rounded-full bg-[#1B4FD8]"
                   />
                 </div>

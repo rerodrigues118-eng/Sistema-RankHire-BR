@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, Plus, MoreHorizontal, Briefcase, Users, Star, CheckCircle2, X, Loader2, ChevronLeft, MapPin, Building, FileText, Sparkles, CalendarDays, Check, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Job, JobStatus } from "@/lib/types";
@@ -9,14 +10,14 @@ type FilterStatus = "Todas" | "Ativas" | "Em pausa" | "Encerradas";
 
 interface VagasPageProps {
   jobs: Job[];
-  selectedJobId: string;
+  selectedJobId: string | null;
   isActive: boolean;
   isCreateModalOpen: boolean;
   onCreateModalOpened: () => void;
   onCreateJob: (job: Job) => void | Promise<void>;
   onUpdateJob: (job: Job) => void | Promise<void>;
   onOpenJob: (jobId: string) => void;
-  onSelectJob: (jobId: string) => void;
+  onSelectJob: (jobId: string | null) => void;
   onChangeJobStatus: (jobId: string, status: JobStatus) => Promise<void>;
   onDeleteJob: (jobId: string) => Promise<void>;
 }
@@ -71,6 +72,9 @@ export default function VagasPage({
     candidatos: number;
     score: number | null;
     shortlist: number;
+    entrevistas: number;
+    oferecidos: number;
+    contratados: number;
     diasAbertos: number;
   } | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
@@ -164,14 +168,20 @@ export default function VagasPage({
       supabase.from("pdf_candidates").select("id", { count: "exact" }).eq("vaga_id", viewingJob.id),
       supabase.from("pdf_candidates").select("score_final").eq("vaga_id", viewingJob.id).not("score_final", "is", null),
       supabase.from("pipeline_entries").select("id", { count: "exact" }).eq("vaga_id", viewingJob.id).eq("status", "shortlist"),
+      supabase.from("pipeline_entries").select("id", { count: "exact" }).eq("vaga_id", viewingJob.id).eq("status", "entrevista"),
+      supabase.from("pipeline_entries").select("id", { count: "exact" }).eq("vaga_id", viewingJob.id).eq("status", "oferecido"),
+      supabase.from("pipeline_entries").select("id", { count: "exact" }).eq("vaga_id", viewingJob.id).eq("status", "contratado"),
     ])
-        .then(([candidatesRes, scoresRes, shortlistRes]) => {
+        .then(([candidatesRes, scoresRes, shortlistRes, entrevistasRes, oferecidosRes, contratadosRes]) => {
         if (!alive) return;
         const scores = scoresRes.data as Array<{ score_final: number }> | null;
         setKpiData({
           candidatos: candidatesRes.count ?? 0,
           score: scores && scores.length > 0 ? scores.reduce((sum, row) => sum + Number(row.score_final), 0) / scores.length : null,
           shortlist: shortlistRes.count ?? 0,
+          entrevistas: entrevistasRes.count ?? 0,
+          oferecidos: oferecidosRes.count ?? 0,
+          contratados: contratadosRes.count ?? 0,
           diasAbertos: viewingJob.createdAt
             ? Math.max(0, Math.floor((Date.now() - new Date(viewingJob.createdAt).getTime()) / 86400000))
             : 0,
@@ -179,7 +189,15 @@ export default function VagasPage({
       })
       .catch(() => {
         if (!alive) return;
-        setKpiData({ candidatos: 0, score: null, shortlist: 0, diasAbertos: viewingJob.createdAt ? Math.max(0, Math.floor((Date.now() - new Date(viewingJob.createdAt).getTime()) / 86400000)) : 0 });
+        setKpiData({
+          candidatos: 0,
+          score: null,
+          shortlist: 0,
+          entrevistas: 0,
+          oferecidos: 0,
+          contratados: 0,
+          diasAbertos: viewingJob.createdAt ? Math.max(0, Math.floor((Date.now() - new Date(viewingJob.createdAt).getTime()) / 86400000)) : 0,
+        });
       })
       .finally(() => {
         if (!alive) return;
@@ -272,9 +290,21 @@ export default function VagasPage({
     return "Encerrada";
   };
 
+  const router = useRouter();
+
   const handleSelectJob = (job: Job) => {
-    onSelectJob(job.id);
-    showToast(`Vaga '${job.title}' selecionada`);
+    const nextSelectedId = selectedJobId === job.id ? null : job.id;
+    onSelectJob(nextSelectedId);
+    showToast(nextSelectedId ? `Vaga '${job.title}' selecionada` : `Vaga '${job.title}' desselecionada`);
+    setOpenMenuJobId(null);
+  };
+
+  const handleOpenJob = (job: Job) => {
+    setViewingJobId(job.id);
+    router.push(`/dashboard?page=vagas`);
+    if (selectedJobId !== job.id) {
+      onSelectJob(job.id);
+    }
   };
 
   const handlePauseJob = async (job: Job) => {
@@ -389,6 +419,66 @@ export default function VagasPage({
                 </>
               )}
             </div>
+
+            {!kpiLoading && kpiData ? (
+              <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 mb-6">
+                <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+                  <div>
+                    <p className="text-[12px] uppercase tracking-[0.18em] text-[#6B7280] font-semibold">Acompanhamento do processo</p>
+                    <h2 className="text-[18px] font-semibold text-[#111827] mt-2">Progresso por estágio</h2>
+                  </div>
+                  <div className="text-right text-[12px] text-[#6B7280]">
+                    Total de candidatos: <span className="font-semibold text-[#111827]">{kpiData.candidatos}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {[
+                    { label: "Shortlist", value: kpiData.shortlist, color: "bg-[#DCFCE7]", accent: "bg-[#10B981]" },
+                    { label: "Entrevistas", value: kpiData.entrevistas, color: "bg-[#FEF3C7]", accent: "bg-[#D97706]" },
+                    { label: "Oferecidos", value: kpiData.oferecidos, color: "bg-[#E9D5FF]", accent: "bg-[#8B5CF6]" },
+                    { label: "Contratados", value: kpiData.contratados, color: "bg-[#DCFCE7]", accent: "bg-[#059669]" },
+                  ].map((item) => {
+                    const percent = kpiData.candidatos > 0 ? Math.round((item.value / kpiData.candidatos) * 100) : 0;
+                    return (
+                      <div key={item.label} className="space-y-2">
+                        <div className="flex items-center justify-between text-[12px] text-[#475569]">
+                          <span>{item.label}</span>
+                          <span className="font-semibold text-[#111827]">{item.value} ({percent}%)</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                          <div className={`h-full rounded-full ${item.accent}`} style={{ width: `${Math.min(percent, 100)}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-3 mb-6">
+              <button
+                onClick={() => router.push("/dashboard?page=candidatos")}
+                className="btn-primary bg-[#111827] hover:bg-[#111827]/90 text-white py-2 px-4 rounded-xl text-sm font-semibold"
+              >
+                Ver candidatos
+              </button>
+              <button
+                onClick={() => router.push("/dashboard?page=pipeline")}
+                className="btn-ghost py-2 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-semibold"
+              >
+                Ver pipeline
+              </button>
+              <button
+                onClick={() => {
+                  onSelectJob(viewingJob.id);
+                  router.push("/dashboard?page=pdf-ranker");
+                }}
+                className="btn-ghost py-2 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-semibold"
+              >
+                Abrir PDF Ranker
+              </button>
+            </div>
           </div>
 
           <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -466,14 +556,14 @@ export default function VagasPage({
           ))}
         </div>
 
-        <div className="relative">
+        <div className="relative w-full max-w-md">
           <Search className="w-4 h-4 text-[#9CA3AF] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Buscar por nome da vaga..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input-rh pl-9 w-72 bg-white"
+            className="input-rh pl-10 w-full bg-white"
           />
         </div>
       </div>
@@ -575,13 +665,20 @@ export default function VagasPage({
                         ✎ Editar vaga
                       </button>
                       <button
-                        onClick={() => {
-                          handleSelectJob(job);
-                          setOpenMenuJobId(null);
-                        }}
-                        className="w-full px-4 py-3 text-left text-sm text-[#111827] hover:bg-[#F9FAFB]"
+                        onClick={() => handleSelectJob(job)}
+                        className="w-full px-4 py-3 text-left text-sm text-[#111827] hover:bg-[#F9FAFB] flex items-center gap-2"
                       >
-                        ☆ Selecionar vaga
+                        {selectedJobId === job.id ? (
+                          <>
+                            <X className="w-4 h-4 text-slate-400" />
+                            Desmarcar vaga
+                          </>
+                        ) : (
+                          <>
+                            <Star className="w-4 h-4 text-slate-400" />
+                            Selecionar vaga
+                          </>
+                        )}
                       </button>
                       {job.status !== "paused" ? (
                         <button

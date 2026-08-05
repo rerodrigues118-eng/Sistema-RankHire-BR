@@ -300,8 +300,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
   const searchFlowVariants = {
     hidden: { opacity: 0, y: 24 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: "easeOut" } },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.22, ease: "easeIn" } },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.32 } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.22 } },
   };
 
   const resultsStagger = {
@@ -311,7 +311,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
   const resultCardVariant = {
     hidden: { opacity: 0, y: 18 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: "easeOut" } },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.28 } },
   };
 
   const handleHideProfile = (id: string, name: string) => {
@@ -803,7 +803,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.28, ease: "easeOut" }}
+                    transition={{ duration: 0.28 }}
                     className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-4 relative"
                   >
                     <div className="flex items-center justify-between">
@@ -839,7 +839,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.28, ease: "easeOut", delay: 0.06 }}
+                    transition={{ duration: 0.28, delay: 0.06 }}
                     className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2"
                   >
                     <span className="text-sm text-slate-700">
@@ -883,7 +883,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   <motion.div
                     initial={{ opacity: 0, y: -16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.28, ease: "easeOut" }}
+                    transition={{ duration: 0.28 }}
                     className="flex items-center gap-2 w-full"
                   >
                     <div 

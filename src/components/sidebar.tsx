@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import type { PageId } from "@/lib/types";
-import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
@@ -28,7 +29,7 @@ import NotificationPopover from "@/components/NotificationPopover";
 
 interface SidebarProps {
   activePage: PageId;
-  onNavigate: (page: PageId) => void;
+  onNavigate?: (page: PageId) => void;
 }
 
 const NAV_SECTIONS = [
@@ -245,13 +246,13 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                 const isActive = activePage === item.id;
                 const isLocked =
                   isTrial && (item.id === "candidatos" || item.id === "agente-ia");
+                const href = item.id === "dashboard" ? "/dashboard" : `/dashboard?page=${item.id}`;
 
                 if (isSidebarCollapsed) {
                   return (
                     <li key={item.id} className="w-full flex justify-center py-1">
-                      <button
-                        type="button"
-                        onClick={() => !isLocked && onNavigate(item.id)}
+                      <Link
+                        href={isLocked ? "/dashboard" : href}
                         title={
                           isLocked
                             ? `${item.label} — disponível nos planos pagos`
@@ -264,6 +265,9 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                             ? "text-[var(--text-muted)] opacity-60"
                             : "text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[#374151]"
                         }`}
+                        onClick={(e) => {
+                          if (isLocked) e.preventDefault();
+                        }}
                       >
                         <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                         {isLocked && (
@@ -272,16 +276,15 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                             className="absolute top-1 right-1 text-amber-500"
                           />
                         )}
-                      </button>
+                      </Link>
                     </li>
                   );
                 }
 
                 return (
                   <li key={item.id} className="w-full">
-                    <button
-                      type="button"
-                      onClick={() => !isLocked && onNavigate(item.id)}
+                    <Link
+                      href={isLocked ? "/dashboard" : href}
                       title={
                         isLocked
                           ? `${item.label} — disponível nos planos pagos`
@@ -294,6 +297,9 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                           ? "flex items-center gap-2.5 w-full text-left transition-colors text-[13px] text-[var(--text-muted)] opacity-70 py-2 px-3 mx-2 rounded-[6px] w-[calc(100%-16px)]"
                           : "flex items-center gap-2.5 w-full text-left transition-colors text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[#374151] py-2 px-3 mx-2 rounded-[6px] w-[calc(100%-16px)]"
                       }
+                      onClick={(e) => {
+                        if (isLocked) e.preventDefault();
+                      }}
                     >
                       <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
                       <span className="truncate flex-1">{item.label}</span>
@@ -303,7 +309,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                           className="flex-shrink-0 text-amber-500 ml-auto"
                         />
                       )}
-                    </button>
+                    </Link>
                   </li>
                 );
               })}

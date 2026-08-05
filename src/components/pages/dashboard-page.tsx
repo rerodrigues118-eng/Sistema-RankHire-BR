@@ -127,7 +127,9 @@ export default function DashboardPage({
   const averageScore = scoreBase.length > 0
     ? scoreBase.reduce((sum, candidate) => sum + candidate.score, 0) / scoreBase.length
     : 4.6;
-  const activeJobs = (dashboardSummary.totalVagas ?? jobs.filter((job) => job.status === "active").length) || jobs.length;
+  const activeJobs = dashboardSummary.totalVagas != null
+    ? dashboardSummary.totalVagas
+    : jobs.filter((job) => job.status === "active").length || jobs.length;
 
   const checklistDoneCount = checklist.filter((c) => c.done).length;
   const vagasPorStatus = dashboardSummary.vagasPorStatus ?? [];
@@ -196,20 +198,6 @@ export default function DashboardPage({
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onNavigate("linkedin")}
-            className="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 text-[#7C3AED] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-purple-200/50"
-          >
-            <Search className="w-3.5 h-3.5" /> Buscar Talentos
-          </button>
-          <button
-            onClick={() => onNavigate("pdf-ranker")}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Upload className="w-3.5 h-3.5" /> PDF Ranker
-          </button>
-        </div>
       </div>
       {activeJob.briefing ? (
         <div className="mt-5 rounded-[12px] bg-slate-50 border border-slate-200/80 p-4 text-[13px] text-slate-700 leading-relaxed">

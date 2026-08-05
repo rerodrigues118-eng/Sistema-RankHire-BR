@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Job, Candidate, UploadFile } from "@/lib/types";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   UploadCloud,
   RefreshCw,
@@ -589,67 +590,74 @@ export default function PdfRankerPage({
                 </div>
               ) : (
                 <div className="space-y-1 divide-y divide-slate-100">
-                  {topCandidates.map((c) => {
-                    const firstTag = c.confirmedTags[0] || c.partialTags[0] || c.otherTags[0];
-                    return (
-                      <div
-                        key={c.id}
-                        onClick={() => onSelectCandidate(c)}
-                        className="py-3.5 px-3 hover:bg-slate-50/80 transition-all rounded-xl cursor-pointer flex items-center justify-between gap-4 group"
-                      >
-                        {/* Avatar & Infos */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleShortlist?.(c.id);
-                            }}
-                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                              c.shortlist ? "text-[#7C3AED]" : "text-slate-300 hover:text-slate-500"
-                            }`}
-                            title={c.shortlist ? "Remover da Shortlist" : "Adicionar à Shortlist"}
-                          >
-                            <Star className={`w-4 h-4 ${c.shortlist ? "fill-[#7C3AED]" : ""}`} />
-                          </button>
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {topCandidates.map((c) => {
+                      const firstTag = c.confirmedTags[0] || c.partialTags[0] || c.otherTags[0];
+                      return (
+                        <motion.div
+                          key={c.id}
+                          layout
+                          initial={{ opacity: 0, y: 12, scale: 0.99 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                          transition={{ duration: 0.24 }}
+                          onClick={() => onSelectCandidate(c)}
+                          className="py-3.5 px-3 hover:bg-slate-50/80 transition-all rounded-xl cursor-pointer flex items-center justify-between gap-4 group"
+                        >
+                          {/* Avatar & Infos */}
+                          <div className="flex items-center gap-3 min-w-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleShortlist?.(c.id);
+                              }}
+                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                c.shortlist ? "text-[#7C3AED]" : "text-slate-300 hover:text-slate-500"
+                              }`}
+                              title={c.shortlist ? "Remover da Shortlist" : "Adicionar à Shortlist"}
+                            >
+                              <Star className={`w-4 h-4 ${c.shortlist ? "fill-[#7C3AED]" : ""}`} />
+                            </button>
 
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-xs"
-                            style={{ backgroundColor: c.avatarColor + "20", color: c.avatarColor }}
-                          >
-                            {c.initials}
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-xs"
+                              style={{ backgroundColor: c.avatarColor + "20", color: c.avatarColor }}
+                            >
+                              {c.initials}
+                            </div>
+
+                            <div className="min-w-0">
+                              <h3 className="text-xs font-bold text-slate-900 group-hover:text-[#7C3AED] transition-colors truncate">
+                                {c.name}
+                              </h3>
+                              <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                                {c.role || "Candidato"} {c.company ? `· ${c.company}` : ""}
+                              </p>
+                            </div>
                           </div>
 
-                          <div className="min-w-0">
-                            <h3 className="text-xs font-bold text-slate-900 group-hover:text-[#7C3AED] transition-colors truncate">
-                              {c.name}
-                            </h3>
-                            <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
-                              {c.role || "Candidato"} {c.company ? `· ${c.company}` : ""}
-                            </p>
+                          {/* Micro-tags & Score */}
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            {firstTag && (
+                              <span className="hidden sm:inline-block bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-0.5 rounded-full text-[11px] font-semibold truncate max-w-[130px]">
+                                {firstTag}
+                              </span>
+                            )}
+
+                            <div className="flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg">
+                              <span className="text-xs font-black">
+                                {c.score > 0 ? c.score.toFixed(1) : "—"}
+                              </span>
+                              <span className="text-[10px] text-amber-600 font-bold">/ 5.0</span>
+                            </div>
+
+                            <ChevronRight size={16} className="text-slate-300 group-hover:text-[#7C3AED] transition-colors" />
                           </div>
-                        </div>
-
-                        {/* Micro-tags & Score */}
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          {firstTag && (
-                            <span className="hidden sm:inline-block bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-0.5 rounded-full text-[11px] font-semibold truncate max-w-[130px]">
-                              {firstTag}
-                            </span>
-                          )}
-
-                          <div className="flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg">
-                            <span className="text-xs font-black">
-                              {c.score > 0 ? c.score.toFixed(1) : "—"}
-                            </span>
-                            <span className="text-[10px] text-amber-600 font-bold">/ 5.0</span>
-                          </div>
-
-                          <ChevronRight size={16} className="text-slate-300 group-hover:text-[#7C3AED] transition-colors" />
-                        </div>
-                      </div>
-                    );
-                  })}
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
                 </div>
               )}
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { Candidate, Job, JobStatus, KanbanStatus, PageId, UploadFile } from "@/lib/types";
 import { AVATAR_COLORS } from "@/lib/mock-data";
 import Sidebar from "@/components/sidebar";
@@ -22,9 +23,44 @@ export default function Home() {
   const [activePage, setActivePage] = useState<PageId>(() => {
     try { return (sessionStorage.getItem('rh_activePage') as PageId) || 'dashboard'; } catch { return 'dashboard'; }
   });
-  const [selectedJobId, setSelectedJobId] = useState(() => {
-    try { return localStorage.getItem('rankhire_vaga_selecionada') || ''; } catch { return ''; }
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(() => {
+    try { return localStorage.getItem('rankhire_vaga_selecionada') || null; } catch { return null; }
   });
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pageParam = searchParams.get("page");
+
+  const isValidPageId = (page: string | null): page is PageId =>
+    !!page && [
+      "dashboard",
+      "vagas",
+      "pdf-ranker",
+      "linkedin",
+      "agente-ia",
+      "pipeline",
+      "candidatos",
+      "analytics",
+      "settings",
+    ].includes(page);
+
+  useEffect(() => {
+    const safePage = isValidPageId(pageParam) ? pageParam : null;
+    if (safePage) {
+      setActivePage(safePage);
+      try { sessionStorage.setItem('rh_activePage', safePage); } catch { /* ignore */ }
+      return;
+    }
+
+    const storedPage = (() => {
+      try { return sessionStorage.getItem("rh_activePage"); } catch { return null; }
+    })();
+    const fallbackPage = isValidPageId(storedPage) ? storedPage : "dashboard";
+
+    setActivePage(fallbackPage);
+    if (fallbackPage !== "dashboard") {
+      router.replace(`/dashboard?page=${fallbackPage}`);
+    }
+  }, [pageParam, router]);
   const [drawerCandidate, setDrawerCandidate] = useState<Candidate | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -61,10 +97,12 @@ export default function Home() {
   const handleSetActivePage = useCallback((page: PageId) => {
     setActivePage(page);
     try { sessionStorage.setItem('rh_activePage', page); } catch { /* ignore */ }
-  }, []);
+    const href = page === "dashboard" ? "/dashboard" : `/dashboard?page=${page}`;
+    router.push(href);
+  }, [router]);
 
   // Persiste a vaga selecionada no sessionStorage
-  const handleSetSelectedJobId = useCallback((id: string) => {
+  const handleSetSelectedJobId = useCallback((id: string | null) => {
     setSelectedJobId(id);
     try {
       if (id) {
@@ -105,12 +143,12 @@ export default function Home() {
           setSelectedJobId(defaultJobId);
           try { localStorage.setItem('rankhire_vaga_selecionada', defaultJobId); } catch { /* ignore */ }
         } else {
-          setSelectedJobId("");
+          setSelectedJobId(null);
           try { localStorage.removeItem('rankhire_vaga_selecionada'); } catch { /* ignore */ }
         }
       } else {
         setJobs([]);
-        setSelectedJobId("");
+        setSelectedJobId(null);
       }
 
       if (Array.isArray(data.candidates)) {
@@ -157,7 +195,7 @@ export default function Home() {
         setJobs([]);
         setCandidates([]);
         setQuota(null);
-        setSelectedJobId("");
+        setSelectedJobId(null);
         setBootstrapError(null);
         setIsBootstrapping(false);
         return;
@@ -617,7 +655,7 @@ export default function Home() {
   return (
     <NotificationProvider>
       <div className="flex h-screen bg-[var(--bg-page)] overflow-hidden font-sans">
-        <Sidebar activePage={activePage} onNavigate={handleSetActivePage} />
+        <Sidebar activePage={activePage} />
         <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[var(--bg-base)]">
           <main className={`flex-1 overflow-y-auto text-[var(--text-primary)] ${activePage === "linkedin" ? "p-0 overflow-hidden" : "p-6"}`}>
             {activePage !== "linkedin" && <TrialBanner />}

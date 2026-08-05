@@ -129,7 +129,7 @@ const HeroParallaxImage = ({
         <motion.div
           className="relative w-full h-full"
           animate={{ scale: imageScale }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
+          transition={{ duration: 0.2 }}
         >
           <Image
             src={imageSrc}
