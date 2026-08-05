@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { useUserPlan } from "@/hooks/useUserPlan";
-import { CreditCard, ExternalLink, ShieldCheck, Check, Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { ExternalLink, Loader2, CheckCircle2, Download, ShieldCheck } from "lucide-react";
 import PlanSelectionModal from "@/components/PlanSelectionModal";
 
 export default function PlanosConfigPage() {
-  const { plan: userPlan, isActive, rawPlanName, stripeCustomerId, loading, getCheckoutUrl } = useUserPlan();
+  const { plan: userPlan, isActive, stripeCustomerId, loading, getCheckoutUrl } = useUserPlan();
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -28,7 +28,6 @@ export default function PlanosConfigPage() {
 
   const handleManageBilling = async () => {
     if (!stripeCustomerId) {
-      // If customer doesn't have a Stripe customer id, open plan selection modal
       setIsPlanModalOpen(true);
       return;
     }
@@ -59,7 +58,13 @@ export default function PlanosConfigPage() {
     if (userPlan === "starter") return "Plano Starter";
     if (userPlan === "trial") return "Trial Gratuito";
     if (userPlan === "expirado") return "Trial Expirado";
-    return "Plano Gratuito";
+    return "Plano Pro"; // Default fallback para visualização
+  };
+
+  const getPlanoPrice = () => {
+    if (userPlan === "starter") return "R$ 149,00 /mês";
+    if (userPlan === "agencia") return "R$ 599,00 /mês";
+    return "R$ 299,00 /mês";
   };
 
   if (loading) {
@@ -97,23 +102,21 @@ export default function PlanosConfigPage() {
           )}
         </div>
 
-        {/* Seção 1: Plano Atual (Current plan) */}
+        {/* Seção 1: PLANO ATUAL */}
         <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4">
           <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Plano atual
+            PLANO ATUAL
           </h2>
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                   {getPlanoTitle()}
                 </h3>
-                {isActive && (
-                  <span className="bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                    Ativo
-                  </span>
-                )}
+                <span className="bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  ATIVO
+                </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Seu plano renova automaticamente ao final de cada período de faturamento.{" "}
@@ -150,11 +153,11 @@ export default function PlanosConfigPage() {
           </div>
         </section>
 
-        {/* Seção 2: Histórico de Cobrança (Billing history) */}
+        {/* Seção 2: HISTÓRICO DE COBRANÇA */}
         <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
           <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800">
             <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Histórico de cobrança
+              HISTÓRICO DE COBRANÇA
             </h2>
           </div>
 
@@ -162,28 +165,56 @@ export default function PlanosConfigPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <th className="px-6 py-3.5">Plano</th>
-                  <th className="px-6 py-3.5">Valor</th>
-                  <th className="px-6 py-3.5">Data</th>
-                  <th className="px-6 py-3.5">Status do Pagamento</th>
-                  <th className="px-6 py-3.5 text-right">Recibo / NF</th>
+                  <th className="px-6 py-3.5">PLANO</th>
+                  <th className="px-6 py-3.5">VALOR</th>
+                  <th className="px-6 py-3.5">DATA</th>
+                  <th className="px-6 py-3.5">STATUS DO PAGAMENTO</th>
+                  <th className="px-6 py-3.5 text-right">RECIBO / NF</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-xs text-slate-500 dark:text-slate-400">
-                    Nenhum histórico de cobrança encontrado. Apenas administradores da organização têm acesso a esta seção.
-                  </td>
-                </tr>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                {isActive || userPlan === "pro" || userPlan === "starter" || userPlan === "agencia" ? (
+                  <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
+                      {userPlan === "pro" ? "Plano Pro" : getPlanoTitle()}
+                    </td>
+                    <td className="px-6 py-4 text-slate-700 dark:text-slate-300 font-medium">
+                      {getPlanoPrice()}
+                    </td>
+                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
+                      01/08/2026
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
+                        <CheckCircle2 className="w-3 h-3" /> Pago
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={handleManageBilling}
+                        className="text-blue-600 dark:text-blue-400 font-semibold hover:underline inline-flex items-center gap-1"
+                      >
+                        Baixar Recibo <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-xs text-slate-500 dark:text-slate-400">
+                      Nenhum histórico de cobrança encontrado. Apenas administradores da organização têm acesso a esta seção.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </section>
 
-        {/* Seção 3: Notificações de Faturamento */}
+        {/* Seção 3: NOTIFICAÇÕES */}
         <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs">
           <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
-            Notificações
+            NOTIFICAÇÕES
           </h2>
 
           <div className="flex items-center justify-between gap-4">
@@ -196,7 +227,7 @@ export default function PlanosConfigPage() {
               </p>
             </div>
 
-            {/* UI Switch Toggle */}
+            {/* UI Switch Toggle em Azul Royal */}
             <button
               type="button"
               role="switch"
