@@ -16,7 +16,6 @@ import VagasPage from "@/components/pages/vagas-page";
 import AgenteIAPage from "@/components/pages/agente-ia-page";
 import CandidatosPage from "@/components/pages/candidatos-page";
 import CandidateDrawer from "@/components/CandidateDrawer";
-import TrialBanner from "@/components/TrialBanner";
 import { createClient } from "@/lib/supabase/client";
 import { NotificationProvider } from "@/context/NotificationContext";
 
@@ -635,7 +634,6 @@ export function DashboardShell({ initialPage = "dashboard" }: { initialPage?: Pa
     <div className="flex h-full min-h-screen bg-[var(--bg-page)] overflow-hidden font-sans">
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[var(--bg-base)]">
         <main className={`flex-1 overflow-y-auto text-[var(--text-primary)] ${activePage === "linkedin" ? "p-0 overflow-hidden" : "p-6"}`}>
-          {activePage !== "linkedin" && <TrialBanner />}
           {bootstrapError && (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {bootstrapError}
