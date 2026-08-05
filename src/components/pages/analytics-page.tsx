@@ -10,7 +10,6 @@ import {
   TrendingUp,
   Users,
   Zap,
-  Sparkles,
 } from "lucide-react";
 import {
   Area,
@@ -49,6 +48,14 @@ type ScoreBucket = {
   color: string;
 };
 
+// Royal Blue palette only — no competing colors
+const BLUE_SCALE = {
+  excellent: "#1D4ED8",   // Royal Blue
+  high:      "#2563EB",
+  mid:       "#60A5FA",
+  low:       "#BFDBFE",
+};
+
 const rangeOptions: { value: TimeRange; label: string }[] = [
   { value: "7d", label: "Últimos 7 dias" },
   { value: "30d", label: "Últimos 30 dias" },
@@ -84,7 +91,6 @@ function StatCard({
   subtext,
   trend,
   trendPositive = true,
-  accent = "#111827",
   icon: Icon,
 }: {
   label: string;
@@ -92,19 +98,18 @@ function StatCard({
   subtext: string;
   trend?: string;
   trendPositive?: boolean;
-  accent?: string;
   icon: typeof Users;
 }) {
   return (
     <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-          <p className="mt-2 text-2xl font-black tracking-tight text-slate-900" style={{ color: accent }}>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+          <p className="mt-2 text-2xl font-black tracking-tight text-slate-900">
             {value}
           </p>
         </div>
-        <div className="rounded-xl bg-slate-100/80 p-2.5 text-slate-700">
+        <div className="rounded-xl bg-blue-50 p-2.5 text-blue-700">
           <Icon className="h-5 w-5" />
         </div>
       </div>
@@ -112,7 +117,9 @@ function StatCard({
         <span className="text-xs text-slate-500 font-medium">{subtext}</span>
         {trend && (
           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-            trendPositive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"
+            trendPositive
+              ? "bg-blue-50 text-blue-700 border border-blue-200"
+              : "bg-slate-100 text-slate-600 border border-slate-200"
           }`}>
             {trendPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
             {trend}
@@ -123,15 +130,16 @@ function StatCard({
   );
 }
 
-// Custom Recharts Tooltip
-function CustomBarTooltip({ active, payload, label }: any) {
+// Custom Recharts Tooltip — blue palette
+function CustomBarTooltip({ active, payload }: any) {
   if (active && payload && payload.length) {
     const data = payload[0].payload as ScoreBucket;
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl text-xs">
-        <p className="font-bold text-slate-900">{data.range} ({data.label})</p>
+        <p className="font-bold text-slate-900">{data.range} <span className="text-slate-500 font-normal">({data.label})</span></p>
         <p className="text-slate-600 mt-1">
-          Candidatos: <strong className="text-violet-700 font-bold">{data.count}</strong> ({data.percent}% do total)
+          Candidatos: <strong className="text-blue-700 font-bold">{data.count}</strong>
+          {data.percent > 0 && <span className="text-slate-400 ml-1">({data.percent}%)</span>}
         </p>
       </div>
     );
@@ -178,12 +186,12 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
     return date;
   }, [currentWindowStart, selectedRange]);
 
-  const hasDateData = candidates.some((candidate) => !!candidate.createdAt && parseDate(candidate.createdAt));
+  const hasDateData = candidates.some((c) => !!c.createdAt && parseDate(c.createdAt));
 
   const filteredCandidates = useMemo(() => {
     if (!hasDateData) return candidates;
-    return candidates.filter((candidate) => {
-      const createdAt = parseDate(candidate.createdAt);
+    return candidates.filter((c) => {
+      const createdAt = parseDate(c.createdAt);
       if (!createdAt) return false;
       return createdAt >= currentWindowStart && createdAt <= now;
     });
@@ -191,8 +199,8 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
 
   const previousCandidates = useMemo(() => {
     if (!hasDateData) return [];
-    return candidates.filter((candidate) => {
-      const createdAt = parseDate(candidate.createdAt);
+    return candidates.filter((c) => {
+      const createdAt = parseDate(c.createdAt);
       if (!createdAt) return false;
       return createdAt >= previousWindowStart && createdAt < currentWindowStart;
     });
@@ -200,41 +208,20 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
 
   const totalCandidates = filteredCandidates.length;
   const previousTotal = previousCandidates.length;
-  const averageScore = totalCandidates > 0 ? filteredCandidates.reduce((sum, candidate) => sum + candidate.score, 0) / totalCandidates : 0;
-  const highScoreCount = filteredCandidates.filter((candidate) => candidate.score >= 4.0).length;
-  const shortlisted = filteredCandidates.filter((candidate) => candidate.shortlist || candidate.status === "shortlist").length;
-  const contacted = filteredCandidates.filter((candidate) => ["entrevista", "oferecido", "contratado"].includes(candidate.status)).length;
-  const hired = filteredCandidates.filter((candidate) => candidate.status === "contratado").length;
+  const averageScore = totalCandidates > 0
+    ? filteredCandidates.reduce((sum, c) => sum + c.score, 0) / totalCandidates
+    : 0;
+  const highScoreCount = filteredCandidates.filter((c) => c.score >= 4.0).length;
+  const shortlisted = filteredCandidates.filter((c) => c.shortlist || c.status === "shortlist").length;
+  const contacted = filteredCandidates.filter((c) => ["entrevista", "oferecido", "contratado"].includes(c.status)).length;
+  const hired = filteredCandidates.filter((c) => c.status === "contratado").length;
 
+  // Score distribution — all royal blue shades
   const scoreData: ScoreBucket[] = [
-    {
-      range: "4.5 – 5.0",
-      label: "Excelente",
-      count: filteredCandidates.filter((candidate) => candidate.score >= 4.5).length,
-      percent: 0,
-      color: "#06D6A0",
-    },
-    {
-      range: "3.5 – 4.4",
-      label: "Alta compatibilidade",
-      count: filteredCandidates.filter((candidate) => candidate.score >= 3.5 && candidate.score < 4.5).length,
-      percent: 0,
-      color: "#1D4ED8",
-    },
-    {
-      range: "2.5 – 3.4",
-      label: "Média",
-      count: filteredCandidates.filter((candidate) => candidate.score >= 2.5 && candidate.score < 3.5).length,
-      percent: 0,
-      color: "#F59E0B",
-    },
-    {
-      range: "< 2.5",
-      label: "Baixa aderência",
-      count: filteredCandidates.filter((candidate) => candidate.score > 0 && candidate.score < 2.5).length,
-      percent: 0,
-      color: "#EF4444",
-    },
+    { range: "4.5 – 5.0", label: "Excelente", count: filteredCandidates.filter((c) => c.score >= 4.5).length, percent: 0, color: BLUE_SCALE.excellent },
+    { range: "3.5 – 4.4", label: "Alta aderência", count: filteredCandidates.filter((c) => c.score >= 3.5 && c.score < 4.5).length, percent: 0, color: BLUE_SCALE.high },
+    { range: "2.5 – 3.4", label: "Média", count: filteredCandidates.filter((c) => c.score >= 2.5 && c.score < 3.5).length, percent: 0, color: BLUE_SCALE.mid },
+    { range: "< 2.5", label: "Baixa aderência", count: filteredCandidates.filter((c) => c.score > 0 && c.score < 2.5).length, percent: 0, color: BLUE_SCALE.low },
   ].map((item) => ({
     ...item,
     percent: totalCandidates > 0 ? Math.round((item.count / totalCandidates) * 100) : 0,
@@ -248,16 +235,18 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
   ];
 
   const hireTimes = filteredCandidates
-    .filter((candidate) => candidate.status === "contratado")
-    .map((candidate) => {
-      const createdAt = parseDate(candidate.createdAt);
+    .filter((c) => c.status === "contratado")
+    .map((c) => {
+      const createdAt = parseDate(c.createdAt);
       return createdAt ? daysBetween(createdAt, now) : 14;
     });
 
-  const averageTimeToHire = hireTimes.length > 0 ? Math.round(hireTimes.reduce((sum, value) => sum + value, 0) / hireTimes.length) : 14;
+  const averageTimeToHire = hireTimes.length > 0
+    ? Math.round(hireTimes.reduce((sum, v) => sum + v, 0) / hireTimes.length)
+    : 14;
 
-  const totalJobsActive = jobs.filter((job) => job.status === "active").length;
-  const totalJobsPaused = jobs.filter((job) => job.status === "paused").length;
+  const totalJobsActive = jobs.filter((j) => j.status === "active").length;
+  const totalJobsPaused = jobs.filter((j) => j.status === "paused").length;
 
   const analyzedTrend = useMemo(() => {
     if (previousTotal === 0) {
@@ -268,12 +257,12 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
     return delta >= 0 ? `+${pct}% vs anterior` : `-${pct}% vs anterior`;
   }, [previousTotal, totalCandidates]);
 
-  const currentPeriodLabel = rangeOptions.find((option) => option.value === selectedRange)?.label ?? "Período atual";
+  const currentPeriodLabel = rangeOptions.find((o) => o.value === selectedRange)?.label ?? "Período atual";
 
   const handleRangeSelect = (range: TimeRange) => {
     if (range === selectedRange) return;
     setSelectedRange(range);
-    setRefreshKey((key) => key + 1);
+    setRefreshKey((k) => k + 1);
   };
 
   return (
@@ -284,13 +273,14 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
       transition={{ duration: 0.28 }}
       className="min-h-screen space-y-6 bg-slate-50/60 p-6"
     >
-      {/* Page Title & Filter Bar */}
+      {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Analytics & Business Intelligence</h1>
           <p className="text-xs text-slate-500 mt-0.5">Visualize as métricas estratégicas e a performance por período.</p>
         </div>
 
+        {/* Period Selector — Blue */}
         <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1 shadow-xs">
           {rangeOptions.map((option) => (
             <button
@@ -299,7 +289,7 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
               onClick={() => handleRangeSelect(option.value)}
               className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
                 selectedRange === option.value
-                  ? "bg-[#7C3AED] text-white shadow-sm"
+                  ? "bg-blue-700 text-white shadow-sm"
                   : "text-slate-600 hover:bg-slate-100"
               }`}
             >
@@ -309,14 +299,14 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* KPI Cards — Blue only */}
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Candidatos Analisados"
           value={String(totalCandidates)}
           subtext="Base total da empresa"
           trend={analyzedTrend}
-          accent="#7C3AED"
+          trendPositive={!analyzedTrend.startsWith("-")}
           icon={Users}
         />
         <StatCard
@@ -324,7 +314,7 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
           value={`${averageScore > 0 ? averageScore.toFixed(1) : "4.7"}/5.0`}
           subtext="Somente candidatos pontuados"
           trend="Alta"
-          accent="#10B981"
+          trendPositive
           icon={Target}
         />
         <StatCard
@@ -332,7 +322,7 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
           value={`${averageTimeToHire} dias`}
           subtext="Da triagem à contratação"
           trend="-3 dias vs anterior"
-          accent="#3B82F6"
+          trendPositive={false}
           icon={Clock3}
         />
         <StatCard
@@ -340,24 +330,24 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
           value={quota?.limit ? `${quota.used}/${quota.limit}` : `${quota?.used ?? 3}/9999`}
           subtext={quota?.isAdmin ? "Acesso administrador" : `Plano ${quota?.plano || "Pro"}`}
           trend="Estável"
-          accent="#F59E0B"
+          trendPositive
           icon={Zap}
         />
       </motion.div>
 
-      {/* Main Charts Grid */}
+      {/* Charts Grid */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        {/* BarChart: Score Distribution */}
+        {/* BarChart: Score Distribution — blue palette */}
         <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-violet-600" /> Distribuição de candidatos por faixa de score
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-blue-600" /> Distribuição por Faixa de Score
               </h2>
-              <p className="text-xs text-slate-500">{currentPeriodLabel}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{currentPeriodLabel}</p>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
-              {totalCandidates} candidatos no período
+              {totalCandidates} no período
             </span>
           </div>
 
@@ -366,8 +356,8 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
               <BarChart data={scoreData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
                 <XAxis dataKey="range" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: "rgba(124, 58, 237, 0.05)" }} content={<CustomBarTooltip />} />
-                <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                <Tooltip cursor={{ fill: "rgba(29, 78, 216, 0.04)" }} content={<CustomBarTooltip />} />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                   {scoreData.map((entry) => (
                     <Cell key={entry.range} fill={entry.color} />
                   ))}
@@ -375,18 +365,28 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Legend */}
+          <div className="mt-4 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+            {scoreData.map((b) => (
+              <div key={b.range} className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: b.color }} />
+                <span className="text-[11px] text-slate-500">{b.range} <span className="font-medium text-slate-700">({b.count})</span></span>
+              </div>
+            ))}
+          </div>
         </motion.div>
 
-        {/* AreaChart: Pipeline Funnel */}
+        {/* AreaChart: Pipeline Funnel — blue gradient */}
         <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-violet-600" /> Funil de Conversão do Pipeline
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-blue-600" /> Funil de Conversão do Pipeline
               </h2>
-              <p className="text-xs text-slate-500">Retenção de talentos entre etapas do processo</p>
+              <p className="text-xs text-slate-500 mt-0.5">Retenção de talentos entre etapas do processo</p>
             </div>
-            <div className="rounded-full bg-violet-50 border border-violet-100 px-3 py-1 text-[11px] font-semibold text-violet-700">
+            <div className="rounded-full bg-blue-50 border border-blue-100 px-3 py-1 text-[11px] font-semibold text-blue-700">
               {highScoreCount} com Fit 4.0+
             </div>
           </div>
@@ -395,9 +395,9 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={funnelData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
                 <defs>
-                  <linearGradient id="funnelFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.45} />
-                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.08} />
+                  <linearGradient id="funnelFillBlue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="etapa" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
@@ -406,11 +406,12 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
                   contentStyle={{
                     borderRadius: 12,
                     border: "1px solid #e2e8f0",
-                    boxShadow: "0 18px 40px rgba(15, 23, 42, 0.12)",
+                    boxShadow: "0 18px 40px rgba(15, 23, 42, 0.10)",
                     background: "white",
+                    fontSize: 12,
                   }}
                 />
-                <Area type="monotone" dataKey="total" stroke="#8B5CF6" fill="url(#funnelFill)" strokeWidth={3} />
+                <Area type="monotone" dataKey="total" stroke="#1D4ED8" fill="url(#funnelFillBlue)" strokeWidth={2.5} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -422,13 +423,13 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
         <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-violet-600" />
-              <h2 className="text-base font-bold text-slate-900">Resumo Operacional de Contratações</h2>
+              <BarChart3 className="h-4 w-4 text-blue-600" />
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Resumo Operacional</h2>
             </div>
             <span className="text-xs font-medium text-slate-500">{currentPeriodLabel}</span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {[
               { label: "Shortlist Ativa", value: shortlisted },
               { label: "Candidatos em Entrevista", value: contacted },
@@ -446,28 +447,28 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
 
         <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-emerald-600" />
-            <h2 className="text-base font-bold text-slate-900">Métricas de Desempenho</h2>
+            <TrendingUp className="h-4 w-4 text-blue-600" />
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Métricas de Desempenho</h2>
           </div>
 
           <div className="space-y-3">
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Taxa de Conversão Final</p>
-              <p className="mt-1 text-2xl font-black text-emerald-700">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Taxa de Conversão Final</p>
+              <p className="mt-1 text-2xl font-black text-blue-800">
                 {totalCandidates > 0 ? `${Math.round((hired / totalCandidates) * 100)}%` : "15%"}
               </p>
             </div>
 
-            <div className="rounded-xl border border-violet-100 bg-violet-50/70 px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700">Percentual de Fit Elevado</p>
-              <p className="mt-1 text-2xl font-black text-violet-700">
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Percentual de Fit Elevado</p>
+              <p className="mt-1 text-2xl font-black text-slate-900">
                 {totalCandidates > 0 ? `${Math.round((highScoreCount / totalCandidates) * 100)}%` : "67%"}
               </p>
             </div>
 
-            <div className="rounded-xl border border-sky-100 bg-sky-50/70 px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">Tempo de Fechamento</p>
-              <p className="mt-1 text-2xl font-black text-sky-700">
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tempo de Fechamento</p>
+              <p className="mt-1 text-2xl font-black text-slate-900">
                 {averageTimeToHire} dias
               </p>
             </div>

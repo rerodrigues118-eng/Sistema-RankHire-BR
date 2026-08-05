@@ -242,8 +242,8 @@ export default function CandidateDrawer({
     }, 2000);
   };
 
-  // Confirm Interview Schedule
-  const handleConfirmSchedule = (candId: string, date: string, time: string) => {
+  // Confirm Interview Schedule (Internal Management Mode)
+  const handleConfirmSchedule = (candId: string, date: string, time: string, notes?: string) => {
     if (!localCandidate) return;
     const updated: Candidate = { ...localCandidate, status: "entrevista" };
     setLocalCandidate(updated);
@@ -253,13 +253,13 @@ export default function CandidateDrawer({
     const entry: TimelineEntry = {
       id: `meet-${Date.now()}`,
       type: "status_change",
-      title: "Entrevista Agendada (Meetings Hub)",
-      content: `Entrevista técnica confirmada para ${date} às ${time} hs via link rankhire.app/meet/recrutador. Status atualizado para Entrevista.`,
+      title: "Entrevista Registrada",
+      content: `Entrevista agendada para ${date} às ${time}.${notes ? `\nAnotações: ${notes}` : ""} Status atualizado para Entrevista.`,
       timestamp: "Agora",
-      author: "Meetings Scheduler",
+      author: "Recrutador",
     };
     setTimelineEntries((prev) => [entry, ...prev]);
-    showToast("success", "Entrevista agendada! Status atualizado para Entrevista.");
+    showToast("success", "Entrevista registrada! Status atualizado para Entrevista.");
   };
 
   const handleExportPdf = async () => {
@@ -342,9 +342,9 @@ export default function CandidateDrawer({
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setIsSchedulerOpen(true)}
-                  className="px-3 py-1.5 bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Video className="w-3.5 h-3.5" /> Agendar Entrevista
+                  <Calendar className="w-3.5 h-3.5" /> Registrar Entrevista
                 </button>
 
                 <div className="relative">
@@ -412,11 +412,8 @@ export default function CandidateDrawer({
                   </div>
                 </div>
 
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shadow-sm border border-slate-200 flex-shrink-0"
-                  style={{ backgroundColor: bg, color: localCandidate.avatarColor }}
-                >
-                  {localCandidate.initials}
+                <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0 shadow-xs">
+                  <UserCheck size={22} className="text-slate-400" />
                 </div>
               </div>
 
@@ -460,7 +457,7 @@ export default function CandidateDrawer({
             {/* Navigation Tabs */}
             <div className="flex border-b border-slate-200 bg-white px-6 flex-shrink-0 overflow-x-auto">
               {[
-                { key: 'linha_tempo', label: '⚡ Timeline & Atividades' },
+                { key: 'linha_tempo', label: 'Timeline' },
                 { key: 'geral', label: 'Visão Geral' },
                 { key: 'criterios', label: 'Critérios & Score' },
                 { key: 'experiencia', label: 'Experiência' },
@@ -471,7 +468,7 @@ export default function CandidateDrawer({
                   onClick={() => setDrawerTab(tb.key as typeof drawerTab)}
                   className={`py-3 px-3 text-[12px] font-medium border-b-2 transition-all whitespace-nowrap cursor-pointer ${
                     drawerTab === tb.key
-                      ? 'border-[#7C3AED] text-[#7C3AED] font-bold'
+                      ? 'border-blue-700 text-blue-700 font-bold'
                       : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -486,23 +483,6 @@ export default function CandidateDrawer({
               {/* ABA 1: TIMELINE DE ATIVIDADES 360° */}
               {drawerTab === 'linha_tempo' && (
                 <div className="space-y-5">
-                  {/* AI Enrichment Action Header */}
-                  <div className="p-3.5 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50 flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 text-indigo-600" /> Enriquecer Perfil com IA
-                      </h4>
-                      <p className="text-[11px] text-slate-500">Analisa histórico, extrai novas competências e gera inteligência.</p>
-                    </div>
-                    <button
-                      onClick={handleAiEnrichment}
-                      disabled={isEnriching}
-                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
-                    >
-                      {isEnriching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                      Enriquecer
-                    </button>
-                  </div>
 
                   {/* Add Note with @Mentions Box */}
                   <div className="relative rounded-xl border border-slate-200 bg-white p-3 shadow-xs">

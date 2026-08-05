@@ -5,7 +5,7 @@ import React, { useState, useMemo } from "react";
 import type { Candidate, KanbanStatus } from "@/lib/types";
 import {
   Search, SlidersHorizontal, Filter, MoreHorizontal, ExternalLink,
-  Star, Lock, Video, Calendar, Eye, Sparkles, Check, ChevronDown
+  Star, Lock, Video, Calendar, Eye, Sparkles, Check, ChevronDown, User
 } from "lucide-react";
 import { useEmpresa } from "@/hooks/useEmpresa";
 import MeetingsSchedulerModal from "@/components/MeetingsSchedulerModal";
@@ -57,6 +57,7 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(true);
+  const [hideAlreadySeen, setHideAlreadySeen] = useState(false);
   const { empresa, isLoading: isLoadingEmpresa } = useEmpresa();
 
   // Scheduler Modal state
@@ -77,6 +78,10 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
 
     if (showOnlyFavorites) {
       list = list.filter((c) => c.shortlist || c.status === "shortlist");
+    }
+
+    if (hideAlreadySeen) {
+      list = list.filter((c) => !c.shortlist);
     }
 
     if (searchTerm) {
@@ -177,6 +182,20 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
         <div className="flex items-center gap-3">
           <button
             type="button"
+            onClick={() => setHideAlreadySeen((v) => !v)}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition ${
+              hideAlreadySeen
+                ? "bg-slate-900 border-slate-800 text-white"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Ocultar candidatos já analisados"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            {hideAlreadySeen ? "Mostrando novos" : "Ocultar vistos"}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setShowOnlyFavorites((prev) => !prev)}
             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition ${
               showOnlyFavorites
@@ -231,17 +250,14 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
                   onClick={() => onSelectCandidate(c)}
                   className="group cursor-pointer hover:bg-slate-50/70 transition-colors bg-white"
                 >
-                  {/* Name & Avatar */}
+                  {/* Name & Avatar — generic icon, no colored initials */}
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-xs border border-slate-100"
-                        style={{ backgroundColor: c.avatarColor + "15", color: c.avatarColor }}
-                      >
-                        {c.initials}
+                      <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0">
+                        <User className="w-4.5 h-4.5 text-slate-400" size={18} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900 group-hover:text-violet-700 transition">{c.name}</p>
+                        <p className="text-xs font-bold text-slate-900 group-hover:text-blue-700 transition">{c.name}</p>
                         <p className="text-[11px] text-slate-400">{c.city || "Paraná, Brasil"}</p>
                       </div>
                     </div>
