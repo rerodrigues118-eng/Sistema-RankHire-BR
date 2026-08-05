@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import type { Candidate, Job } from "@/lib/types";
 import { AVATAR_COLORS } from "@/lib/mock-data";
 import { shouldRevealContacts } from "@/lib/planos";
@@ -245,13 +246,19 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   });
   
   // Active Filter Categories
-  const [activeFilterCategory, setActiveFilterCategory] = useState("Geral");
+  const [activeFilterCategory, setActiveFilterCategory] = useState("experiencia");
   const [hideInactiveFilters, setHideInactiveFilters] = useState(false);
 
   // Paywall reveal state
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [revealedContacts, setRevealedContacts] = useState<Set<string>>(new Set());
   const [canRevealContacts, setCanRevealContacts] = useState(true);
+
+  useEffect(() => {
+    if (isFiltersOpen) {
+      setActiveFilterCategory("experiencia");
+    }
+  }, [isFiltersOpen]);
 
   // Copy share link feedback
   const [shareCopied, setShareCopied] = useState(false);
@@ -289,6 +296,22 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const searchFlowVariants = {
+    hidden: { opacity: 0, y: 24 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: "easeOut" } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.22, ease: "easeIn" } },
+  };
+
+  const resultsStagger = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.08 } },
+  };
+
+  const resultCardVariant = {
+    hidden: { opacity: 0, y: 18 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: "easeOut" } },
   };
 
   const handleHideProfile = (id: string, name: string) => {
@@ -697,68 +720,79 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
             <div className={`w-full flex flex-col gap-3 px-8 border-b border-slate-100 transition-all duration-300 bg-white z-20 ${
               isScrolled ? 'py-2 shadow-xs sticky top-0' : 'py-4'
             }`}>
-              {phase === 'idle' ? (
-                // FASE 1: Estado Inicial (Chat expansivo centrado)
-                <div className="max-w-[760px] mx-auto w-full py-16 flex flex-col items-center">
-                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/50 px-3.5 py-1 text-[11px] font-semibold text-indigo-700 shadow-sm">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Busca Inteligente com IA
-                  </div>
-                  <h1 className="mb-2 text-center text-[28px] font-bold text-slate-900 tracking-tight">
-                    Quem você está buscando hoje?
-                  </h1>
-                  <p className="mb-8 text-center text-sm text-slate-500 max-w-md">
-                    Descreva o perfil ideal em linguagem natural. A IA define os critérios e filtros automaticamente.
-                  </p>
-                  
-                  <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-lg p-1">
-                    <textarea 
-                      value={queryText}
-                      onChange={(e) => setQueryText(e.target.value)}
-                      placeholder="Ex: Designer gráfico no Paraná com 5 anos de experiência e Photoshop..."
-                      rows={3}
-                      className="w-full resize-none bg-transparent px-5 py-4 text-[14px] text-slate-800 outline-none placeholder:text-slate-400"
-                    />
-                    <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/80 rounded-b-2xl">
-                      <button 
-                        onClick={() => setIsFiltersOpen(true)}
-                        className="flex items-center gap-2 border border-slate-200 bg-white rounded-xl font-semibold text-[11px] px-3 py-2 text-slate-700 hover:bg-slate-50 transition-all"
-                      >
-                        <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
-                        Filtros avançados
-                      </button>
-                      <button 
-                        onClick={handleInitialSubmit}
-                        disabled={!queryText.trim()}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7C3AED] hover:opacity-95 shadow text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <ArrowUp size={16} />
-                      </button>
+              <AnimatePresence mode="wait">
+                {phase === 'idle' ? (
+                  <motion.div
+                    key="search-chat"
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    variants={searchFlowVariants}
+                    className="max-w-[760px] mx-auto w-full py-16 flex flex-col items-center"
+                  >
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/50 px-3.5 py-1 text-[11px] font-semibold text-indigo-700 shadow-sm">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Busca Inteligente com IA
                     </div>
-                  </div>
-
-                  {/* Histórico de buscas recentes */}
-                  {searchHistory.length > 0 && (
-                    <div className="mt-5 flex flex-col items-center gap-2">
-                      <span className="text-[11px] text-slate-400 font-medium">Buscas recentes</span>
-                      <div className="flex flex-wrap justify-center gap-2">
-                        {searchHistory.map((q, i) => (
-                          <button
-                            key={i}
-                            onClick={() => { setQueryText(q); handleRunSearch(); }}
-                            className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-full text-xs text-slate-600 font-medium hover:border-[#7C3AED]/50 hover:text-[#7C3AED] transition-all shadow-sm truncate max-w-[260px]"
-                          >
-                            🕐 {q}
-                          </button>
-                        ))}
+                    <h1 className="mb-2 text-center text-[28px] font-bold text-slate-900 tracking-tight">
+                      Quem você está buscando hoje?
+                    </h1>
+                    <p className="mb-8 text-center text-sm text-slate-500 max-w-md">
+                      Descreva o perfil ideal em linguagem natural. A IA define os critérios e filtros automaticamente.
+                    </p>
+                    
+                    <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-lg p-1">
+                      <textarea 
+                        value={queryText}
+                        onChange={(e) => setQueryText(e.target.value)}
+                        placeholder="Ex: Designer gráfico no Paraná com 5 anos de experiência e Photoshop..."
+                        rows={3}
+                        className="w-full resize-none bg-transparent px-5 py-4 text-[14px] text-slate-800 outline-none placeholder:text-slate-400"
+                      />
+                      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/80 rounded-b-2xl">
+                        <button 
+                          onClick={() => setIsFiltersOpen(true)}
+                          className="flex items-center gap-2 border border-slate-200 bg-white rounded-xl font-semibold text-[11px] px-3 py-2 text-slate-700 hover:bg-slate-50 transition-all"
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+                          Filtros avançados
+                        </button>
+                        <button 
+                          onClick={handleInitialSubmit}
+                          disabled={!queryText.trim()}
+                          className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7C3AED] hover:opacity-95 shadow text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <ArrowUp size={16} />
+                        </button>
                       </div>
                     </div>
-                  )}
-                </div>
-              ) : phase === 'review' ? (
-                // FASE 2: Revisão de Filtros da IA
-                <div className="max-w-3xl mx-auto w-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-8 duration-500 py-8">
-                  {/* Query refletida */}
+
+                    {searchHistory.length > 0 && (
+                      <div className="mt-5 flex flex-col items-center gap-2">
+                        <span className="text-[11px] text-slate-400 font-medium">Buscas recentes</span>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {searchHistory.map((q, i) => (
+                            <button
+                              key={i}
+                              onClick={() => { setQueryText(q); handleRunSearch(); }}
+                              className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-full text-xs text-slate-600 font-medium hover:border-[#7C3AED]/50 hover:text-[#7C3AED] transition-all shadow-sm truncate max-w-[260px]"
+                            >
+                              🕐 {q}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ) : phase === 'review' ? (
+                <motion.div
+                  key="review-filters"
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={searchFlowVariants}
+                  className="max-w-3xl mx-auto w-full flex flex-col gap-4 py-8"
+                >
                   <div className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm flex items-center gap-3">
                     <div className="w-7 h-7 rounded-full bg-slate-950 flex items-center justify-center flex-shrink-0">
                       <Sparkle size={14} className="text-white fill-white" />
@@ -766,8 +800,12 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     <span className="text-slate-800 font-medium text-sm">{queryText}</span>
                   </div>
 
-                  {/* Bloco de Filtros da IA */}
-                  <div className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-4 relative">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.28, ease: "easeOut" }}
+                    className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-4 relative"
+                  >
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-slate-700">
                         Defini esses{' '}
@@ -796,10 +834,14 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         </button>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
 
-                  {/* Bloco de Critérios */}
-                  <div className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.28, ease: "easeOut", delay: 0.06 }}
+                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2"
+                  >
                     <span className="text-sm text-slate-700">
                       Adicione{' '}
                       <span className="text-[#7C3AED] font-semibold inline-flex items-center gap-1">
@@ -815,9 +857,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         ✓ {criteria.length} critério{criteria.length > 1 ? 's' : ''} definido{criteria.length > 1 ? 's' : ''}
                       </span>
                     )}
-                  </div>
+                  </motion.div>
 
-                  {/* Ações */}
                   <div className="flex justify-end items-center gap-6 pt-2">
                     <button onClick={() => { setPhase('idle'); setQueryText(''); }} className="text-sm font-medium text-slate-600 hover:text-slate-900">
                       Resetar busca
@@ -829,13 +870,22 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       Executar busca
                     </button>
                   </div>
-                </div>
-
+                </motion.div>
               ) : (
-                // FASE 3 & 4: Barra comprimida (searching + results)
-                <div className="w-full flex flex-col gap-3">
-                  <div className="flex items-center gap-2 w-full">
-                    {/* Search Pill Input Bar */}
+                <motion.div
+                  key="search-bar-results"
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={searchFlowVariants}
+                  className="w-full flex flex-col gap-3"
+                >
+                  <motion.div
+                    initial={{ opacity: 0, y: -16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.28, ease: "easeOut" }}
+                    className="flex items-center gap-2 w-full"
+                  >
                     <div 
                       onClick={() => setIsEditQueryOpen(true)}
                       className={`flex-1 bg-white border border-slate-200 rounded-full flex items-center justify-between cursor-pointer hover:border-slate-300 transition-all shadow-sm ${
@@ -843,7 +893,6 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        {/* Circle logo badge */}
                         <div className="w-5 h-5 rounded-full bg-slate-950 flex items-center justify-center flex-shrink-0">
                           <Sparkle size={10} className="text-white fill-white" />
                         </div>
@@ -854,7 +903,6 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       <Search size={14} className="text-slate-400 flex-shrink-0" />
                     </div>
 
-                    {/* Filtros & Critérios Quick Buttons */}
                     <button 
                       onClick={() => setIsFiltersOpen(true)}
                       className={`flex items-center gap-1.5 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm ${
@@ -881,7 +929,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         <span className="bg-[#7C3AED]/10 text-[#7C3AED] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{criteria.length}</span>
                       )}
                     </button>
-                  </div>
+                  </motion.div>
 
                   {/* Suggestion Expansion Chips & Ações Realocadas (Ocultas ao scrollar) */}
                   {!isScrolled && (
@@ -906,7 +954,9 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                             </button>
                           )}
                         </div>
-                      ) : <div />}
+                      ) : (
+                        <div />
+                      )}
 
                       <div className="flex items-center gap-2 ml-auto">
                         <button 
@@ -929,8 +979,9 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       </div>
                     </div>
                   )}
-                </div>
+                </motion.div>
               )}
+              </AnimatePresence>
             </div>
 
             {/* ── Main Workspace Body ── */}
@@ -1041,10 +1092,14 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
                 {/* Candidates List/Table — só aparece na fase results quando a aba Resultados está selecionada */}
                 {phase === 'results' && activeTab === 'results' && (<>
-                <div className="flex-1 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <motion.div
+                  className="flex-1 overflow-y-auto"
+                  initial="hidden"
+                  animate="visible"
+                  variants={resultsStagger}
+                >
                   {viewMode === "table" ? (
-                    // Tabela Compacta (Image 1)
-                    <table className="w-full text-left text-xs border-collapse">
+                    <motion.table className="w-full text-left text-xs border-collapse" initial="hidden" animate="visible" variants={resultsStagger}>
                       <thead>
                         <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 select-none">
                           <th className="pl-4 pr-2 py-2.5 w-8"></th>
@@ -1062,10 +1117,13 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                           const isSelected = selectedProfileIndex === idx;
                           const currentStatus = candidateStatuses[p.id] || "Sem status";
                           return (
-                            <tr 
+                            <motion.tr
                               key={p.id}
                               onClick={() => handleSelectProfile(idx)}
                               className={`group cursor-pointer hover:bg-slate-50/80 transition-colors ${isSelected ? 'bg-indigo-50/30' : ''}`}
+                              variants={resultCardVariant}
+                              initial="hidden"
+                              animate="visible"
                             >
                               <td className="pl-4 pr-2 py-3" onClick={e => e.stopPropagation()}>
                                 <input 
@@ -1106,25 +1164,26 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                                   <ThumbsUp size={11} className="fill-emerald-600" />
                                 </span>
                               </td>
-                            </tr>
+                            </motion.tr>
                           );
                         })}
                       </tbody>
-                    </table>
+                    </motion.table>
                   ) : (
                     // Visão de Lista Flat Minimalista (Juice.box Style)
-                    <div className="divide-y divide-slate-100">
+                    <motion.div className="divide-y divide-slate-100" variants={resultsStagger} initial="hidden" animate="visible">
                       {profiles.filter(p => !hiddenProfileIds.has(p.id)).map((p, idx) => {
                         const isSelected = selectedProfileIndex === idx;
                         const isImported = selectedRowIds.has(p.id);
                         const isDropdownOpen = openCardDropdownId === p.id;
                         return (
-                          <div
+                          <motion.div
                             key={p.id}
                             onClick={() => handleSelectProfile(idx)}
                             className={`px-4 py-4 cursor-pointer transition-colors group relative ${
                               isSelected ? 'bg-violet-50/40' : 'hover:bg-slate-50/70'
                             }`}
+                            variants={resultCardVariant}
                           >
                             {/* Row: Name + Social + Actions */}
                             <div className="flex items-start justify-between gap-3">
@@ -1278,12 +1337,12 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                                 ))}
                               </div>
                             )}
-                          </div>
+                          </motion.div>
                         );
                       })}
-                    </div>
+                    </motion.div>
                   )}
-                </div>
+                </motion.div>
                 
                 {/* ── Widget de Buscas Gratuitas Funcional ── */}
                 <div className="sticky bottom-0 bg-white border-t border-slate-200 px-5 py-3 flex items-center justify-between gap-4 flex-shrink-0">
