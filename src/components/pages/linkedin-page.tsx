@@ -413,19 +413,15 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     }
   }, [isShareOpen, activeJob?.id, profiles, criteria, shareLink]);
 
-  // Restaurar estado do localStorage ao montar ou trocar de vaga
+  // Restaurar historico de buscas do localStorage ao montar ou trocar de vaga, mantendo o layout principal (idle) como inicial
   useEffect(() => {
     const vagaKey = activeJob?.id || 'default';
+    setPhase('idle');
+    setQueryText("");
     try {
-      const saved = localStorage.getItem(`rankhire_search_${vagaKey}`);
-      if (saved) {
-        const { queryText: q, profiles: p, hasSearched: hs } = JSON.parse(saved);
-        if (q) setQueryText(q);
-        if (p?.length) setProfiles(p);
-        if (hs) setPhase('results');
-      }
       const hist = localStorage.getItem(`rankhire_history_${vagaKey}`);
       if (hist) setSearchHistory(JSON.parse(hist));
+      else setSearchHistory([]);
     } catch {}
   }, [activeJob?.id]);
 
@@ -558,8 +554,11 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   const handleClearAllHistory = () => {
     const vagaKey = activeJob?.id || 'default';
     setSearchHistory([]);
+    setQueryText("");
+    setPhase('idle');
     try {
       localStorage.removeItem(`rankhire_history_${vagaKey}`);
+      localStorage.removeItem(`rankhire_search_${vagaKey}`);
     } catch {}
     showToast("Histórico de buscas recentes limpo.");
   };
