@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-guard";
 import { handleApiError } from "@/lib/api";
 import { createSupabaseAdminClient } from "@/lib/admin";
@@ -30,7 +30,7 @@ export async function GET() {
       // Check if company has created a vaga
       admin.from("vagas").select("id,created_at,status", { count: "exact" }).eq("empresa_id", empresaId),
       // Candidates (for funnel + activity chart)
-      admin.from("candidatos").select("id,status,created_at,vaga_id", { count: "exact" }).eq("empresa_id", empresaId),
+      admin.from("pdf_candidates").select("id,status,created_at,vaga_id", { count: "exact" }).eq("empresa_id", empresaId),
       // Agentes IA
       admin.from("agentes_ia").select("id,created_at", { count: "exact" }).eq("empresa_id", empresaId),
       // LinkedIn searches (for "fez primeira busca com IA")
