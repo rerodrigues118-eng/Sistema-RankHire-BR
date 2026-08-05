@@ -589,12 +589,12 @@ export default function VagasPage({
               ref={job.id === openMenuJobId ? dropdownRef : null}
               className={`bg-white dark:bg-slate-900 rounded-[12px] p-5 border transition-all flex flex-col group relative ${
                 job.id === selectedJobId
-                  ? "border-blue-600 dark:border-blue-500 ring-2 ring-blue-600/30 dark:ring-blue-500/30 shadow-lg shadow-blue-500/10"
-                  : "border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500"
+                  ? "border-blue-400/80 dark:border-blue-500/50 ring-1 ring-blue-400/30 dark:ring-blue-500/20 shadow-xs"
+                  : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
               }`}
             >
               {job.id === selectedJobId && (
-                <span className="absolute top-4 right-4 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-xs">
+                <span className="absolute top-4 right-4 rounded-full bg-blue-500 dark:bg-blue-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                   SELECIONADA
                 </span>
               )}
