@@ -1,5 +1,6 @@
 import { readFile } from 'fs/promises';
 import { join } from 'path';
+import LandingPricingHandler from '@/components/LandingPricingHandler';
 
 export default async function LandingPage() {
   try {
@@ -14,9 +15,12 @@ export default async function LandingPage() {
       .replace(/src="(\.\/|\/)placeholder/g, 'src="/landing/placeholder');
 
     return (
-      <div 
-        dangerouslySetInnerHTML={{ __html: htmlContent }}
-      />
+      <>
+        <LandingPricingHandler />
+        <div 
+          dangerouslySetInnerHTML={{ __html: htmlContent }}
+        />
+      </>
     );
   } catch (error) {
     console.error('Failed to load landing page:', error);

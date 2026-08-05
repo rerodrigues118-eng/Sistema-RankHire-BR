@@ -76,8 +76,33 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const empresaId = session.client_reference_id;
+        let empresaId = session.client_reference_id;
         const subscriptionId = session.subscription as string;
+        const customerEmail = session.customer_details?.email || session.customer_email;
+
+        // If client_reference_id is a usuario id, find their empresa_id
+        if (empresaId) {
+          const { data: usuario } = await supabase
+            .from("usuarios")
+            .select("empresa_id")
+            .eq("id", empresaId)
+            .single();
+          if (usuario?.empresa_id) {
+            empresaId = usuario.empresa_id;
+          }
+        }
+
+        // Fallback: lookup by customer email if client_reference_id is missing or not found
+        if (!empresaId && customerEmail) {
+          const { data: usuario } = await supabase
+            .from("usuarios")
+            .select("empresa_id")
+            .eq("email", customerEmail)
+            .single();
+          if (usuario?.empresa_id) {
+            empresaId = usuario.empresa_id;
+          }
+        }
 
         if (empresaId && subscriptionId) {
           const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as any;

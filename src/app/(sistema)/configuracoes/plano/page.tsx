@@ -1,61 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import { PLANOS, getPlanoAtual } from "@/lib/planos";
-import { CreditCard, ArrowRight, ShieldCheck, Check } from "lucide-react";
-
-type EmpresaPlano = {
-  id: string;
-  nome: string;
-  plano: string;
-  subscription_status: string;
-  current_period_end?: string | null;
-  stripe_subscription_id?: string | null;
-  stripe_customer_id?: string | null;
-  stripe_price_id?: string | null;
-  trial_expires_at: string;
-};
+import { useUserPlan } from "@/hooks/useUserPlan";
+import { CreditCard, ExternalLink, ShieldCheck, Check, Loader2, Sparkles, AlertCircle } from "lucide-react";
+import PlanSelectionModal from "@/components/PlanSelectionModal";
 
 export default function PlanosConfigPage() {
-  const [empresa, setEmpresa] = useState<EmpresaPlano | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submittingPlan, setSubmittingPlan] = useState<string | null>(null);
+  const { plan: userPlan, isActive, rawPlanName, stripeCustomerId, loading, getCheckoutUrl } = useUserPlan();
   const [loadingPortal, setLoadingPortal] = useState(false);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(true);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: usuario } = await supabase
-          .from("usuarios")
-          .select("empresa_id")
-          .eq("id", user.id)
-          .single();
-
-        if (usuario?.empresa_id) {
-          const { data: emp } = await supabase
-            .from("empresas")
-            .select("id, nome, plano, subscription_status, trial_expires_at, current_period_end, stripe_subscription_id, stripe_customer_id, stripe_price_id")
-            .eq("id", usuario.empresa_id)
-            .single();
-          if (emp) setEmpresa(emp as EmpresaPlano);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar dados do plano:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
-
-    // Check URL params for feedback (success/cancel from Stripe redirects)
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "true") {
       setFeedback({ type: "success", text: "Assinatura ativada ou alterada com sucesso! As alterações serão aplicadas em alguns instantes." });
@@ -64,238 +21,207 @@ export default function PlanosConfigPage() {
     }
   }, []);
 
-  const handleCheckout = async (planKey: string) => {
-    if (!empresa) return;
-    const planConfig = PLANOS[planKey];
-    if (!planConfig || !planConfig.stripe_price_id) {
-      setFeedback({ type: "error", text: "Plano inválido ou ID do Stripe ausente." });
+  const handleSelectPlan = (planKey: string, checkoutUrl?: string) => {
+    const targetUrl = checkoutUrl || getCheckoutUrl(planKey);
+    window.location.href = targetUrl;
+  };
+
+  const handleManageBilling = async () => {
+    if (!stripeCustomerId) {
+      // If customer doesn't have a Stripe customer id, open plan selection modal
+      setIsPlanModalOpen(true);
       return;
     }
-
-    setSubmittingPlan(planKey);
+    setLoadingPortal(true);
     setFeedback(null);
 
     try {
-      const res = await fetch("/api/stripe/checkout", {
+      const res = await fetch("/api/stripe/portal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: planConfig.stripe_price_id }),
       });
       const data = await res.json();
       if (res.ok && data.url) {
         window.location.href = data.url;
       } else {
-        setFeedback({ type: "error", text: data.error || "Erro ao iniciar o checkout." });
+        setFeedback({ type: "error", text: data.error || "Erro ao abrir o portal de cobrança do Stripe." });
       }
     } catch {
-      setFeedback({ type: "error", text: "Falha de conexão ao criar sessão de checkout." });
-    } finally {
-      setSubmittingPlan(null);
-    }
-  };
-
-  const handleManageBilling = async () => {
-    if (!empresa || !empresa.stripe_customer_id) return;
-    setLoadingPortal(true);
-    setFeedback(null);
-
-    try {
-      const res = await fetch("/api/stripe/portal", { method: "POST" });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        window.location.href = data.url;
-      } else {
-        setFeedback({ type: "error", text: data.error || "Erro ao redirecionar para o portal." });
-      }
-    } catch {
-      setFeedback({ type: "error", text: "Falha de conexão ao acessar o portal do cliente." });
+      setFeedback({ type: "error", text: "Erro de conexão com o portal do Stripe." });
     } finally {
       setLoadingPortal(false);
     }
   };
 
+  const getPlanoTitle = () => {
+    if (userPlan === "pro") return "Plano Growth / Pro";
+    if (userPlan === "agencia") return "Plano Business / Enterprise";
+    if (userPlan === "starter") return "Plano Starter";
+    if (userPlan === "trial") return "Trial Gratuito";
+    if (userPlan === "expirado") return "Trial Expirado";
+    return "Plano Gratuito";
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
       </div>
     );
   }
-
-  if (!empresa) {
-    return (
-      <div className="max-w-4xl mx-auto p-8 text-center bg-white border rounded-xl shadow-sm">
-        <p className="text-gray-500 font-medium">Empresa ou usuário não associado.</p>
-        <p className="text-xs text-gray-400 mt-2">Por favor, conclua o onboarding.</p>
-      </div>
-    );
-  }
-
-  const statusAtual = getPlanoAtual(empresa);
 
   return (
-    <div className="max-w-5xl mx-auto p-8 space-y-10">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Plano e Faturamento</h1>
-        <p className="text-gray-500 mt-2">Gerencie sua assinatura, formas de pagamento e consulte faturas via Stripe.</p>
-      </div>
-
-      {feedback && (
-        <div
-          className={`rounded-xl border px-5 py-4 text-sm flex items-start gap-3 shadow-sm ${
-            feedback.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-red-200 bg-red-50 text-red-700"
-          }`}
-        >
-          <div className="font-semibold">{feedback.type === "success" ? "✓" : "⚠"}</div>
-          <p>{feedback.text}</p>
-        </div>
-      )}
-
-      {/* PLANO ATUAL CARD */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="space-y-2">
-          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Status da Assinatura</p>
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold text-gray-900 capitalize">
-              {PLANOS[empresa.plano]?.nome || empresa.plano}
-            </h2>
-            {statusAtual === "active" && (
-              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold uppercase tracking-wide">
-                Ativo
-              </span>
-            )}
-            {statusAtual === "trial" && (
-              <span className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wide">
-                Período Trial (3 Dias)
-              </span>
-            )}
-            {statusAtual === "expirado" && (
-              <span className="px-2.5 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-bold uppercase tracking-wide">
-                Expirado
-              </span>
-            )}
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-[26px] font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+              Plano e cobrança
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Gerencie seu plano atual, métodos de pagamento e histórico de faturas.
+            </p>
           </div>
-          {statusAtual === "trial" && (
-            <p className="text-sm text-gray-500">
-              Seu trial expira em:{" "}
-              <span className="font-medium text-gray-700">
-                {new Date(empresa.trial_expires_at).toLocaleDateString()}
-              </span>
-            </p>
-          )}
-          {statusAtual === "active" && empresa.current_period_end && (
-            <p className="text-sm text-gray-500">
-              Próxima renovação:{" "}
-              <span className="font-medium text-gray-700">
-                {new Date(empresa.current_period_end).toLocaleDateString()}
-              </span>
-            </p>
+
+          {feedback && (
+            <div
+              className={`rounded-xl border px-4 py-3 text-xs font-medium ${
+                feedback.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                  : "border-red-200 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300"
+              }`}
+            >
+              {feedback.text}
+            </div>
           )}
         </div>
 
-        {empresa.stripe_customer_id && (
-          <button
-            onClick={handleManageBilling}
-            disabled={loadingPortal}
-            className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loadingPortal ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : (
-              <CreditCard className="w-4 h-4" />
-            )}
-            Gerenciar Assinatura &amp; Faturas
-          </button>
-        )}
-      </div>
+        {/* Seção 1: Plano Atual (Current plan) */}
+        <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-4">
+          <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            Plano atual
+          </h2>
 
-      {/* PLAN OPTIONS */}
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-xl font-bold text-gray-900">Planos Disponíveis</h3>
-          <p className="text-sm text-gray-500 mt-1">Selecione o plano ideal para a sua empresa e acelere suas triagens.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {Object.keys(PLANOS)
-            .filter((key) => key !== "trial")
-            .map((key) => {
-              const plan = PLANOS[key];
-              const isCurrent = empresa.plano === key && statusAtual === "active";
-
-              return (
-                <div
-                  key={key}
-                  className={`bg-white rounded-2xl border p-6 flex flex-col justify-between relative transition shadow-sm ${
-                    isCurrent
-                      ? "border-indigo-600 ring-1 ring-indigo-600"
-                      : "border-gray-200 hover:border-indigo-300"
-                  }`}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  {getPlanoTitle()}
+                </h3>
+                {isActive && (
+                  <span className="bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    Ativo
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Seu plano renova automaticamente ao final de cada período de faturamento.{" "}
+                <a
+                  href="#saiba-mais"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsPlanModalOpen(true);
+                  }}
+                  className="text-blue-600 dark:text-blue-400 font-semibold hover:underline inline-flex items-center gap-1"
                 >
-                  {plan.destaque && (
-                    <span className="absolute -top-3 left-6 px-3 py-0.5 bg-indigo-600 text-white rounded-full text-xs font-semibold uppercase tracking-wider">
-                      Mais Popular
-                    </span>
-                  )}
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900">{plan.nome}</h4>
-                      <div className="mt-2 flex items-baseline">
-                        <span className="text-3xl font-extrabold text-gray-900">R$ {plan.preco}</span>
-                        <span className="text-sm text-gray-400 font-medium ml-1">/mês</span>
-                      </div>
-                    </div>
+                  Saiba mais <ExternalLink className="w-3 h-3" />
+                </a>
+              </p>
+            </div>
 
-                    <ul className="space-y-3 pt-4 border-t border-gray-100 text-sm text-gray-600">
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span>Até <strong>{plan.limite_vagas}</strong> vaga{plan.limite_vagas > 1 ? "s" : ""} ativa{plan.limite_vagas > 1 ? "s" : ""}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span>Até <strong>{plan.limite_pdfs_mes}</strong> PDFs de currículos/mês</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span>Até <strong>{plan.limite_buscas_linkedin}</strong> buscas no LinkedIn/mês</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span>
-                          {plan.agente_ia_bloqueado ? "Sem suporte a Agentes de IA" : "Suporte completo a Agentes de IA"}
-                        </span>
-                      </li>
-                    </ul>
-                  </div>
+            <div className="flex items-center gap-3 self-start md:self-auto">
+              <button
+                type="button"
+                onClick={handleManageBilling}
+                disabled={loadingPortal}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold transition disabled:opacity-60"
+              >
+                {loadingPortal ? "Carregando..." : "Gerenciar Assinatura"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPlanModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition"
+              >
+                Alterar plano
+              </button>
+            </div>
+          </div>
+        </section>
 
-                  <div className="pt-6 mt-6 border-t border-gray-50">
-                    {isCurrent ? (
-                      <div className="w-full py-2.5 bg-indigo-50 text-indigo-700 text-sm font-semibold rounded-xl text-center flex items-center justify-center gap-2">
-                        <ShieldCheck className="w-4 h-4" /> Plano Atual
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleCheckout(key)}
-                        disabled={submittingPlan !== null}
-                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {submittingPlan === key ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        ) : (
-                          <>
-                            Assinar Plano <ArrowRight className="w-4 h-4" />
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-        </div>
+        {/* Seção 2: Histórico de Cobrança (Billing history) */}
+        <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
+          <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Histórico de cobrança
+            </h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="px-6 py-3.5">Plano</th>
+                  <th className="px-6 py-3.5">Valor</th>
+                  <th className="px-6 py-3.5">Data</th>
+                  <th className="px-6 py-3.5">Status do Pagamento</th>
+                  <th className="px-6 py-3.5 text-right">Recibo / NF</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-xs text-slate-500 dark:text-slate-400">
+                    Nenhum histórico de cobrança encontrado. Apenas administradores da organização têm acesso a esta seção.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Seção 3: Notificações de Faturamento */}
+        <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs">
+          <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
+            Notificações
+          </h2>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                Notificações de faturamento por e-mail
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
+                Enviaremos um e-mail com a fatura e o recibo sempre que um pagamento for processado. Para alterar o e-mail da conta de pagamento, use o botão Gerenciar Assinatura acima.
+              </p>
+            </div>
+
+            {/* UI Switch Toggle */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={emailNotifications}
+              onClick={() => setEmailNotifications((v) => !v)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                emailNotifications ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-700"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  emailNotifications ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        </section>
       </div>
-    </div>
+
+      {/* Plan Selection Modal */}
+      <PlanSelectionModal
+        isOpen={isPlanModalOpen}
+        onClose={() => setIsPlanModalOpen(false)}
+        onSelectPlan={handleSelectPlan}
+      />
+    </main>
   );
 }

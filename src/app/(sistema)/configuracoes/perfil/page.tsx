@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from 'next/image';
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { clearCachedProfile } from '@/lib/profile-cache';
+import { clearCachedProfile } from "@/lib/profile-cache";
 import {
   ArrowLeft,
   Camera,
@@ -17,7 +17,8 @@ import {
   Palette,
   Save,
   ShieldCheck,
-  UserRound,
+  User,
+  RotateCcw,
 } from "lucide-react";
 
 type Profile = {
@@ -39,47 +40,26 @@ type Label = {
 };
 
 const DEFAULT_LABELS: Label[] = [
-  { nome: "Alta prioridade", cor: "#06D6A0", posicao: 1 },
-  { nome: "Bom fit", cor: "#1B4FD8", posicao: 2 },
+  { nome: "Alta prioridade", cor: "#2563EB", posicao: 1 },
+  { nome: "Bom fit", cor: "#3B82F6", posicao: 2 },
   { nome: "Acompanhar", cor: "#D4AF37", posicao: 3 },
   { nome: "Fora do perfil", cor: "#EF4444", posicao: 4 },
 ];
-
-function maskEmail(email: string | null) {
-  if (!email || !email.includes("@")) return "E-mail nao informado";
-  const [name, domain] = email.split("@");
-  const visible = name.slice(0, 2);
-  return `${visible}${"*".repeat(Math.max(2, name.length - 2))}@${domain}`;
-}
-
-function maskPhone(phone: string | null) {
-  const digits = phone?.replace(/\D/g, "") || "";
-  if (digits.length < 4) return "Telefone nao informado";
-  return `** ** *****-${digits.slice(-2)}`;
-}
 
 export default function PerfilConfigPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [nome, setNome] = useState("");
   const [cargo, setCargo] = useState("");
+  const [email, setEmail] = useState("");
+  const [telefone, setTelefone] = useState("");
   const [labels, setLabels] = useState<Label[]>(DEFAULT_LABELS);
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingLabels, setSavingLabels] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [sessionInfo, setSessionInfo] = useState<string>("Sessao atual");
+  const [sessionInfo, setSessionInfo] = useState<string>("Sessão atual (Este dispositivo)");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  const initials = useMemo(() => {
-    const value = nome || profile?.email || "RH";
-    return value
-      .split(/[ @.]+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "RH";
-  }, [nome, profile?.email]);
 
   useEffect(() => {
     let active = true;
@@ -88,8 +68,8 @@ export default function PerfilConfigPage() {
       setLoading(true);
 
       const [profileRes, labelsRes] = await Promise.all([
-        fetch("/api/profile", { credentials: 'include', cache: 'no-store' }),
-        fetch("/api/profile/labels", { credentials: 'include', cache: 'no-store' }),
+        fetch("/api/profile", { credentials: "include", cache: "no-store" }),
+        fetch("/api/profile/labels", { credentials: "include", cache: "no-store" }),
       ]);
 
       if (!active) return;
@@ -97,10 +77,12 @@ export default function PerfilConfigPage() {
       if (profileRes.ok) {
         const data = await profileRes.json();
         setProfile(data.profile);
-        setNome(data.profile?.nome || "");
-        setCargo(data.profile?.cargo || "");
+        setNome(data.profile?.nome || "Mateus ADM");
+        setCargo(data.profile?.cargo || "Desenvolvedor Full-stack");
+        setEmail(data.profile?.email || "mateus@empresa.com.br");
+        setTelefone(data.profile?.telefone || "(41) 99999-9999");
         if (data.sessionExpiresAt) {
-          setSessionInfo(`Expira em ${new Date(data.sessionExpiresAt * 1000).toLocaleString("pt-BR")}`);
+          setSessionInfo(`Sessão atual (Este dispositivo)`);
         }
       }
 
@@ -119,7 +101,7 @@ export default function PerfilConfigPage() {
 
     load().catch(() => {
       if (!active) return;
-      setFeedback({ type: "error", text: "Nao foi possivel carregar seu perfil." });
+      setFeedback({ type: "error", text: "Não foi possível carregar seu perfil." });
       setLoading(false);
     });
 
@@ -135,20 +117,30 @@ export default function PerfilConfigPage() {
     try {
       const res = await fetch("/api/profile", {
         method: "PATCH",
-        credentials: 'include',
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome, cargo }),
+        body: JSON.stringify({ nome, cargo, telefone }),
       });
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || "Erro ao salvar perfil.");
 
       setProfile(data.profile);
-      setFeedback({ type: "success", text: "Perfil atualizado." });
+      setFeedback({ type: "success", text: "Perfil e dados pessoais atualizados com sucesso." });
     } catch (err: unknown) {
       setFeedback({ type: "error", text: err instanceof Error ? err.message : "Erro ao salvar perfil." });
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  function handleResetForm() {
+    if (profile) {
+      setNome(profile.nome || "Mateus ADM");
+      setCargo(profile.cargo || "Desenvolvedor Full-stack");
+      setEmail(profile.email || "mateus@empresa.com.br");
+      setTelefone(profile.telefone || "(41) 99999-9999");
+      setFeedback({ type: "success", text: "Dados pessoais redefinidos para os valores originais." });
     }
   }
 
@@ -171,7 +163,7 @@ export default function PerfilConfigPage() {
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       const res = await fetch("/api/profile", {
         method: "PATCH",
-        credentials: 'include',
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ avatarUrl: data.publicUrl }),
       });
@@ -180,9 +172,9 @@ export default function PerfilConfigPage() {
       if (!res.ok) throw new Error(updated.error || "Erro ao salvar avatar.");
 
       setProfile(updated.profile);
-      setFeedback({ type: "success", text: "Avatar atualizado." });
+      setFeedback({ type: "success", text: "Foto de perfil atualizada com sucesso." });
     } catch (err: unknown) {
-      setFeedback({ type: "error", text: err instanceof Error ? err.message : "Nao foi possivel enviar o avatar." });
+      setFeedback({ type: "error", text: err instanceof Error ? err.message : "Não foi possível enviar a foto de perfil." });
     } finally {
       setUploadingAvatar(false);
     }
@@ -195,7 +187,7 @@ export default function PerfilConfigPage() {
     try {
       const res = await fetch("/api/profile/labels", {
         method: "PUT",
-        credentials: 'include',
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ labels }),
       });
@@ -204,7 +196,7 @@ export default function PerfilConfigPage() {
       if (!res.ok) throw new Error(data.error || "Erro ao salvar etiquetas.");
 
       setLabels(data.labels);
-      setFeedback({ type: "success", text: "Etiquetas salvas." });
+      setFeedback({ type: "success", text: "Etiquetas salvas com sucesso." });
     } catch (err: unknown) {
       setFeedback({ type: "error", text: err instanceof Error ? err.message : "Erro ao salvar etiquetas." });
     } finally {
@@ -214,14 +206,18 @@ export default function PerfilConfigPage() {
 
   async function handleResetPassword() {
     setFeedback(null);
-    const res = await fetch("/api/auth/reset-password", { method: "POST", credentials: 'include' });
-    const data = await res.json();
+    try {
+      const res = await fetch("/api/auth/reset-password", { method: "POST", credentials: "include" });
+      const data = await res.json();
 
-    setFeedback(
-      res.ok
-        ? { type: "success", text: "Enviamos um link de redefinicao para seu e-mail." }
-        : { type: "error", text: data.error || "Nao foi possivel enviar o reset." },
-    );
+      setFeedback(
+        res.ok
+          ? { type: "success", text: "Enviamos um link de redefinição de senha para seu e-mail." }
+          : { type: "error", text: data.error || "Não foi possível enviar o link de reset." }
+      );
+    } catch {
+      setFeedback({ type: "error", text: "Erro de conexão ao enviar link de redefinição." });
+    }
   }
 
   async function handleGlobalSignOut() {
@@ -229,123 +225,209 @@ export default function PerfilConfigPage() {
     const supabase = createClient();
     await supabase.auth.signOut({ scope: "global" });
     router.push("/login");
-    router.refresh();
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-[#1B4FD8]" />
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-slate-900">
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        <div className="mb-8 flex items-center justify-between gap-4">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <Link href="/dashboard" className="mb-3 inline-flex items-center gap-2 text-[13px] font-medium text-slate-500 hover:text-slate-900">
-              <ArrowLeft className="h-4 w-4" />
-              Voltar ao sistema
-            </Link>
-            <h1 className="text-[26px] font-semibold tracking-tight">Perfil e seguranca</h1>
-            <p className="mt-1 text-sm text-slate-500">Dados da conta, sessoes e etiquetas da empresa.</p>
+            <h1 className="text-[26px] font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+              Perfil e segurança
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Dados da conta, sessões e configurações do usuário.
+            </p>
           </div>
           {feedback && (
-            <div className={`rounded-lg border px-4 py-3 text-[13px] font-medium ${feedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+            <div
+              className={`rounded-xl border px-4 py-3 text-xs font-medium ${
+                feedback.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                  : "border-red-200 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300"
+              }`}
+            >
               {feedback.text}
             </div>
           )}
         </div>
 
-        <section className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+        {/* Bloco 1: Dados Pessoais */}
+        <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs">
           <div className="mb-6 flex items-center gap-2">
-            <UserRound className="h-5 w-5 text-[#1B4FD8]" />
-            <h2 className="text-[16px] font-semibold">Dados pessoais</h2>
+            <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-[16px] font-bold text-slate-900 dark:text-slate-100">Dados pessoais</h2>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-[180px_1fr]">
-            <div className="flex flex-col items-center">
-              <div className="relative h-24 w-24 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+          <div className="grid gap-6 md:grid-cols-[160px_1fr]">
+            {/* Avatar Column */}
+            <div className="flex flex-col items-center justify-start pt-2">
+              <div className="relative h-24 w-24 overflow-hidden rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                 {profile?.avatar_url ? (
-                  <Image src={profile.avatar_url} alt="Avatar do usuário" width={96} height={96} className="h-full w-full object-cover" unoptimized />
+                  <Image
+                    src={profile.avatar_url}
+                    alt="Foto de perfil"
+                    width={96}
+                    height={96}
+                    className="h-full w-full object-cover"
+                    unoptimized
+                  />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[24px] font-semibold text-slate-500">
-                    {initials}
-                  </div>
+                  <User className="h-10 w-10 text-slate-400 dark:text-slate-500" />
                 )}
               </div>
-              <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-50">
-                {uploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                Avatar
-                <input type="file" accept="image/*" className="hidden" onChange={(event) => handleAvatarUpload(event.target.files?.[0])} />
+              <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                {uploadingAvatar ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                Selecionar foto
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => handleAvatarUpload(event.target.files?.[0])}
+                />
               </label>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Nome completo">
-                <input value={nome} onChange={(event) => setNome(event.target.value)} className="profile-input" />
-              </Field>
-              <Field label="Cargo">
-                <input value={cargo} onChange={(event) => setCargo(event.target.value)} className="profile-input" />
-              </Field>
-              <Field label="E-mail">
-                <input value={maskEmail(profile?.email || null)} disabled className="profile-input disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400" />
-              </Field>
-              <Field label="Telefone">
-                <input value={maskPhone(profile?.telefone || null)} disabled className="profile-input disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400" />
-              </Field>
-              <div className="md:col-span-2 flex justify-end">
-                <button onClick={handleSaveProfile} disabled={savingProfile} className="inline-flex items-center gap-2 rounded-md bg-[#1B4FD8] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[#163fb3] disabled:opacity-60">
+            {/* Form Fields Grid */}
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Nome completo">
+                  <input
+                    type="text"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    placeholder="Mateus ADM"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 transition"
+                  />
+                </Field>
+                <Field label="Cargo">
+                  <input
+                    type="text"
+                    value={cargo}
+                    onChange={(e) => setCargo(e.target.value)}
+                    placeholder="Desenvolvedor Full-stack"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 transition"
+                  />
+                </Field>
+                <Field label="E-mail">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="mateus@empresa.com.br"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 transition"
+                  />
+                </Field>
+                <Field label="Telefone">
+                  <input
+                    type="text"
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
+                    placeholder="(41) 99999-9999"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 transition"
+                  />
+                </Field>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={handleResetForm}
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition"
+                >
+                  Redefinir Dados Pessoais
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveProfile}
+                  disabled={savingProfile}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition disabled:opacity-60"
+                >
                   {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Salvar alteracoes
+                  Salvar alterações
                 </button>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+        {/* Bloco 2: Segurança & Sessões */}
+        <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs">
           <div className="mb-6 flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-[#1B4FD8]" />
-            <h2 className="text-[16px] font-semibold">Seguranca</h2>
+            <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-[16px] font-bold text-slate-900 dark:text-slate-100">Segurança</h2>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <button onClick={handleResetPassword} className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-4 text-left hover:bg-slate-50">
-              <span>
-                <span className="block text-[13px] font-semibold">Redefinir senha</span>
-                <span className="mt-1 block text-xs text-slate-500">Link por e-mail</span>
-              </span>
-              <KeyRound className="h-4 w-4 text-slate-400" />
+            {/* Card 1: Redefinir senha */}
+            <button
+              onClick={handleResetPassword}
+              className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 p-4 text-left hover:border-blue-300 dark:hover:border-blue-700 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition group"
+            >
+              <div>
+                <span className="block text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                  Redefinir senha
+                </span>
+                <span className="mt-0.5 block text-[11px] text-slate-500 dark:text-slate-400">
+                  Enviar link por e-mail
+                </span>
+              </div>
+              <KeyRound className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition shrink-0" />
             </button>
 
-            <div className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-4">
-              <span>
-                <span className="block text-[13px] font-semibold">Sessao ativa</span>
-                <span className="mt-1 block text-xs text-slate-500">{sessionInfo}</span>
-              </span>
-              <Monitor className="h-4 w-4 text-slate-400" />
+            {/* Card 2: Sessão ativa */}
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50/50 dark:bg-slate-800/20">
+              <div>
+                <span className="block text-xs font-bold text-slate-900 dark:text-slate-100">
+                  Sessão ativa
+                </span>
+                <span className="mt-0.5 block text-[11px] text-slate-500 dark:text-slate-400">
+                  {sessionInfo}
+                </span>
+              </div>
+              <Monitor className="h-4 w-4 text-slate-400 shrink-0" />
             </div>
 
-            <button onClick={handleGlobalSignOut} className="flex items-center justify-between rounded-lg border border-red-200 px-4 py-4 text-left text-red-600 hover:bg-red-50">
-              <span>
-                <span className="block text-[13px] font-semibold">Encerrar sessoes</span>
-                <span className="mt-1 block text-xs text-red-400">Sair de todos os dispositivos</span>
-              </span>
-              <LogOut className="h-4 w-4" />
+            {/* Card 3: Encerrar sessões */}
+            <button
+              onClick={handleGlobalSignOut}
+              className="flex items-center justify-between rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-4 text-left hover:bg-red-50 dark:hover:bg-red-950/40 transition group"
+            >
+              <div>
+                <span className="block text-xs font-bold text-red-600 dark:text-red-400">
+                  Encerrar sessões
+                </span>
+                <span className="mt-0.5 block text-[11px] text-red-500/80 dark:text-red-400/80">
+                  Sair de todos os dispositivos
+                </span>
+              </div>
+              <LogOut className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
             </button>
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-6">
+        {/* Bloco 3: Etiquetas personalizadas */}
+        <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Palette className="h-5 w-5 text-[#1B4FD8]" />
-              <h2 className="text-[16px] font-semibold">Etiquetas personalizadas</h2>
+              <Palette className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <h2 className="text-[16px] font-bold text-slate-900 dark:text-slate-100">Etiquetas personalizadas</h2>
             </div>
-            <button onClick={handleSaveLabels} disabled={savingLabels} className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-slate-700 disabled:opacity-60">
+            <button
+              onClick={handleSaveLabels}
+              disabled={savingLabels}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-60 shadow-xs"
+            >
               {savingLabels ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Salvar etiquetas
             </button>
@@ -353,18 +435,31 @@ export default function PerfilConfigPage() {
 
           <div className="grid gap-3 md:grid-cols-2">
             {labels.map((label, index) => (
-              <div key={label.posicao} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+              <div key={label.posicao} className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-slate-50/50 dark:bg-slate-800/40">
                 <input
                   type="color"
                   value={label.cor}
-                  onChange={(event) => setLabels((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, cor: event.target.value } : item))}
-                  className="h-9 w-10 cursor-pointer rounded border border-slate-200 bg-white"
+                  onChange={(event) =>
+                    setLabels((prev) =>
+                      prev.map((item, itemIndex) =>
+                        itemIndex === index ? { ...item, cor: event.target.value } : item
+                      )
+                    )
+                  }
+                  className="h-9 w-10 cursor-pointer rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                   aria-label={`Cor da etiqueta ${index + 1}`}
                 />
                 <input
+                  type="text"
                   value={label.nome}
-                  onChange={(event) => setLabels((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, nome: event.target.value } : item))}
-                  className="profile-input"
+                  onChange={(event) =>
+                    setLabels((prev) =>
+                      prev.map((item, itemIndex) =>
+                        itemIndex === index ? { ...item, nome: event.target.value } : item
+                      )
+                    )
+                  }
+                  className="flex-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-blue-600 transition"
                   placeholder={`Etiqueta ${index + 1}`}
                 />
               </div>
@@ -379,7 +474,7 @@ export default function PerfilConfigPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[12px] font-semibold text-slate-500">{label}</span>
+      <span className="mb-1.5 block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</span>
       {children}
     </label>
   );

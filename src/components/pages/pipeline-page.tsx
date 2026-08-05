@@ -287,18 +287,6 @@ export default function PipelinePage({
         </div>
         <div className="flex items-center gap-3">
           <button
-            type="button"
-            onClick={() => setShowOnlyFavorites((prev) => !prev)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium border transition-all ${
-              showOnlyFavorites
-                ? "bg-[#FFFBEA] border-[#F5C000] text-[#B45309]"
-                : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB]"
-            }`}
-          >
-            <Star className={`w-4 h-4 ${showOnlyFavorites ? "fill-[#F5C000] text-[#F5C000]" : ""}`} strokeWidth={1.8} />
-            {showOnlyFavorites ? "Apenas favoritos" : "Mostrar todos"}
-          </button>
-          <button
             onClick={onResetPipeline}
             className="btn-ghost flex items-center gap-2 bg-white"
           >
@@ -306,6 +294,7 @@ export default function PipelinePage({
             Resetar pipeline
           </button>
         </div>
+
       </div>
 
       {/* SLA Alert Header Info Banner */}

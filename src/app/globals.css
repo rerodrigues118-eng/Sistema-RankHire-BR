@@ -47,28 +47,28 @@ html {
   --radius: 8px; /* Taste Skill: sharper, more premium corners (8px instead of 12px) */
 }
 
-/* ── Dark Mode Variables ── */
+/* ── Dark Mode Variables (Enterprise Slate Theme) ── */
 html.dark {
   color-scheme: dark;
 
-  --bg-page:        #0F172A;
-  --bg-sidebar:     #0C1526;
-  --bg-card:        #1E293B;
-  --bg-card-hover:  #263147;
-  --bg-input:       #1E293B;
-  --bg-active:      #1E3A5F;
+  --bg-page:        #020617;
+  --bg-sidebar:     #090D16;
+  --bg-card:        #0F172A;
+  --bg-card-hover:  #1E293B;
+  --bg-input:       #0F172A;
+  --bg-active:      #172554;
 
-  --border-default: #334155;
+  --border-default: #1E293B;
   --border-sidebar: #1E293B;
 
-  --text-primary:   #F1F5F9;
-  --text-secondary: #94A3B8;
+  --text-primary:   #F8FAFC;
+  --text-secondary: #CBD5E1;
   --text-muted:     #64748B;
 
   --green:          #3B82F6;
-  --green-bg:       #1E3A5F;
+  --green-bg:       #172554;
   --gold:           #F5C542;
-  --cyan:           #22D3EE;
+  --cyan:           #38BDF8;
 
   --background: var(--bg-page);
   --foreground: var(--text-primary);

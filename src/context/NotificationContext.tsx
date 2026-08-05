@@ -34,6 +34,7 @@ interface NotificationContextType {
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearNotifications: () => void;
+  deleteNotification: (id: string) => void;
   dismissToast: (id: string) => void;
   isSidebarCollapsed: boolean;
   toggleSidebar: () => void;
@@ -74,6 +75,7 @@ const DEFAULT_CONTEXT: NotificationContextType = {
   markAsRead: () => {},
   markAllAsRead: () => {},
   clearNotifications: () => {},
+  deleteNotification: () => {},
   dismissToast: () => {},
   isSidebarCollapsed: false,
   toggleSidebar: () => {},
@@ -204,6 +206,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     setNotifications([]);
   }, []);
 
+  const deleteNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
@@ -216,6 +222,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         markAsRead,
         markAllAsRead,
         clearNotifications,
+        deleteNotification,
         dismissToast,
         isSidebarCollapsed,
         toggleSidebar,
