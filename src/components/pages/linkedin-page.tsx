@@ -545,6 +545,25 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     await handleConfirmSearch();
   };
 
+  const handleRemoveHistoryItem = (queryToRemove: string) => {
+    const vagaKey = activeJob?.id || 'default';
+    const updated = searchHistory.filter(q => q !== queryToRemove);
+    setSearchHistory(updated);
+    try {
+      localStorage.setItem(`rankhire_history_${vagaKey}`, JSON.stringify(updated));
+    } catch {}
+    showToast(`Busca "${queryToRemove}" removida.`);
+  };
+
+  const handleClearAllHistory = () => {
+    const vagaKey = activeJob?.id || 'default';
+    setSearchHistory([]);
+    try {
+      localStorage.removeItem(`rankhire_history_${vagaKey}`);
+    } catch {}
+    showToast("Histórico de buscas recentes limpo.");
+  };
+
   // Criteria update handler
   const handleUpdateCriteria = () => {
     setIsCriteriaOpen(false);
@@ -800,16 +819,42 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
                     {searchHistory.length > 0 && (
                       <div className="mt-5 flex flex-col items-center gap-2">
-                        <span className="text-[11px] text-slate-400 font-medium">Buscas recentes</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-slate-400 font-medium">Buscas recentes</span>
+                          <button
+                            type="button"
+                            onClick={handleClearAllHistory}
+                            className="text-[11px] text-slate-400 hover:text-red-500 font-medium transition-colors underline cursor-pointer"
+                          >
+                            Limpar todas
+                          </button>
+                        </div>
                         <div className="flex flex-wrap justify-center gap-2">
                           {searchHistory.map((q, i) => (
-                            <button
+                            <div
                               key={i}
-                              onClick={() => { setQueryText(q); handleRunSearch(); }}
-                              className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-full text-xs text-slate-600 font-medium hover:border-[#7C3AED]/50 hover:text-[#7C3AED] transition-all shadow-sm truncate max-w-[260px]"
+                              className="group inline-flex items-center bg-white border border-slate-200 rounded-full text-xs text-slate-600 font-medium shadow-xs hover:border-[#7C3AED]/50 hover:text-[#7C3AED] transition-all max-w-[280px]"
                             >
-                              🕐 {q}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => { setQueryText(q); handleRunSearch(); }}
+                                className="pl-3.5 pr-1.5 py-1.5 flex items-center gap-1.5 truncate text-left cursor-pointer"
+                              >
+                                <span className="text-[11px]">🕐</span>
+                                <span className="truncate max-w-[200px]">{q}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveHistoryItem(q);
+                                }}
+                                title="Apagar busca recente"
+                                className="pr-3 pl-1 py-1.5 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                              >
+                                <X size={13} />
+                              </button>
+                            </div>
                           ))}
                         </div>
                       </div>
