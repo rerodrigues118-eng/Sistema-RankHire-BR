@@ -429,8 +429,8 @@ export default function PdfRankerPage({
       {activeTab === "triagem" && (
         <div className="space-y-6">
           
-          {/* Warning if criteria not set */}
-          {!hasCriteria && criteriaLoaded && (
+          {/* Warning if criteria not set (Apenas se o limite de PDFs NÃO foi atingido) */}
+          {!hasCriteria && criteriaLoaded && !isLimitReached && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-xs text-amber-900 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />

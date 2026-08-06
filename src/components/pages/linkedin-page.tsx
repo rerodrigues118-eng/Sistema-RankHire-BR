@@ -12,7 +12,7 @@ import {
   ChevronLeft, ChevronRight, Lock, RotateCcw, Share2, UploadCloud,
   Mail, Phone, CircleDollarSign, Calendar, Building2, MapPin,
   ThumbsUp, ThumbsDown, Database, Zap, Sparkle, Link as LinkIcon,
-  MoreVertical, UserPlus, Download, Flag, User, ArrowRight, Bookmark
+  MoreVertical, UserPlus, Download, Flag, User, ArrowRight, Bookmark, Lightbulb
 } from "lucide-react";
 import PlanSelectionModal from "@/components/PlanSelectionModal";
 
@@ -923,7 +923,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                           <button 
                             onClick={handleInitialSubmit}
                             disabled={!queryText.trim()}
-                            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7C3AED] hover:opacity-95 shadow text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 shadow text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                           >
                             <ArrowUp size={16} />
                           </button>
@@ -935,7 +935,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       A IA pode cometer erros. Verifique informações relevantes.
                     </p>
 
-                    {/* Botões com ideias de pesquisas automáticas */}
+                    {/* Botões com ideias de pesquisas automáticas com Ícones */}
                     <div className="mt-3 flex flex-wrap justify-center gap-2 max-w-xl">
                       {[
                         "Desenvolvedor Full Stack React/Node com 3+ anos em SP",
@@ -962,9 +962,10 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                               })
                               .finally(() => setIsExtractingFilters(false));
                           }}
-                          className="px-3 py-1.5 bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 rounded-full text-xs text-slate-600 font-medium transition-all shadow-2xs cursor-pointer"
+                          className="px-3.5 py-1.5 bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-full text-xs text-slate-700 font-medium transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
                         >
-                          💡 {idea}
+                          <Lightbulb size={14} className="text-amber-500 shrink-0" />
+                          <span>{idea}</span>
                         </button>
                       ))}
                     </div>
@@ -1139,7 +1140,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                             </button>
                             <button
                               onClick={() => handleConfirmSearch()}
-                              className="w-8 h-8 rounded-full bg-[#7C3AED] hover:bg-[#6d28d9] text-white flex items-center justify-center transition-all shadow-md"
+                              className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-all shadow-md cursor-pointer"
                             >
                               <ArrowRight size={16} />
                             </button>
@@ -1228,7 +1229,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     </button>
                     <button
                       onClick={() => handleConfirmSearch()}
-                      className="px-6 py-2.5 bg-[#7C3AED] text-white rounded-xl text-xs font-semibold shadow-md hover:bg-[#6d28d9] transition-all active:scale-95"
+                      className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-semibold shadow-md hover:bg-blue-700 transition-all active:scale-95 cursor-pointer"
                     >
                       Executar pesquisa
                     </button>

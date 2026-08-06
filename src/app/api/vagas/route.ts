@@ -39,6 +39,9 @@ export async function GET() {
       ...vaga,
       title: vaga.title || vaga.titulo || "",
       titulo: vaga.titulo || vaga.title || "",
+      location: vaga.localizacao || "",
+      contract: vaga.tipo_contrato || "",
+      briefing: vaga.briefing || "",
     }));
 
     return NextResponse.json({ vagas });

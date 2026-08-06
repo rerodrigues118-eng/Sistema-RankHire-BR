@@ -60,7 +60,7 @@ export async function GET() {
     const [jobsRes, candidatesRes, empresaRes] = await Promise.all([
       supabase
         .from("vagas")
-        .select("id,title,titulo,area,status,created_at")
+        .select("id,title,titulo,area,status,created_at,localizacao,tipo_contrato,briefing")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false }),
       supabase
@@ -160,6 +160,9 @@ export async function GET() {
         status: normalizeJobStatus(job.status),
         createdDate: job.created_at ? new Date(job.created_at).toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR"),
         createdAt: job.created_at || undefined,
+        location: (job as any).localizacao || "",
+        contract: (job as any).tipo_contrato || "",
+        briefing: (job as any).briefing || "",
       };
     });
 
