@@ -118,10 +118,10 @@ export function DashboardShell({ initialPage = "dashboard" }: { initialPage?: Pa
         })();
         const valid = data.jobs.find((j: Job) => j.id === restored);
         if (valid) {
-          setSelectedJobId(restored);
+          setSelectedJobId((prev) => (prev === restored ? prev : restored));
         } else if (data.jobs.length > 0) {
           const defaultJobId = data.jobs[0].id;
-          setSelectedJobId(defaultJobId);
+          setSelectedJobId((prev) => (prev === defaultJobId ? prev : defaultJobId));
           try { localStorage.setItem('rankhire_vaga_selecionada', defaultJobId); } catch { /* ignore */ }
         } else {
           setSelectedJobId(null);

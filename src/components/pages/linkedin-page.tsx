@@ -358,12 +358,6 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     showToast(`Tag "${tagToRemove}" removida.`);
   };
 
-  // Reset search state back to 'idle' on mount / navigation
-  useEffect(() => {
-    setPhase('idle');
-    setQueryText("");
-  }, []);
-
   useEffect(() => {
     async function loadPlanAccess() {
       try {
@@ -413,11 +407,23 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     }
   }, [isShareOpen, activeJob?.id, profiles, criteria, shareLink]);
 
-  // Restaurar historico de buscas do localStorage ao montar ou trocar de vaga, mantendo o layout principal (idle) como inicial
+  // Restaurar estado da busca ativa e histórico do localStorage ao montar ou trocar de vaga
   useEffect(() => {
     const vagaKey = activeJob?.id || 'default';
-    setPhase('idle');
-    setQueryText("");
+    
+    try {
+      const savedSearch = localStorage.getItem(`rankhire_search_${vagaKey}`);
+      if (savedSearch) {
+        const parsed = JSON.parse(savedSearch);
+        if (parsed && parsed.hasSearched && Array.isArray(parsed.profiles) && parsed.profiles.length > 0) {
+          setProfiles(parsed.profiles.slice(0, 6));
+          setQueryText(parsed.queryText || "");
+          setPhase('results');
+          setActiveTab('results');
+        }
+      }
+    } catch {}
+
     try {
       const hist = localStorage.getItem(`rankhire_history_${vagaKey}`);
       if (hist) setSearchHistory(JSON.parse(hist));
@@ -951,7 +957,15 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   </motion.div>
 
                   <div className="flex justify-end items-center gap-6 pt-2">
-                    <button onClick={() => { setPhase('idle'); setQueryText(''); }} className="text-sm font-medium text-slate-600 hover:text-slate-900">
+                    <button 
+                      onClick={() => { 
+                        const vagaKey = activeJob?.id || 'default';
+                        try { localStorage.removeItem(`rankhire_search_${vagaKey}`); } catch {}
+                        setPhase('idle'); 
+                        setQueryText(''); 
+                      }} 
+                      className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                    >
                       Resetar busca
                     </button>
                     <button
@@ -1059,6 +1073,8 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         </button>
                         <button 
                           onClick={() => {
+                            const vagaKey = activeJob?.id || 'default';
+                            try { localStorage.removeItem(`rankhire_search_${vagaKey}`); } catch {}
                             setPhase('idle');
                             setQueryText("");
                           }}
