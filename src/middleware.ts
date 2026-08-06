@@ -8,6 +8,8 @@ const PUBLIC_ROUTES = [
   '/login',
   '/cadastro',
   '/onboarding',
+  '/auth/callback',
+  '/auth',
   '/lgpd',
   '/privacidade',
   '/termos',
