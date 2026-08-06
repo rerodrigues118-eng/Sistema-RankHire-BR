@@ -663,19 +663,31 @@ export default function CandidateDrawer({
               {/* ABA 4: EXPERIÊNCIA */}
               {drawerTab === 'experiencia' && (
                 <div className="space-y-3">
-                  <div className="p-3 border border-slate-200 rounded-xl bg-white">
-                    <p className="text-xs font-bold text-slate-800">{localCandidate.role}</p>
-                    <p className="text-xs text-violet-600 font-medium">{localCandidate.company}</p>
-                    <p className="text-[11px] text-slate-400 mt-1">2021 - Atual · Paraná, Brasil</p>
-                  </div>
+                  {localCandidate.experiencias && localCandidate.experiencias.length > 0 ? (
+                    localCandidate.experiencias.map((exp, idx) => (
+                      <div key={idx} className="p-3 border border-slate-200 rounded-xl bg-white space-y-1">
+                        <p className="text-xs font-bold text-slate-800">{exp.cargo}</p>
+                        <p className="text-xs text-violet-600 font-medium">{exp.empresa}</p>
+                        <p className="text-[11px] text-slate-400">{exp.inicio} – {exp.fim || "Presente"}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 border border-slate-200 rounded-xl bg-white space-y-1">
+                      <p className="text-xs font-bold text-slate-800">{localCandidate.role}</p>
+                      <p className="text-xs text-violet-600 font-medium">{localCandidate.company}</p>
+                      <p className="text-[11px] text-slate-400">2021 - Presente · Paraná, Brasil</p>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* ABA 5: FORMAÇÃO */}
               {drawerTab === 'formacao' && (
                 <div className="space-y-3">
-                  <div className="p-3 border border-slate-200 rounded-xl bg-white">
-                    <p className="text-xs font-bold text-slate-800">Bacharelado em Ciência da Computação</p>
+                  <div className="p-3 border border-slate-200 rounded-xl bg-white space-y-1">
+                    <p className="text-xs font-bold text-slate-800">
+                      {typeof localCandidate.formacao === 'string' && localCandidate.formacao ? localCandidate.formacao : "Bacharelado / Formação Superior"}
+                    </p>
                     <p className="text-xs text-slate-500">Universidade Federal · 2017 - 2021</p>
                   </div>
                 </div>

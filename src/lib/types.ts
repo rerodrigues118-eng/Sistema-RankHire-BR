@@ -135,6 +135,7 @@ export interface Candidate {
   cargoAtual?: string | null;
   regimePreferido?: string | null;
   resumoIa?: string | null;
+  experiencias?: { cargo: string; empresa: string; inicio: string; fim: string | null; descricao?: string }[];
 }
 
 export interface Job {
