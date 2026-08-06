@@ -16,7 +16,7 @@ export async function GET() {
     // Fetch empresa_id for this user
     const { data: usuario } = await admin
       .from("usuarios")
-      .select("empresa_id")
+      .select("empresa_id, created_at")
       .eq("id", userId)
       .single();
 
@@ -36,7 +36,7 @@ export async function GET() {
       // LinkedIn searches (for "fez primeira busca com IA")
       admin.from("linkedin_search_sessions").select("id", { count: "exact" }).eq("empresa_id", empresaId),
       // Empresa data for profile completion check
-      admin.from("empresas").select("nome,logo_url,agents_searches_count").eq("id", empresaId).single(),
+      admin.from("empresas").select("nome,logo_url,agents_searches_count,created_at").eq("id", empresaId).single(),
     ]);
 
     const vagas = vagasRes.data ?? [];
@@ -75,17 +75,31 @@ export async function GET() {
     ];
     const checklistDone = checklist.filter(c => c.done).length;
 
-    // ── Activity Chart: last 30 days (profiles analyzed per day) ─────
+    // ── Activity Chart: inicia a partir da data de criação da conta (created_at) ─────
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+    const userCreatedAt = usuario?.created_at ? new Date(usuario.created_at) : null;
+    const empresaCreatedAt = empresa?.created_at ? new Date(empresa.created_at) : null;
+    let creationDate = userCreatedAt || empresaCreatedAt || thirtyDaysAgo;
+    if (isNaN(creationDate.getTime())) {
+      creationDate = thirtyDaysAgo;
+    }
+
+    // Define a data inicial como a data de criacao da conta (ou no maximo 30 dias atras)
+    const startDate = creationDate > thirtyDaysAgo ? creationDate : thirtyDaysAgo;
+    startDate.setHours(0, 0, 0, 0);
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const daysCount = Math.max(1, Math.min(30, Math.ceil((now.getTime() - startDate.getTime()) / msPerDay) + 1));
+
     const activityByDay: Record<string, number> = {};
-    // Build last 30 days skeleton
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * msPerDay);
       const key = d.toISOString().slice(0, 10);
       activityByDay[key] = 0;
     }
+
     candidatos.forEach(c => {
       if (!c.created_at) return;
       const d = c.created_at.slice(0, 10);

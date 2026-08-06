@@ -156,19 +156,14 @@ export default function DashboardPage({
   const vagasPorStatus = dashboardSummary.vagasPorStatus ?? [];
   const candidatosPorOrigem = dashboardSummary.candidatosPorOrigem ?? [];
 
-  // Activity Chart (Last 30 days) — 0 count if no activity
+  // Activity Chart — utiliza o relatorio dinâmico retornado do backend iniciado a partir da criacao da conta
   const effectiveActivityData = React.useMemo(() => {
-    if (activityData.length > 0) {
+    if (activityData && activityData.length > 0) {
       return activityData;
     }
     const now = new Date();
-    const days: any[] = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const dateStr = d.toISOString().slice(0, 10);
-      days.push({ date: dateStr, count: 0 });
-    }
-    return days;
+    const dateStr = now.toISOString().slice(0, 10);
+    return [{ date: dateStr, count: 0 }];
   }, [activityData]);
 
   // Visual Pipeline Funnel (Strictly real candidate counts)
