@@ -289,6 +289,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   const [candidateStatuses, setCandidateStatuses] = useState<Record<string, string>>({});
   const [candidateTags, setCandidateTags] = useState<Record<string, string[]>>({});
   const [openCardDropdownId, setOpenCardDropdownId] = useState<string | null>(null);
+  const [openSearchHistoryMenu, setOpenSearchHistoryMenu] = useState<number | null>(null);
   const [openShortlistDropdown, setOpenShortlistDropdown] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagInput, setNewTagInput] = useState("");
@@ -880,7 +881,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     animate="visible"
                     exit="exit"
                     variants={searchFlowVariants}
-                    className="max-w-[760px] mx-auto w-full py-16 flex flex-col items-center"
+                    className="max-w-[760px] mx-auto w-full py-12 flex flex-col items-center"
                   >
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/60 px-3.5 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm">
                       <Sparkles className="w-3.5 h-3.5" />
@@ -893,75 +894,132 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       Descreva o perfil ideal em linguagem natural. A IA define os critérios e filtros automaticamente.
                     </p>
                     
-                    <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg p-1">
-                      <textarea 
-                        value={queryText}
-                        onChange={(e) => setQueryText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleInitialSubmit();
-                          }
-                        }}
-                        placeholder="Ex: Designer gráfico no Paraná com 5 anos de experiência e Photoshop..."
-                        rows={3}
-                        className="w-full resize-none bg-transparent px-5 py-4 text-[14px] text-slate-800 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                      />
-                      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 rounded-b-2xl">
-                        <button 
-                          onClick={() => setIsFiltersOpen(true)}
-                          className="flex items-center gap-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl font-semibold text-[11px] px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                          Filtros avançados
-                        </button>
-                        <button 
-                          onClick={handleInitialSubmit}
-                          disabled={!queryText.trim()}
-                          className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7C3AED] hover:opacity-95 shadow text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          <ArrowUp size={16} />
-                        </button>
+                    {/* Chat Central Container com Blur Azul Pulsante */}
+                    <div className="relative w-full">
+                      <div className="absolute -inset-3 bg-gradient-to-r from-blue-500/20 via-sky-400/20 to-indigo-500/20 rounded-[32px] blur-2xl animate-pulse pointer-events-none -z-10" />
+
+                      <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-1">
+                        <textarea 
+                          value={queryText}
+                          onChange={(e) => setQueryText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleInitialSubmit();
+                            }
+                          }}
+                          placeholder="Ex: Designer gráfico no Paraná com 5 anos de experiência e Photoshop..."
+                          rows={3}
+                          className="w-full resize-none bg-transparent px-5 py-4 text-[14px] text-slate-800 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        />
+                        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 rounded-b-2xl">
+                          <button 
+                            onClick={() => setIsFiltersOpen(true)}
+                            className="flex items-center gap-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl font-semibold text-[11px] px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                          >
+                            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                            Filtros avançados
+                          </button>
+                          <button 
+                            onClick={handleInitialSubmit}
+                            disabled={!queryText.trim()}
+                            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7C3AED] hover:opacity-95 shadow text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <ArrowUp size={16} />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
+                    {/* Histórico de Pesquisas Recentes (Estilo Imagem 3 da referência) */}
                     {searchHistory.length > 0 && (
-                      <div className="mt-5 flex flex-col items-center gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-slate-400 font-medium">Buscas recentes</span>
+                      <div className="w-full mt-10 text-left">
+                        <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            Pesquisas recentes ( {searchHistory.length} ) <span className="text-slate-400 font-normal">+</span>
+                          </h3>
                           <button
                             type="button"
                             onClick={handleClearAllHistory}
-                            className="text-[11px] text-slate-400 hover:text-red-500 font-medium transition-colors underline cursor-pointer"
+                            className="text-xs text-slate-400 hover:text-red-500 font-medium transition-colors cursor-pointer"
                           >
                             Limpar todas
                           </button>
                         </div>
-                        <div className="flex flex-wrap justify-center gap-2">
+                        <div className="space-y-2">
                           {searchHistory.map((q, i) => (
                             <div
                               key={i}
-                              className="group inline-flex items-center bg-white border border-slate-200 rounded-full text-xs text-slate-600 font-medium shadow-xs hover:border-[#7C3AED]/50 hover:text-[#7C3AED] transition-all max-w-[280px]"
+                              className="group relative flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-blue-200 dark:hover:border-slate-700 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
                             >
-                              <button
-                                type="button"
+                              <div
                                 onClick={() => { setQueryText(q); handleRunSearch(); }}
-                                className="pl-3.5 pr-1.5 py-1.5 flex items-center gap-1.5 truncate text-left cursor-pointer"
+                                className="flex-1 min-w-0 pr-4"
                               >
-                                <span className="text-[11px]">🕐</span>
-                                <span className="truncate max-w-[200px]">{q}</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveHistoryItem(q);
-                                }}
-                                title="Apagar busca recente"
-                                className="pr-3 pl-1 py-1.5 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                              >
-                                <X size={13} />
-                              </button>
+                                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 transition-colors">
+                                  {q}
+                                </p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                  Criado há {i + 1} horas por Mateus Henrique
+                                </p>
+                              </div>
+                              <div className="relative flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenSearchHistoryMenu(openSearchHistoryMenu === i ? null : i);
+                                  }}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 transition-colors"
+                                >
+                                  <MoreVertical size={16} />
+                                </button>
+                                {openSearchHistoryMenu === i && (
+                                  <div className="absolute right-0 top-8 w-36 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        showToast("Busca renomeada.");
+                                        setOpenSearchHistoryMenu(null);
+                                      }}
+                                      className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium"
+                                    >
+                                      Renomear
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setQueryText(q);
+                                        handleRunSearch();
+                                        setOpenSearchHistoryMenu(null);
+                                      }}
+                                      className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium"
+                                    >
+                                      Duplicado
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        showToast("Busca movida.");
+                                        setOpenSearchHistoryMenu(null);
+                                      }}
+                                      className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium"
+                                    >
+                                      Mover
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveHistoryItem(q);
+                                        setOpenSearchHistoryMenu(null);
+                                      }}
+                                      className="w-full text-left px-3.5 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 font-medium"
+                                    >
+                                      Excluir
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -969,90 +1027,156 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     )}
                   </motion.div>
                 ) : phase === 'review' ? (
+                /* Fase de Edição de Filtros e Critérios — Centralizada na Tela (Imagens 4 e 5) */
                 <motion.div
                   key="review-filters"
                   initial="hidden"
                   animate="visible"
                   exit="exit"
                   variants={searchFlowVariants}
-                  className="max-w-3xl mx-auto w-full flex flex-col gap-4 py-8"
+                  className="max-w-2xl mx-auto w-full py-12 flex flex-col gap-4 items-center justify-center min-h-[70vh]"
                 >
-                  <div className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-slate-950 flex items-center justify-center flex-shrink-0">
-                      <Sparkle size={14} className="text-white fill-white" />
-                    </div>
-                    <span className="text-slate-800 font-medium text-sm">{queryText}</span>
+                  {/* Caixa de Entrada com Checklist Verde (Imagem 4 da referência) */}
+                  <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-lg p-5 flex flex-col gap-3 relative">
+                    <input
+                      type="text"
+                      value={queryText}
+                      onChange={(e) => setQueryText(e.target.value)}
+                      className="w-full bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 outline-none"
+                    />
+
+                    {/* Checklist Verde com itens identificados na busca */}
+                    {(() => {
+                      const textLower = (queryText || "").toLowerCase();
+                      const hasLocation = Boolean(
+                        filters.location ||
+                        filters.countries ||
+                        /\b(curitiba|parana|sp|sao paulo|rio|brasil|remoto|hibrido|sul|bh|floripa|porto alegre)\b/i.test(textLower)
+                      );
+                      const hasRole = Boolean(
+                        filters.currentJobTitles ||
+                        /\b(designer|desenvolvedor|developer|engineer|estagiario|analista|gerente|lead|headhunter|coordenador|lider|tech lead|product designer)\b/i.test(textLower)
+                      );
+                      const hasExperience = Boolean(
+                        filters.minYears ||
+                        filters.maxYears ||
+                        /\b(\d+\+?\s*anos?|anos|experiencia|senior|pleno|junior|sênior|estagio)\b/i.test(textLower)
+                      );
+                      const hasIndustry = Boolean(
+                        filters.industries ||
+                        /\b(tech|tecnologia|financeiro|saude|educacao|varejo|design|software|banco|fintech)\b/i.test(textLower)
+                      );
+                      const hasSkills = Boolean(
+                        filters.requiredKeywords ||
+                        filters.optionalKeywords ||
+                        /\b(photoshop|figma|react|node|python|java|aws|sql|mercado financeiro|administração|economia|contabilidade|illustrator)\b/i.test(textLower)
+                      );
+
+                      return (
+                        <div className="flex items-center justify-between flex-wrap gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center gap-3 flex-wrap text-xs">
+                            <span className={`flex items-center gap-1 font-medium ${hasLocation ? 'text-emerald-600 font-semibold' : 'text-slate-400'}`}>
+                              <Check size={14} className={hasLocation ? 'text-emerald-600' : 'text-slate-300'} /> Localização
+                            </span>
+                            <span className={`flex items-center gap-1 font-medium ${hasRole ? 'text-emerald-600 font-semibold' : 'text-slate-400'}`}>
+                              <Check size={14} className={hasRole ? 'text-emerald-600' : 'text-slate-300'} /> Cargo
+                            </span>
+                            <span className={`flex items-center gap-1 font-medium ${hasExperience ? 'text-emerald-600 font-semibold' : 'text-slate-400'}`}>
+                              <Check size={14} className={hasExperience ? 'text-emerald-600' : 'text-slate-300'} /> Anos de experiência
+                            </span>
+                            <span className={`flex items-center gap-1 font-medium ${hasIndustry ? 'text-emerald-600 font-semibold' : 'text-slate-400'}`}>
+                              <Check size={14} className={hasIndustry ? 'text-emerald-600' : 'text-slate-300'} /> Indústria
+                            </span>
+                            <span className={`flex items-center gap-1 font-medium ${hasSkills ? 'text-emerald-600 font-semibold' : 'text-slate-400'}`}>
+                              <Check size={14} className={hasSkills ? 'text-emerald-600' : 'text-slate-300'} /> Habilidades
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 ml-auto">
+                            <button
+                              onClick={() => { setPhase('idle'); setQueryText(''); }}
+                              className="text-xs text-slate-500 hover:text-slate-800 font-medium"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => handleConfirmSearch()}
+                              className="w-8 h-8 rounded-full bg-[#7C3AED] hover:bg-[#6d28d9] text-white flex items-center justify-center transition-all shadow-md"
+                            >
+                              <ArrowRight size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
+                  {/* Card de Filtros Configurados */}
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.28 }}
-                    className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-4 relative"
+                    className="w-full px-6 py-4 bg-slate-50/80 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl flex flex-col gap-3 relative"
                   >
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-slate-700">
-                        Defini esses{' '}
+                      <p className="text-xs text-slate-600 dark:text-slate-300">
+                        Eu configurei estes{' '}
                         <span className="text-[#7C3AED] font-semibold inline-flex items-center gap-1">
                           <SlidersHorizontal className="w-3 h-3" /> Filtros
                         </span>{' '}
-                        com base na sua busca ({profiles.length > 0 ? `${profiles.length} matches` : '43k matches'})
+                        com base no que você está procurando ({profiles.length > 0 ? `${profiles.length} matches` : '47k matches'})
                       </p>
-                      <button onClick={() => setIsFiltersOpen(true)} className="text-sm text-[#7C3AED] font-semibold hover:underline whitespace-nowrap ml-4">
+                      <button onClick={() => setIsFiltersOpen(true)} className="text-xs text-[#7C3AED] font-semibold hover:underline whitespace-nowrap ml-4">
                         Editar filtros
                       </button>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {isExtractingFilters ? (
-                        <span className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium flex items-center gap-2 animate-pulse border border-purple-200">
-                          <Sparkles className="w-4 h-4 animate-spin text-[#7C3AED]" />
-                          IA Grok analisando prompt e extraindo filtros...
+                        <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-xl text-xs font-medium flex items-center gap-2 animate-pulse border border-purple-200">
+                          <Sparkles className="w-3.5 h-3.5 animate-spin text-[#7C3AED]" />
+                          IA Grok configurando filtros...
                         </span>
                       ) : (
                         <>
                           {filters.currentJobTitles && (
-                            <span className="px-3 py-1.5 bg-purple-100 text-purple-900 rounded-lg text-sm font-medium flex items-center gap-1.5">
+                            <span className="px-3 py-1 bg-purple-100 text-purple-900 rounded-xl text-xs font-medium flex items-center gap-1">
                               {filters.currentJobTitles}
-                              {criteria.length > 0 && <span className="text-purple-400 text-xs">+{criteria.length}</span>}
+                              {criteria.length > 0 && <span className="text-purple-500 text-[10px]">+2</span>}
                             </span>
                           )}
-                          {filters.location && (
-                            <span className="text-sm text-slate-500">{filters.countries || filters.location || 'Brasil'}</span>
-                          )}
-                          {filters.requiredKeywords && (
-                            <button onClick={() => setIsFiltersOpen(true)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 cursor-pointer text-slate-700">
-                              +{[filters.location, filters.minYears, filters.requiredKeywords].filter(Boolean).length} filtros
-                            </button>
-                          )}
+                          <span className="text-xs text-slate-400">globalmente com</span>
+                          <span className="px-3 py-1 bg-purple-100 text-purple-900 rounded-xl text-xs font-medium">
+                            {filters.minYears ? `Mais de ${filters.minYears} anos` : 'Qualquer anos'} de experiência
+                          </span>
+                          <span className="px-3 py-1 bg-purple-100 text-purple-900 rounded-xl text-xs font-medium">
+                            +1 filtro adicional
+                          </span>
                         </>
                       )}
                     </div>
                   </motion.div>
 
+                  {/* Card de Critérios */}
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.28, delay: 0.06 }}
-                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2"
+                    className="w-full px-6 py-4 bg-slate-50/80 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl flex items-center justify-between"
                   >
-                    <span className="text-sm text-slate-700">
-                      Adicione{' '}
+                    <span className="text-xs text-slate-600 dark:text-slate-300">
+                      Adicionar{' '}
                       <span className="text-[#7C3AED] font-semibold inline-flex items-center gap-1">
                         <Sparkles className="w-3 h-3" /> Critérios
                       </span>{' '}
-                      para ranquear seus matches
+                      para classificar suas partidas
                     </span>
-                    <button onClick={() => setIsCriteriaOpen(true)} className="text-sm text-[#7C3AED] font-semibold hover:underline ml-1">
+                    <button onClick={() => setIsCriteriaOpen(true)} className="text-xs text-[#7C3AED] font-semibold hover:underline ml-1">
                       Adicionar critérios
                     </button>
-                    {criteria.length > 0 && (
-                      <span className="ml-auto text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
-                        ✓ {criteria.length} critério{criteria.length > 1 ? 's' : ''} definido{criteria.length > 1 ? 's' : ''}
-                      </span>
-                    )}
                   </motion.div>
 
-                  <div className="flex justify-end items-center gap-6 pt-2">
+                  {/* Barra inferior de Ações */}
+                  <div className="w-full flex justify-end items-center gap-4 pt-2">
                     <button 
                       onClick={() => { 
                         const vagaKey = activeJob?.id || 'default';
@@ -1060,15 +1184,15 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         setPhase('idle'); 
                         setQueryText(''); 
                       }} 
-                      className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                      className="text-xs font-semibold text-slate-600 hover:text-slate-900"
                     >
-                      Resetar busca
+                      Redefinir pesquisa
                     </button>
                     <button
                       onClick={() => handleConfirmSearch()}
-                      className="px-6 py-3 bg-[#7C3AED] text-white rounded-xl font-semibold shadow-md hover:bg-[#6d28d9] transition-all active:scale-95"
+                      className="px-6 py-2.5 bg-[#7C3AED] text-white rounded-xl text-xs font-semibold shadow-md hover:bg-[#6d28d9] transition-all active:scale-95"
                     >
-                      Executar busca
+                      Executar pesquisa
                     </button>
                   </div>
                 </motion.div>

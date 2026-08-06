@@ -445,17 +445,9 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
               </div>
             </div>
             <div className="flex items-center gap-1">
-              {/* Dark mode toggle */}
-              <button
-                onClick={toggleTheme}
-                title={theme === "dark" ? "Modo claro" : "Modo escuro"}
-                className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] transition-colors"
-              >
-                {theme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
-              </button>
               <button
                 onClick={handleLogout}
-                className="text-[var(--text-muted)] hover:text-red-500 transition-colors p-1"
+                className="text-[var(--text-muted)] hover:text-red-500 transition-colors p-1.5"
                 title="Sair"
               >
                 <LogOut size={14} />
@@ -474,15 +466,8 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
               )}
             </div>
             <button
-              onClick={toggleTheme}
-              title={theme === "dark" ? "Modo claro" : "Modo escuro"}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] transition-colors"
-            >
-              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-            </button>
-            <button
               onClick={handleLogout}
-              className="text-[var(--text-muted)] hover:text-red-500 transition-colors p-1"
+              className="text-[var(--text-muted)] hover:text-red-500 transition-colors p-1.5"
               title="Sair"
             >
               <LogOut size={14} />

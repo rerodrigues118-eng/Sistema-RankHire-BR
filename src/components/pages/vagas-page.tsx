@@ -347,7 +347,7 @@ export default function VagasPage({
 
   if (viewingJob) {
     return (
-      <div className="max-w-4xl mx-auto flex flex-col h-full pt-2 pb-10 w-full animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="max-w-4xl mx-auto flex flex-col min-h-full pb-16 w-full animate-in fade-in slide-in-from-right-4 duration-300">
         <button
           onClick={() => setViewingJobId(null)}
           className="flex items-center gap-2 text-[13px] font-medium text-[#6B7280] hover:text-[#111827] transition-colors mb-6 w-fit"

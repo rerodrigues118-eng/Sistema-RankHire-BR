@@ -707,7 +707,7 @@ export function DashboardShell({ initialPage = "dashboard" }: { initialPage?: Pa
               <div className={activePage === "candidatos" ? "block h-full" : "hidden"}>
                 <CandidatosPage candidates={candidates} onSelectCandidate={handleOpenDrawer} />
               </div>
-              <div className={activePage === "vagas" ? "block h-full" : "hidden"}>
+              <div className={activePage === "vagas" ? "block min-h-full" : "hidden"}>
                 <VagasPage
                   jobs={jobs}
                   selectedJobId={selectedJobId}
