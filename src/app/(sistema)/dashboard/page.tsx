@@ -169,13 +169,12 @@ export function DashboardShell({ initialPage = "dashboard" }: { initialPage?: Pa
     };
   }, [refreshAppData]);
 
-  // Se a conta não possui vagas ainda (jobs.length === 0), dispara automaticamente o Wizard de criação de vaga
+  // Se a conta não possui vagas ainda (jobs.length === 0) e o usuário estiver na página de vagas, abre o modal de criação
   useEffect(() => {
-    if (!isBootstrapping && !bootstrapError && jobs.length === 0) {
-      setActivePage("vagas");
+    if (!isBootstrapping && !bootstrapError && jobs.length === 0 && pathname === "/vagas") {
       setPendingOpenCreateModal(true);
     }
-  }, [isBootstrapping, bootstrapError, jobs.length]);
+  }, [isBootstrapping, bootstrapError, jobs.length, pathname]);
 
   useEffect(() => {
     const supabase = createClient();
