@@ -25,6 +25,7 @@ import {
   ChevronDown,
   UserCircle,
   CreditCard,
+  Zap,
   Moon,
   Sun,
 } from "lucide-react";
