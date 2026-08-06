@@ -61,6 +61,14 @@ export default function OnboardingPage() {
   const [senha, setSenha] = useState("");
   const [isGoogleAuth, setIsGoogleAuth] = useState(false);
 
+  // Twilio SMS State
+  const [phoneCode, setPhoneCode] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [existingAccountError, setExistingAccountError] = useState(false);
+
   // Vaga wizard state
   const [jobTitle, setJobTitle] = useState("");
   const [jobArea, setJobArea] = useState("Tecnologia");
@@ -68,6 +76,56 @@ export default function OnboardingPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleSendPhoneOtp = async () => {
+    if (!telefone.trim()) {
+      setError("Informe seu telefone antes de enviar o SMS.");
+      return;
+    }
+    setError(null);
+    setIsSendingOtp(true);
+    try {
+      const res = await fetch("/api/auth/phone/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telefone }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error && data.error.includes("já está cadastrado")) {
+          setExistingAccountError(true);
+        }
+        throw new Error(data.error || "Erro ao enviar SMS de verificação.");
+      }
+      setIsOtpSent(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar SMS.");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (phoneCode.trim().length !== 6) return;
+    setError(null);
+    setIsVerifyingOtp(true);
+    try {
+      const res = await fetch("/api/auth/phone/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telefone, code: phoneCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Código de verificação incorreto.");
+      }
+      setIsPhoneVerified(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao verificar SMS.");
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
 
   const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
     Share2,
@@ -336,17 +394,63 @@ export default function OnboardingPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Telefone / Celular</label>
-                      <div className="relative">
-                        <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                        <input
-                          type="tel"
-                          value={telefone}
-                          onChange={(e) => setTelefone(e.target.value)}
-                          placeholder="(11) 99999-8888"
-                          className="w-full pl-9 pr-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                        />
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Telefone / Celular (Verificação Twilio) *</label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                          <input
+                            type="tel"
+                            required
+                            value={telefone}
+                            onChange={(e) => {
+                              setTelefone(e.target.value);
+                              setIsPhoneVerified(false);
+                            }}
+                            placeholder="+55 (11) 99999-8888"
+                            className="w-full pl-9 pr-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSendPhoneOtp}
+                          disabled={isSendingOtp || !telefone.trim()}
+                          className="px-3 py-2.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-semibold hover:bg-blue-100 transition whitespace-nowrap disabled:opacity-50"
+                        >
+                          {isSendingOtp ? "Enviando..." : isOtpSent ? "Reenviar SMS" : "Enviar SMS"}
+                        </button>
                       </div>
+
+                      {isOtpSent && !isPhoneVerified && (
+                        <div className="mt-2.5 space-y-2 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Código de 6 dígitos recebido por SMS:</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              maxLength={6}
+                              value={phoneCode}
+                              onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, ""))}
+                              placeholder="000000"
+                              className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-center font-mono font-bold tracking-widest text-xs bg-white dark:bg-slate-900"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleVerifyPhoneOtp}
+                              disabled={isVerifyingOtp || phoneCode.length !== 6}
+                              className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition disabled:opacity-50"
+                            >
+                              {isVerifyingOtp ? "Validando..." : "Confirmar"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {isPhoneVerified && (
+                        <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
+                          <Check className="w-3.5 h-3.5 text-emerald-600" /> Número verificado via Twilio com sucesso!
+                        </span>
+                      )}
+                    </div>
+
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                         <Lock className="w-3.5 h-3.5 text-blue-600" /> Criar ou Redefinir Senha (Opcional)
@@ -362,6 +466,19 @@ export default function OnboardingPage() {
                         Permite fazer login diretamente com e-mail e senha a qualquer momento.
                       </span>
                     </div>
+
+                    {existingAccountError && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-center space-y-2">
+                        <p className="text-xs text-amber-800 font-semibold">Já existe uma conta cadastrada com este e-mail.</p>
+                        <button
+                          type="button"
+                          onClick={() => router.push("/login")}
+                          className="px-4 py-1.5 bg-blue-600 text-white font-bold rounded-lg text-xs hover:bg-blue-700 transition inline-block"
+                        >
+                          Ir para a página de Login
+                        </button>
+                      </div>
+                    )}
 
                     <button
                       type="submit"

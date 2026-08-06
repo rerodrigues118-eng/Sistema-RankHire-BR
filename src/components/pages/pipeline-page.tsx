@@ -42,16 +42,26 @@ const KANBAN_COLUMNS: { key: KanbanStatus; label: string; color: string }[] = [
 
 // Helper to determine SLA stagnation badge based on candidate index/id hash
 function getStagnationInfo(candidate: Candidate) {
-  const charSum = candidate.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const daysInStage = (charSum % 11) + 1; // 1 to 12 days
+  let daysInStage = 0;
+  if (candidate.createdAt) {
+    const createdDate = new Date(candidate.createdAt);
+    if (!isNaN(createdDate.getTime())) {
+      const now = new Date();
+      const diffTime = Math.max(0, now.getTime() - createdDate.getTime());
+      daysInStage = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+  }
 
+  if (daysInStage === 0) {
+    return { days: 0, level: "normal", label: "Hoje", color: "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700" };
+  }
   if (daysInStage >= 10) {
     return { days: daysInStage, level: "danger", label: `${daysInStage}d (SLA Alerta)`, color: "bg-rose-50 text-rose-700 border-rose-200" };
   }
   if (daysInStage >= 5) {
     return { days: daysInStage, level: "warning", label: `${daysInStage}d na etapa`, color: "bg-amber-50 text-amber-700 border-amber-200" };
   }
-  return { days: daysInStage, level: "normal", label: `${daysInStage}d`, color: "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700" };
+  return { days: daysInStage, level: "normal", label: `${daysInStage}d na etapa`, color: "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700" };
 }
 
 // ── Mini card used inside DragOverlay ──────────────────────
@@ -138,10 +148,6 @@ function DraggableCard({
             {candidate.score > 0 ? candidate.score.toFixed(1) : "—"}
           </span>
         </div>
-
-        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1">
-          HubSpot Sync 🟢
-        </span>
       </div>
     </div>
   );

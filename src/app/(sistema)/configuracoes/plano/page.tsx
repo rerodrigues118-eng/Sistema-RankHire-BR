@@ -173,7 +173,7 @@ export default function PlanosConfigPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {isActive || userPlan === "pro" || userPlan === "starter" || userPlan === "agencia" ? (
+                {userPlan !== "trial" && userPlan !== "expirado" && (isActive || userPlan === "pro" || userPlan === "starter" || userPlan === "agencia") ? (
                   <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
                     <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
                       {userPlan === "pro" ? "Plano Pro" : getPlanoTitle()}
@@ -202,7 +202,7 @@ export default function PlanosConfigPage() {
                 ) : (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-xs text-slate-500 dark:text-slate-400">
-                      Nenhum histórico de cobrança encontrado. Apenas administradores da organização têm acesso a esta seção.
+                      Nenhum histórico de cobrança encontrado. O plano Trial é 100% gratuito por 7 dias.
                     </td>
                   </tr>
                 )}

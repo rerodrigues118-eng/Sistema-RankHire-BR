@@ -156,6 +156,26 @@ export default function DashboardPage({
   const vagasPorStatus = dashboardSummary.vagasPorStatus ?? [];
   const candidatosPorOrigem = dashboardSummary.candidatosPorOrigem ?? [];
 
+  const computedVagasStatus = React.useMemo(() => {
+    if (vagasPorStatus.length > 0) return vagasPorStatus;
+    const active = jobs.filter((j) => j.status === "active").length;
+    const paused = jobs.filter((j) => j.status === "paused").length;
+    const completed = jobs.filter((j) => j.status === "completed").length;
+    return [
+      { status: "Ativas", total_vagas: active },
+      { status: "Pausadas", total_vagas: paused },
+      { status: "Encerradas", total_vagas: completed },
+    ];
+  }, [vagasPorStatus, jobs]);
+
+  const handleChecklistItemClick = (item: ChecklistItem) => {
+    if (item.action === "create_job") {
+      onCreateProject();
+    } else if (item.page) {
+      onNavigate(item.page);
+    }
+  };
+
   // Activity Chart — utiliza o relatorio dinâmico retornado do backend iniciado a partir da criacao da conta
   const effectiveActivityData = React.useMemo(() => {
     if (activityData && activityData.length > 0) {
@@ -513,7 +533,7 @@ export default function DashboardPage({
               </div>
             </div>
             <div className="space-y-3">
-              {vagasPorStatus.length > 0 ? vagasPorStatus.map((item) => (
+              {computedVagasStatus.length > 0 ? computedVagasStatus.map((item) => (
                 <div key={item.status} className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-3 py-2">
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">{item.status}</span>
                   <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.total_vagas}</span>

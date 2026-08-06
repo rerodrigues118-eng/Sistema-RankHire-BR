@@ -314,9 +314,16 @@ export async function GET() {
         .eq("empresa_id", empresaId)
         .gte("created_at", monthStart)
         .lt("created_at", nextMonthStart);
-      if (!countErr && count !== null) {
-        processedPdfCount = count;
-      }
+      
+      const { data: empData } = await admin
+        .from("empresas")
+        .select("creditos_pdfs_usados")
+        .eq("id", empresaId)
+        .maybeSingle();
+
+      const currentCandidatesCount = !countErr && count !== null ? count : 0;
+      const cumulativeUsed = empData?.creditos_pdfs_usados ?? 0;
+      processedPdfCount = Math.max(currentCandidatesCount, cumulativeUsed);
     } catch (e) {
       logger.error("Erro ao buscar pdf_candidates em app-data:", e);
     }

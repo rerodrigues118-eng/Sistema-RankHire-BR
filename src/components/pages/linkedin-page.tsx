@@ -931,6 +931,44 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       </div>
                     </div>
 
+                    <p className="text-[11px] text-slate-400 mt-2 text-center">
+                      A IA pode cometer erros. Verifique informações relevantes.
+                    </p>
+
+                    {/* Botões com ideias de pesquisas automáticas */}
+                    <div className="mt-3 flex flex-wrap justify-center gap-2 max-w-xl">
+                      {[
+                        "Desenvolvedor Full Stack React/Node com 3+ anos em SP",
+                        "Headhunter / Recrutador Sênior para vaga remota",
+                        "Estagiário de Administração com Excel avançado no PR"
+                      ].map((idea, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setQueryText(idea);
+                            setPhase('review');
+                            setIsExtractingFilters(true);
+                            fetch("/api/nl-to-filters", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ text: idea }),
+                            })
+                              .then(res => res.json())
+                              .then(data => {
+                                if (data.criterios) {
+                                  setCriteria(data.criterios.map((c: any, i: number) => ({ id: `c-${i}`, nome: c.nome, peso: c.peso || 5 })));
+                                }
+                              })
+                              .finally(() => setIsExtractingFilters(false));
+                          }}
+                          className="px-3 py-1.5 bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 rounded-full text-xs text-slate-600 font-medium transition-all shadow-2xs cursor-pointer"
+                        >
+                          💡 {idea}
+                        </button>
+                      ))}
+                    </div>
+
                     {/* Histórico de Pesquisas Recentes (Estilo Imagem 3 da referência) */}
                     {searchHistory.length > 0 && (
                       <div className="w-full mt-10 text-left">

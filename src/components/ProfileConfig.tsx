@@ -160,6 +160,7 @@ export default function ProfileConfig() {
 
       setProfile(data.profile);
       try { setCachedProfile(data.profile); } catch {}
+      try { window.dispatchEvent(new CustomEvent('profile-updated', { detail: data.profile })); } catch {}
       setFeedback({ type: "success", text: "Perfil atualizado." });
     } catch (err: unknown) {
       setFeedback({ type: "error", text: err instanceof Error ? err.message : "Erro ao salvar perfil." });

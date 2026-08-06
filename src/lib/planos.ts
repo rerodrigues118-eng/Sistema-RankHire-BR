@@ -46,9 +46,9 @@ export interface PlanoInfo {
 export const PLANOS: Record<string, PlanoInfo> = {
   trial: {
     nome: 'Trial Gratuito',
-    limite_pdfs_mes: 15,
+    limite_pdfs_mes: 10,
     limite_buscas_linkedin: 3,
-    limite_vagas: 1,
+    limite_vagas: 3,
     duracao_dias: 7,
     linkedin_bloqueado: false,
     agente_ia_bloqueado: true,

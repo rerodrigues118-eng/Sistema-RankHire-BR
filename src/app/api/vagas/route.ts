@@ -94,6 +94,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Titulo e obrigatorio" }, { status: 400 });
     }
 
+    // Verificar limite de vagas do plano (Trial max 3 vagas)
+    const { data: empresaPlan } = await admin
+      .from("empresas")
+      .select("plano, subscription_status")
+      .eq("id", usuario.empresa_id)
+      .maybeSingle();
+
+    const plan = (empresaPlan?.plano || "trial").toLowerCase();
+    const isTrial = plan === "trial" || empresaPlan?.subscription_status === "trialing";
+
+    if (isTrial) {
+      const { count: jobCount } = await admin
+        .from("vagas")
+        .select("id", { count: "exact", head: true })
+        .eq("empresa_id", usuario.empresa_id);
+
+      if (jobCount !== null && jobCount >= 3) {
+        return NextResponse.json(
+          { error: "Seu plano Trial permite criar no máximo 3 vagas. Faça o upgrade do seu plano para criar mais vagas." },
+          { status: 403 }
+        );
+      }
+    }
+
     const { data, error } = await admin
       .from("vagas")
       .insert({

@@ -450,11 +450,15 @@ export default function PdfRankerPage({
             <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-xs text-rose-900 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                <span>Você atingiu o limite mensal de <strong>{currentQuota?.limit} currículos</strong> do seu plano financeiro.</span>
+                <span>Você atingiu o limite de 10 currículos do seu plano financeiro. Para continuar realize o upgrade do seu plano atual</span>
               </div>
               <button
-                onClick={() => showToast("info", "Redirecionando para atualização de plano...")}
-                className="text-xs font-bold text-white bg-rose-600 px-3.5 py-1.5 rounded-lg hover:bg-rose-700 transition-colors"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    window.location.href = "/configuracoes?tab=plano";
+                  }
+                }}
+                className="text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
               >
                 Fazer Upgrade
               </button>

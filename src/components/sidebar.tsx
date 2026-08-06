@@ -406,6 +406,19 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
                         <span>Plano e Cobrança</span>
                       </Link>
                     </li>
+                    <li>
+                      <Link
+                        href="/configuracoes/integracoes"
+                        className={`flex items-center gap-2 py-1.5 px-3 rounded-[6px] text-[12px] transition-colors ${
+                          pathname === "/configuracoes/integracoes" || pathname === "/settings/integrations"
+                            ? "text-[var(--green)] font-semibold bg-[var(--green-bg)]"
+                            : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]"
+                        }`}
+                      >
+                        <Zap size={14} />
+                        <span>Integrações</span>
+                      </Link>
+                    </li>
                   </motion.ul>
                 )}
               </AnimatePresence>
