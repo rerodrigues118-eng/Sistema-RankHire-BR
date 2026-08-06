@@ -20,7 +20,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
-    // Default is strictly light mode
     const saved = localStorage.getItem("rankhire-theme") as Theme | null;
     const resolved: Theme = saved === "dark" ? "dark" : "light";
     applyTheme(resolved);
@@ -28,13 +27,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const applyTheme = (t: Theme) => {
-    const root = document.documentElement;
-    if (t === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      if (t === "dark") {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
     }
-    localStorage.setItem("rankhire-theme", t);
+    try {
+      localStorage.setItem("rankhire-theme", t);
+    } catch {
+      /* ignore */
+    }
   };
 
   const setTheme = (t: Theme) => {
