@@ -484,16 +484,76 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     setTimeout(() => setShareCopied(false), 2000);
   };
 
-  // Submeter do chat: extrai os filtros e vai para a tela de revisão (review) antes de aparecer os resultados
-  const handleInitialSubmit = () => {
+  // Submeter do chat: extrai os filtros e critérios via IA Grok e vai para a tela de revisão (review)
+  const [isExtractingFilters, setIsExtractingFilters] = useState(false);
+  const [isGeneratingCriteria, setIsGeneratingCriteria] = useState(false);
+
+  const handleInitialSubmit = async () => {
     if (!queryText.trim()) return;
     const q = queryText.trim();
-    setFilters(prev => ({
-      ...prev,
-      currentJobTitles: q,
-      requiredKeywords: q,
-    }));
     setPhase('review');
+    setIsExtractingFilters(true);
+
+    try {
+      const res = await fetch("/api/nl-to-filters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: q }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.criterios) && data.criterios.length > 0) {
+          setCriteria(data.criterios.map((c: { nome: string; descricao?: string; peso?: number }, idx: number) => ({
+            id: `crit-${idx}-${Date.now()}`,
+            nome: c.nome,
+            descricao: c.descricao || c.nome,
+            peso: c.peso || 5,
+          })));
+        }
+        if (data.filtros_sugeridos) {
+          const fs = data.filtros_sugeridos;
+          setFilters(prev => ({
+            ...prev,
+            currentJobTitles: Array.isArray(fs.job_titles) && fs.job_titles.length > 0 ? fs.job_titles.join(", ") : q,
+            minYears: fs.experiencia_minima ? String(fs.experiencia_minima) : prev.minYears,
+            maxYears: fs.experiencia_maxima ? String(fs.experiencia_maxima) : prev.maxYears,
+            location: fs.localizacao || prev.location || "Brasil",
+            requiredKeywords: Array.isArray(fs.keywords) && fs.keywords.length > 0 ? fs.keywords.join(", ") : q,
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao extrair filtros via IA:", err);
+    } finally {
+      setIsExtractingFilters(false);
+    }
+  };
+
+  const handleGenerateAiCriteria = async () => {
+    setIsGeneratingCriteria(true);
+    try {
+      const res = await fetch("/api/nl-to-filters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: queryText || activeJob?.title || "Desenvolvedor" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.criterios) && data.criterios.length > 0) {
+          setCriteria(data.criterios.map((c: { nome: string; descricao?: string; peso?: number }, idx: number) => ({
+            id: `crit-${idx}-${Date.now()}`,
+            nome: c.nome,
+            descricao: c.descricao || c.nome,
+            peso: c.peso || 5,
+          })));
+          showToast("Critérios atualizados pela IA Grok com sucesso!");
+        }
+      }
+    } catch {
+      showToast("Falha ao gerar critérios.");
+    } finally {
+      setIsGeneratingCriteria(false);
+    }
   };
 
   // Fase 2 → 3 → 4: confirma filtros e executa a busca real (máx 6 cards)
@@ -916,19 +976,28 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       </button>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {filters.currentJobTitles && (
-                        <span className="px-3 py-1.5 bg-purple-100 text-purple-900 rounded-lg text-sm font-medium flex items-center gap-1.5">
-                          {filters.currentJobTitles}
-                          {criteria.length > 0 && <span className="text-purple-400 text-xs">+{criteria.length}</span>}
+                      {isExtractingFilters ? (
+                        <span className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium flex items-center gap-2 animate-pulse border border-purple-200">
+                          <Sparkles className="w-4 h-4 animate-spin text-[#7C3AED]" />
+                          IA Grok analisando prompt e extraindo filtros...
                         </span>
-                      )}
-                      {filters.location && (
-                        <span className="text-sm text-slate-500">{filters.countries || 'Brasil'}</span>
-                      )}
-                      {filters.requiredKeywords && (
-                        <button onClick={() => setIsFiltersOpen(true)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 cursor-pointer text-slate-700">
-                          +{[filters.location, filters.minYears, filters.requiredKeywords].filter(Boolean).length} filtros
-                        </button>
+                      ) : (
+                        <>
+                          {filters.currentJobTitles && (
+                            <span className="px-3 py-1.5 bg-purple-100 text-purple-900 rounded-lg text-sm font-medium flex items-center gap-1.5">
+                              {filters.currentJobTitles}
+                              {criteria.length > 0 && <span className="text-purple-400 text-xs">+{criteria.length}</span>}
+                            </span>
+                          )}
+                          {filters.location && (
+                            <span className="text-sm text-slate-500">{filters.countries || filters.location || 'Brasil'}</span>
+                          )}
+                          {filters.requiredKeywords && (
+                            <button onClick={() => setIsFiltersOpen(true)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 cursor-pointer text-slate-700">
+                              +{[filters.location, filters.minYears, filters.requiredKeywords].filter(Boolean).length} filtros
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </motion.div>
@@ -2272,9 +2341,14 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
               <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
                 <h3 className="font-bold text-slate-900 text-base">Critérios de Avaliação</h3>
                 <div className="flex items-center gap-3">
-                  <button className="flex items-center gap-1 text-xs text-[#7C3AED] hover:underline font-semibold">
-                    <Sparkles size={12} />
-                    <span>Usar Predefinição</span>
+                  <button 
+                    type="button"
+                    onClick={handleGenerateAiCriteria} 
+                    disabled={isGeneratingCriteria}
+                    className="flex items-center gap-1 text-xs text-[#7C3AED] hover:underline font-semibold cursor-pointer disabled:opacity-50"
+                  >
+                    <Sparkles size={12} className={isGeneratingCriteria ? "animate-spin" : ""} />
+                    <span>{isGeneratingCriteria ? "Gerando via IA..." : "Re-gerar via IA"}</span>
                   </button>
                   <button className="flex items-center gap-1 text-xs text-[#7C3AED] hover:underline font-semibold">
                     <Plus size={12} />

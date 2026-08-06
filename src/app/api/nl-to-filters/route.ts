@@ -66,26 +66,59 @@ Retorne EXATAMENTE neste formato JSON:
         filtros_sugeridos: parsed.filtros_sugeridos || {},
       });
     } catch {
-      const fallbackCriterios = [
-        { nome: "Experiência relevante", descricao: "Avalie se o candidato possui experiência compatível com a vaga", peso: 4 },
-        { nome: "Domínio técnico", descricao: "Avalie o nível técnico e as competências principais", peso: 4 },
-      ];
-      const fallbackFiltros = {
-        job_titles: text.split(/,| e | ou /).map((item) => item.trim()).filter(Boolean).slice(0, 3),
-        localizacao: "Brasil",
-        experiencia_minima: 2,
-        experiencia_maxima: 8,
-        idiomas: [],
-        keywords: text.split(/\s+/).filter(Boolean).slice(0, 5),
-        boolean_expression: "",
-      };
-
-      return NextResponse.json({
-        criterios: fallbackCriterios,
-        filtros_sugeridos: fallbackFiltros,
-      });
+      const fallback = parseTextToFallbackFilters(text);
+      return NextResponse.json(fallback);
     }
   } catch (error: unknown) {
     return handleApiError(error);
   }
+}
+
+function parseTextToFallbackFilters(text: string) {
+  const clean = text.replace(/["'\\]/g, "").trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  
+  const yearsMatch = clean.match(/(\d+)\s*(?:anos?|yrs?|anos?\s+de\s+experi[êe]ncia)/i);
+  const minYears = yearsMatch ? parseInt(yearsMatch[1]) : null;
+
+  const knownTitles = ["desenvolvedor", "developer", "engineer", "designer", "gerente", "analista", "coordenador", "diretor", "consultor", "especialista", "lead"];
+  const foundTitles = words.filter(w => knownTitles.some(kt => w.toLowerCase().includes(kt)));
+  const jobTitles = foundTitles.length > 0 ? foundTitles : [words.slice(0, 2).join(" ")];
+
+  const commonTech = ["github", "git", "react", "node", "python", "java", "figma", "photoshop", "aws", "docker", "sql", "javascript", "typescript"];
+  const keywords = words.filter(w => commonTech.includes(w.toLowerCase()));
+
+  const criterios = [];
+  if (minYears) {
+    criterios.push({
+      nome: `Possui ${minYears}+ anos de experiência comprovada`,
+      descricao: `Avalie se o candidato acumula ao menos ${minYears} anos na função.`,
+      peso: 5,
+    });
+  }
+  if (keywords.length > 0) {
+    criterios.push({
+      nome: `Domínio prático de ${keywords.join(" e ").toUpperCase()}`,
+      descricao: `Experiência demonstrável utilizando ${keywords.join(", ")}.`,
+      peso: 5,
+    });
+  }
+  criterios.push({
+    nome: `Adequação técnica ao perfil de ${jobTitles.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(" / ")}`,
+    descricao: `Vivência profissional e entregas alinhadas ao escopo da vaga.`,
+    peso: 4,
+  });
+
+  return {
+    criterios: criterios.slice(0, 4),
+    filtros_sugeridos: {
+      job_titles: jobTitles.map(t => t.charAt(0).toUpperCase() + t.slice(1)),
+      localizacao: "Brasil",
+      experiencia_minima: minYears || 2,
+      experiencia_maxima: minYears ? minYears + 5 : 8,
+      idiomas: [],
+      keywords: keywords.length > 0 ? keywords : words.slice(0, 4),
+      boolean_expression: "",
+    },
+  };
 }
