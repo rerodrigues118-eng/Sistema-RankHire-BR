@@ -8,12 +8,13 @@ export const metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ reset?: string; plan?: string; source?: string }>;
+  searchParams?: Promise<{ reset?: string; plan?: string; source?: string; error?: string }>;
 }) {
   const resolvedParams = await searchParams;
   const showResetSuccess = resolvedParams?.reset === "1";
   const plan = resolvedParams?.plan;
   const source = resolvedParams?.source;
+  const urlError = resolvedParams?.error;
   const planLabel =
     plan === "starter"
       ? "Starter"
@@ -88,7 +89,7 @@ export default async function LoginPage({
             </div>
           )}
 
-          <LoginForm plan={plan} source={source} />
+          <LoginForm plan={plan} source={source} urlError={urlError} />
         </div>
       </div>
     </div>

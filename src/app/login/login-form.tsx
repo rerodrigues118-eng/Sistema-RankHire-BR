@@ -6,10 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-export default function LoginForm({ plan, source }: { plan?: string; source?: string }) {
+export default function LoginForm({ plan, source, urlError }: { plan?: string; source?: string; urlError?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(urlError || null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -47,7 +47,7 @@ export default function LoginForm({ plan, source }: { plan?: string; source?: st
     });
 
     if (error) {
-      setError("Ocorreu um erro ao tentar entrar com Google.");
+      setError(error.message || "Ocorreu um erro ao tentar entrar com Google.");
       setIsLoading(false);
     }
   };
