@@ -311,24 +311,24 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
         />
         <StatCard
           label="Média Geral de Scores"
-          value={`${averageScore > 0 ? averageScore.toFixed(1) : "4.7"}/5.0`}
+          value={`${averageScore > 0 ? averageScore.toFixed(1) : "0.0"}/5.0`}
           subtext="Somente candidatos pontuados"
-          trend="Alta"
-          trendPositive
+          trend={totalCandidates > 0 ? "Normal" : "Sem dados"}
+          trendPositive={totalCandidates > 0}
           icon={Target}
         />
         <StatCard
           label="Tempo Médio (Time-to-Hire)"
-          value={`${averageTimeToHire} dias`}
+          value={`${hireTimes.length > 0 ? averageTimeToHire : 0} dias`}
           subtext="Da triagem à contratação"
-          trend="-3 dias vs anterior"
-          trendPositive={false}
+          trend={hireTimes.length > 0 ? "-3 dias vs anterior" : "Sem dados"}
+          trendPositive={hireTimes.length > 0}
           icon={Clock3}
         />
         <StatCard
           label="Créditos Utilizados"
-          value={quota?.limit ? `${quota.used}/${quota.limit}` : `${quota?.used ?? 3}/9999`}
-          subtext={quota?.isAdmin ? "Acesso administrador" : `Plano ${quota?.plano || "Pro"}`}
+          value={quota?.limit ? `${quota.used}/${quota.limit}` : `${quota?.used ?? 0}/${quota?.isAdmin ? "Sem limite" : "15"}`}
+          subtext={quota?.isAdmin ? "Acesso administrador" : `Plano ${quota?.plano || "Trial"}`}
           trend="Estável"
           trendPositive
           icon={Zap}
@@ -455,21 +455,21 @@ export default function AnalyticsPage({ jobs, candidates, quota }: AnalyticsPage
             <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Taxa de Conversão Final</p>
               <p className="mt-1 text-2xl font-black text-blue-800">
-                {totalCandidates > 0 ? `${Math.round((hired / totalCandidates) * 100)}%` : "15%"}
+                {totalCandidates > 0 ? `${Math.round((hired / totalCandidates) * 100)}%` : "0%"}
               </p>
             </div>
 
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Percentual de Fit Elevado</p>
               <p className="mt-1 text-2xl font-black text-slate-900">
-                {totalCandidates > 0 ? `${Math.round((highScoreCount / totalCandidates) * 100)}%` : "67%"}
+                {totalCandidates > 0 ? `${Math.round((highScoreCount / totalCandidates) * 100)}%` : "0%"}
               </p>
             </div>
 
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tempo de Fechamento</p>
               <p className="mt-1 text-2xl font-black text-slate-900">
-                {averageTimeToHire} dias
+                {hireTimes.length > 0 ? `${averageTimeToHire} dias` : "0 dias"}
               </p>
             </div>
           </div>

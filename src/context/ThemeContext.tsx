@@ -20,8 +20,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
-    // Only activate dark mode if the user explicitly chose it.
-    // Default is always light — never auto-follow OS preference.
+    // Default is strictly light mode
     const saved = localStorage.getItem("rankhire-theme") as Theme | null;
     const resolved: Theme = saved === "dark" ? "dark" : "light";
     applyTheme(resolved);

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
         user.user_metadata?.name ||
         (userEmail ? userEmail.split("@")[0] : "Usuário");
 
-      // 1. Busca perfil do usuário na tabela usuarios usando o admin client
+      // 1. Busca se o perfil do usuário já existe na tabela usuarios
       const { data: usuario } = await admin
         .from("usuarios")
         .select("id, empresa_id, cargo, telefone, onboarding_completed")
@@ -27,11 +27,11 @@ export async function GET(request: Request) {
         .maybeSingle();
 
       let empresaId = usuario?.empresa_id;
-      let isNewUser = false;
+      let isNewAccount = false;
 
-      // 2. Se o usuário ainda não tiver empresa_id associada, cria a empresa e salva em usuarios
+      // 2. Se o usuário ainda não tiver empresa_id associada, cria uma empresa 100% nova e limpa
       if (!empresaId) {
-        isNewUser = true;
+        isNewAccount = true;
         const empresaNome = user.user_metadata?.empresa || `Empresa de ${userName}`;
         const { data: novaEmpresa } = await admin
           .from("empresas")
@@ -56,27 +56,31 @@ export async function GET(request: Request) {
               empresa_id: empresaId,
               nome: userName,
               email: userEmail,
-              cargo: user.user_metadata?.cargo || "Recrutador",
+              cargo: user.user_metadata?.cargo || null,
+              telefone: null,
               role: "admin",
+              onboarding_completed: false,
             },
             { onConflict: "id" }
           );
         }
       }
 
-      // 3. Marca onboarding_completed: true no user_metadata para o middleware liberar navegação
+      const isCompleted = Boolean(usuario?.onboarding_completed);
+
+      // 3. Se a conta for nova ou se o onboarding ainda não tiver sido concluído,
+      // redireciona obrigatoriamente para a tela de onboarding / criação de perfil e senha
+      if (isNewAccount || !isCompleted || !usuario?.cargo) {
+        return NextResponse.redirect(`${origin}/onboarding`);
+      }
+
+      // Se o onboarding já foi concluído anteriormente, atualiza a flag no metadata e libera a dashboard
       await admin.auth.admin.updateUserById(user.id, {
         user_metadata: {
           ...user.user_metadata,
           onboarding_completed: true,
         },
       });
-
-      // 4. Lógica de redirecionamento:
-      // Se for novo usuário sem empresa cadastrada, direciona para o onboarding. Caso contrário, entra no dashboard.
-      if (isNewUser || !empresaId) {
-        return NextResponse.redirect(`${origin}/onboarding`);
-      }
 
       return NextResponse.redirect(`${origin}${next}`);
     }
