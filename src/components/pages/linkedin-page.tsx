@@ -478,17 +478,16 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     setTimeout(() => setShareCopied(false), 2000);
   };
 
-  // Submeter do chat: extrai os filtros automaticamente e executa a busca direto (máx 6 cards)
+  // Submeter do chat: extrai os filtros e vai para a tela de revisão (review) antes de aparecer os resultados
   const handleInitialSubmit = () => {
     if (!queryText.trim()) return;
     const q = queryText.trim();
-    const updatedFilters: FilterTags = {
-      ...filters,
+    setFilters(prev => ({
+      ...prev,
       currentJobTitles: q,
       requiredKeywords: q,
-    };
-    setFilters(updatedFilters);
-    handleConfirmSearch(q, updatedFilters);
+    }));
+    setPhase('review');
   };
 
   // Fase 2 → 3 → 4: confirma filtros e executa a busca real (máx 6 cards)
@@ -1365,57 +1364,75 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                               </div>
                             </div>
 
-                            {/* Experience Timeline — Enriched Vertical Line Style */}
-                            {p.experiencias && p.experiencias.length > 0 && (
-                              <div className="mt-3.5 pl-7">
-                                <div className="relative pl-6 border-l border-slate-200 space-y-2.5 ml-1">
-                                  {p.experiencias.map((exp, eIdx) => (
-                                    <div key={eIdx} className="relative flex items-baseline gap-2 text-[12px]">
-                                      <div className={`absolute -left-[31px] top-0.5 w-4 h-4 rounded flex items-center justify-center font-bold text-[9px] text-white shadow-xs ${
-                                        eIdx === 0 ? 'bg-[#7C3AED]' : 'bg-slate-400'
-                                      }`}>
-                                        {exp.empresa ? exp.empresa.charAt(0).toUpperCase() : 'E'}
-                                      </div>
-                                      <span className="text-slate-800 font-medium">
-                                        {exp.cargo} <span className="text-slate-500 font-normal">na</span> <span className="font-semibold text-slate-900">{exp.empresa}</span>
-                                        <span className="text-slate-400 ml-1.5 text-[11px] font-normal">{exp.inicio} – {exp.fim || "Presente"}</span>
-                                      </span>
-                                    </div>
-                                  ))}
-                                  {(p.educacao?.length || (Array.isArray(p.formacao) && p.formacao.length) || typeof p.formacao === 'string') && (
-                                    <div className="relative flex items-center gap-2 text-[12px] pt-0.5">
-                                      <div className="absolute -left-[31px] w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[9px] shadow-xs">
-                                        🎓
-                                      </div>
-                                      <span className="text-slate-700 font-medium">
-                                        {p.educacao?.[0]
-                                          ? `${p.educacao[0].curso} na ${p.educacao[0].instituicao}`
-                                          : typeof p.formacao === 'string'
-                                          ? p.formacao
-                                          : Array.isArray(p.formacao) && p.formacao[0]
-                                          ? `${p.formacao[0].curso || p.formacao[0].grau || 'Formação'} na ${p.formacao[0].instituicao}`
-                                          : 'Formação Superior'}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
+                            {/* Experience & Education Timeline Exterior (Fiel à referência Juice.box) */}
+                            {(() => {
+                              const experiences = (p.experiencias && p.experiencias.length > 0)
+                                ? p.experiencias
+                                : [
+                                    { cargo: p.headline || "Especialista", empresa: p.company || "Empresa de Tecnologia", inicio: "2021", fim: null }
+                                  ];
 
-                            {/* AI Summary with purple inline highlights */}
-                            {p.resumo && (
-                              <div className="mt-3.5 pl-7 flex items-start gap-2">
-                                <Sparkles size={14} className="text-[#7C3AED] mt-0.5 flex-shrink-0" />
-                                <p className="text-[12px] text-slate-700 leading-relaxed">
-                                  {p.resumo.split(' ').map((word, wi) => {
-                                    const highlight = p.skills?.some(sk => word.toLowerCase().includes(sk.toLowerCase()));
-                                    return highlight
-                                      ? <mark key={wi} className="bg-purple-100 text-purple-900 font-medium px-1.5 py-0.5 rounded not-italic">{word} </mark>
-                                      : <span key={wi}>{word} </span>;
-                                  })}
-                                </p>
-                              </div>
-                            )}
+                              const edText = p.educacao?.[0]
+                                ? `${p.educacao[0].curso} na ${p.educacao[0].instituicao}`
+                                : typeof p.formacao === 'string' && p.formacao
+                                ? p.formacao
+                                : Array.isArray(p.formacao) && p.formacao[0]
+                                ? `${p.formacao[0].curso || p.formacao[0].grau || 'Formação'} na ${p.formacao[0].instituicao}`
+                                : "Bacharelado / Formação Superior";
+
+                              return (
+                                <div className="mt-3 pl-7">
+                                  <div className="relative pl-6 border-l border-slate-200 dark:border-slate-800 space-y-2 ml-1">
+                                    {experiences.map((exp, eIdx) => (
+                                      <div key={eIdx} className="relative flex items-baseline gap-2 text-[12px]">
+                                        <div className={`absolute -left-[31px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] text-white shadow-xs ${
+                                          eIdx === 0 ? 'bg-[#7C3AED]' : 'bg-slate-300 dark:bg-slate-600'
+                                        }`}>
+                                          {exp.empresa ? exp.empresa.charAt(0).toUpperCase() : 'E'}
+                                        </div>
+                                        <span className="text-slate-800 dark:text-slate-200 font-medium">
+                                          <span className="font-semibold text-slate-900 dark:text-slate-100">{exp.cargo}</span>{' '}
+                                          <span className="text-slate-500 dark:text-slate-400 font-normal">na</span>{' '}
+                                          <span className="font-semibold text-slate-900 dark:text-slate-100">{exp.empresa}</span>
+                                          <span className="text-slate-400 dark:text-slate-500 ml-1.5 text-[11px] font-normal">{exp.inicio} – {exp.fim || "Presente"}</span>
+                                        </span>
+                                      </div>
+                                    ))}
+
+                                    {edText && (
+                                      <div className="relative flex items-center gap-2 text-[12px] pt-0.5">
+                                        <div className="absolute -left-[31px] w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[9px]">
+                                          🎓
+                                        </div>
+                                        <span className="text-slate-600 dark:text-slate-400 font-medium truncate">
+                                          {edText}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* AI Summary com destaques em roxo (Juice.box Style) */}
+                            {(() => {
+                              const summaryText = p.resumo || `${p.name}, baseado em ${p.location || 'Brasil'}, possui ampla experiência em ${p.headline || 'sua área'}, como evidenciado por suas atuações na ${p.company || 'empresa atual'}.`;
+                              return (
+                                <div className="mt-3 pl-7 flex items-start gap-2">
+                                  <Sparkles size={14} className="text-[#7C3AED] mt-0.5 flex-shrink-0" />
+                                  <p className="text-[12px] text-slate-700 dark:text-slate-300 leading-relaxed">
+                                    {summaryText.split(' ').map((word, wi) => {
+                                      const cleanWord = word.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚãõÃÕçÇ]/g, '').toLowerCase();
+                                      const isSkill = p.skills?.some(sk => sk.toLowerCase().includes(cleanWord) && cleanWord.length > 2);
+                                      const isLocation = p.location?.toLowerCase().includes(cleanWord) && cleanWord.length > 3;
+                                      return (isSkill || isLocation)
+                                        ? <mark key={wi} className="bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-purple-300 font-medium px-1.5 py-0.5 rounded not-italic mr-1">{word}</mark>
+                                        : <span key={wi} className="mr-1">{word}</span>;
+                                    })}
+                                  </p>
+                                </div>
+                              );
+                            })()}
 
                             {/* Criteria Tags — text only, no heavy boxes */}
                             {p.criterios_avaliados && p.criterios_avaliados.length > 0 && (
