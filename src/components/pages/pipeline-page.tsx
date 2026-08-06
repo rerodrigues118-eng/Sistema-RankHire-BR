@@ -51,15 +51,15 @@ function getStagnationInfo(candidate: Candidate) {
   if (daysInStage >= 5) {
     return { days: daysInStage, level: "warning", label: `${daysInStage}d na etapa`, color: "bg-amber-50 text-amber-700 border-amber-200" };
   }
-  return { days: daysInStage, level: "normal", label: `${daysInStage}d`, color: "bg-slate-50 text-slate-600 border-slate-200" };
+  return { days: daysInStage, level: "normal", label: `${daysInStage}d`, color: "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700" };
 }
 
 // ── Mini card used inside DragOverlay ──────────────────────
 function CandidateMiniCard({ candidate }: { candidate: Candidate }) {
   return (
     <div
-      className="bg-[#FFFFFF] rounded-[8px] p-3 shadow-xl"
-      style={{ border: "1px solid #E5E7EB", width: 220, opacity: 0.95 }}
+      className="bg-white dark:bg-slate-800 rounded-[8px] p-3 shadow-xl border border-slate-200 dark:border-slate-700"
+      style={{ width: 220, opacity: 0.95 }}
     >
       <div className="flex items-center gap-3 mb-1.5">
         <div
@@ -68,9 +68,9 @@ function CandidateMiniCard({ candidate }: { candidate: Candidate }) {
         >
           {candidate.initials}
         </div>
-        <p className="text-[13px] font-medium text-[#111827] truncate">{candidate.name}</p>
+        <p className="text-[13px] font-medium text-slate-900 dark:text-slate-100 truncate">{candidate.name}</p>
       </div>
-      <p className="text-[11px] text-[#6B7280] truncate pl-11">{candidate.role}</p>
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate pl-11">{candidate.role}</p>
     </div>
   );
 }
@@ -107,7 +107,7 @@ function DraggableCard({
       {...attributes}
       {...listeners}
       onClick={() => onSelect(candidate)}
-      className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-[10px] p-3 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-[#7C3AED] transition-all group relative"
+      className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[10px] p-3 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-[#7C3AED] transition-all group relative"
     >
       {/* SLA Stagnation Warning Badge */}
       <div className="flex items-center justify-between mb-2">
@@ -124,22 +124,22 @@ function DraggableCard({
         </span>
       </div>
 
-      <p className="text-[13px] font-semibold text-[#111827] truncate leading-tight group-hover:text-[#7C3AED]">
+      <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100 truncate leading-tight group-hover:text-[#7C3AED]">
         {candidate.name}
       </p>
 
-      <p className="text-[11px] text-[#6B7280] truncate my-1">
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate my-1">
         {candidate.role} · {candidate.company}
       </p>
 
-      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100">
-        <div className="inline-flex items-center bg-[#FEF9C3] px-2 py-0.5 rounded border border-[#FEF08A]">
-          <span className="text-[11px] font-semibold text-[#854D0E]">
+      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/60">
+        <div className="inline-flex items-center bg-[#FEF9C3] dark:bg-amber-950/60 px-2 py-0.5 rounded border border-[#FEF08A] dark:border-amber-800">
+          <span className="text-[11px] font-semibold text-[#854D0E] dark:text-amber-300">
             {candidate.score > 0 ? candidate.score.toFixed(1) : "—"}
           </span>
         </div>
 
-        <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1">
           HubSpot Sync 🟢
         </span>
       </div>
@@ -280,15 +280,15 @@ export default function PipelinePage({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[24px] font-semibold text-[#111827]">Pipeline & SLA Hub</h1>
-          <p className="text-[14px] text-[#6B7280] mt-1">
+          <h1 className="text-[24px] font-semibold text-slate-900 dark:text-slate-100">Pipeline & SLA Hub</h1>
+          <p className="text-[14px] text-slate-500 dark:text-slate-400 mt-1">
             Gestão de oportunidades em formato Kanban com alertas de estagnação de SLA e automação de NPS.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={onResetPipeline}
-            className="btn-ghost flex items-center gap-2 bg-white"
+            className="btn-ghost flex items-center gap-2 bg-white dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
           >
             <RotateCcw className="w-4 h-4" strokeWidth={1.8} />
             Resetar pipeline
@@ -298,12 +298,12 @@ export default function PipelinePage({
       </div>
 
       {/* SLA Alert Header Info Banner */}
-      <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 via-white to-violet-50/70 p-3.5 flex items-center justify-between text-xs text-slate-700 shadow-xs">
+      <div className="rounded-xl border border-indigo-100 dark:border-slate-800 bg-gradient-to-r from-indigo-50/70 via-white to-violet-50/70 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 p-3.5 flex items-center justify-between text-xs text-slate-700 dark:text-slate-300 shadow-xs">
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-indigo-600" />
+          <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           <span><strong>Service SLA Alert:</strong> Cards com mais de 5 dias na mesma etapa possuem badge visual de aviso; mais de 10 dias entram em SLA Alerta.</span>
         </div>
-        <span className="font-bold text-violet-700 bg-white border border-violet-200 px-2.5 py-1 rounded-md">
+        <span className="font-bold text-violet-700 dark:text-violet-300 bg-white dark:bg-slate-800 border border-violet-200 dark:border-slate-700 px-2.5 py-1 rounded-md">
           HubSpot Sync Bi-direcional
         </span>
       </div>

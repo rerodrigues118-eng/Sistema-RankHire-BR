@@ -397,13 +397,13 @@ export default function PdfRankerPage({
         </div>
 
         {/* Action Tabs */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit flex-shrink-0 border border-slate-200">
+        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit flex-shrink-0 border border-slate-200 dark:border-slate-700">
           <button
             onClick={() => setActiveTab("triagem")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === "triagem"
-                ? "bg-white text-[#7C3AED] shadow-xs"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-white dark:bg-slate-900 text-[#7C3AED] dark:text-purple-400 shadow-xs"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             }`}
           >
             <FileText className="w-4 h-4" />
@@ -413,8 +413,8 @@ export default function PdfRankerPage({
             onClick={() => setActiveTab("funil")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === "funil"
-                ? "bg-white text-[#7C3AED] shadow-xs"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-white dark:bg-slate-900 text-[#7C3AED] dark:text-purple-400 shadow-xs"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             }`}
           >
             <Filter className="w-4 h-4" />
@@ -478,26 +478,26 @@ export default function PdfRankerPage({
             }}
             className={`w-full rounded-2xl py-5 px-6 flex items-center justify-between gap-4 transition-all duration-200 border border-dashed text-left group ${
               hasCriteria && !isLimitReached
-                ? "border-slate-300 hover:border-blue-600 bg-slate-50/50 hover:bg-blue-50/20 cursor-pointer shadow-2xs"
-                : "border-slate-200 bg-slate-100/50 cursor-not-allowed opacity-60"
+                ? "border-slate-300 dark:border-slate-700 hover:border-blue-600 dark:hover:border-blue-500 bg-slate-50/50 dark:bg-slate-900/60 hover:bg-blue-50/20 dark:hover:bg-blue-950/20 cursor-pointer shadow-2xs"
+                : "border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-800/50 cursor-not-allowed opacity-60"
             }`}
           >
             <div className="flex items-center gap-4 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-blue-100/70 text-blue-700 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-blue-100/70 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
                 <UploadCloud className="w-5 h-5" strokeWidth={2} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-900 group-hover:text-[#7C3AED] transition-colors">
+                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#7C3AED] transition-colors">
                   Arraste currículos em PDF ou clique para selecionar
                 </p>
-                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                   Aceita múltiplos arquivos simultâneos · Formato .pdf
                 </p>
               </div>
             </div>
 
             <div className="flex-shrink-0">
-              <span className="px-4 py-2 bg-white text-blue-700 font-bold text-xs border border-blue-200 rounded-xl shadow-xs group-hover:bg-blue-600 group-hover:text-white transition-all">
+              <span className="px-4 py-2 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-bold text-xs border border-blue-200 dark:border-slate-700 rounded-xl shadow-xs group-hover:bg-blue-600 group-hover:text-white transition-all">
                 + Selecionar Arquivos
               </span>
             </div>

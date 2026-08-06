@@ -313,7 +313,9 @@ html.dark .card-rh {
 
 /* ── Slate/Gray cards & surfaces in dark mode ── */
 /* Exclude elements that use style attribute (inline color badges) and spans with color styles */
-html.dark [class*="bg-white"]:not([class*="dark:bg-"]):not([style*="background"]):not(span):not(.landing-dark *) {
+html.dark [class*="bg-white"]:not([class*="dark:bg-"]):not([style*="background"]):not(span):not(.landing-dark *),
+html.dark [class*="bg-\[#FFFFFF\]"]:not([class*="dark:bg-"]):not(.landing-dark *),
+html.dark [class*="bg-\[#ffffff\]"]:not([class*="dark:bg-"]):not(.landing-dark *) {
   background-color: var(--bg-card) !important;
   color: var(--text-primary) !important;
 }

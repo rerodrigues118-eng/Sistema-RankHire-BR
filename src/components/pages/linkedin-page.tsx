@@ -790,18 +790,18 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                     variants={searchFlowVariants}
                     className="max-w-[760px] mx-auto w-full py-16 flex flex-col items-center"
                   >
-                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/50 px-3.5 py-1 text-[11px] font-semibold text-indigo-700 shadow-sm">
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/60 px-3.5 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm">
                       <Sparkles className="w-3.5 h-3.5" />
                       Busca Inteligente com IA
                     </div>
-                    <h1 className="mb-2 text-center text-[28px] font-bold text-slate-900 tracking-tight">
+                    <h1 className="mb-2 text-center text-[28px] font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                       Quem você está buscando hoje?
                     </h1>
-                    <p className="mb-8 text-center text-sm text-slate-500 max-w-md">
+                    <p className="mb-8 text-center text-sm text-slate-500 dark:text-slate-400 max-w-md">
                       Descreva o perfil ideal em linguagem natural. A IA define os critérios e filtros automaticamente.
                     </p>
                     
-                    <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-lg p-1">
+                    <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg p-1">
                       <textarea 
                         value={queryText}
                         onChange={(e) => setQueryText(e.target.value)}
@@ -813,14 +813,14 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         }}
                         placeholder="Ex: Designer gráfico no Paraná com 5 anos de experiência e Photoshop..."
                         rows={3}
-                        className="w-full resize-none bg-transparent px-5 py-4 text-[14px] text-slate-800 outline-none placeholder:text-slate-400"
+                        className="w-full resize-none bg-transparent px-5 py-4 text-[14px] text-slate-800 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                       />
-                      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/80 rounded-b-2xl">
+                      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 rounded-b-2xl">
                         <button 
                           onClick={() => setIsFiltersOpen(true)}
-                          className="flex items-center gap-2 border border-slate-200 bg-white rounded-xl font-semibold text-[11px] px-3 py-2 text-slate-700 hover:bg-slate-50 transition-all"
+                          className="flex items-center gap-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl font-semibold text-[11px] px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
                         >
-                          <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+                          <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                           Filtros avançados
                         </button>
                         <button 
