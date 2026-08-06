@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchWithTimeout, handleApiError } from "@/lib/api";
+import { callAI } from "@/lib/ai-client";
 import { requireAuth } from "@/lib/auth-guard";
 import { logger } from "@/lib/logger";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
@@ -48,6 +49,13 @@ type LinkedinProfile = {
   formacao: string;
   idiomas: string[];
   sobre: string;
+  score_final?: number;
+  criterios_avaliados?: Array<{
+    nome: string;
+    nota: number;
+    peso: number;
+    justificativa: string;
+  }>;
 };
 
 type ApifyPosition = {

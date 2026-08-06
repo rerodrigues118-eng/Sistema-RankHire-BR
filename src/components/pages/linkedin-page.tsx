@@ -478,16 +478,25 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     setTimeout(() => setShareCopied(false), 2000);
   };
 
-  // Fase 1 → 2: submit inicial vai para tela de revisão de filtros
+  // Submeter do chat: extrai os filtros automaticamente e executa a busca direto (máx 6 cards)
   const handleInitialSubmit = () => {
     if (!queryText.trim()) return;
-    setPhase('review');
+    const q = queryText.trim();
+    const updatedFilters: FilterTags = {
+      ...filters,
+      currentJobTitles: q,
+      requiredKeywords: q,
+    };
+    setFilters(updatedFilters);
+    handleConfirmSearch(q, updatedFilters);
   };
 
-  // Fase 2 → 3 → 4: confirma filtros, executa busca real
-  const handleConfirmSearch = async () => {
+  // Fase 2 → 3 → 4: confirma filtros e executa a busca real (máx 6 cards)
+  const handleConfirmSearch = async (overrideQuery?: string, overrideFilters?: FilterTags) => {
     setIsEditQueryOpen(false);
     setPhase('searching');
+    const qText = overrideQuery !== undefined ? overrideQuery : queryText;
+    const currentFilters = overrideFilters || filters;
     const vagaKey = activeJob?.id || 'default';
     let resultProfiles = profiles;
 
@@ -496,18 +505,19 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: filters.currentJobTitles || queryText,
-          location: filters.location,
-          minYears: filters.minYears,
-          maxYears: filters.maxYears,
-          keywords: filters.requiredKeywords ? filters.requiredKeywords.split(",").map(k => k.trim()) : [],
+          title: currentFilters.currentJobTitles || qText,
+          location: currentFilters.location || "Parana",
+          minYears: currentFilters.minYears,
+          maxYears: currentFilters.maxYears,
+          keywords: currentFilters.requiredKeywords ? currentFilters.requiredKeywords.split(",").map(k => k.trim()) : [qText],
           vagaId: activeJob?.id || "550e8400-e29b-41d4-a716-446655440000",
           criterios: criteria,
+          max_candidatos: 6,
         }),
       });
       if (res.ok) {
         const data = await res.json();
-        const results = data.resultados || data.candidatos || [];
+        const results = (data.resultados || data.candidatos || data.results || []).slice(0, 6);
         if (results.length > 0) {
           setProfiles(results);
           resultProfiles = results;
@@ -516,13 +526,13 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
       try {
         localStorage.setItem(`rankhire_search_${vagaKey}`, JSON.stringify({
-          queryText,
+          queryText: qText,
           profiles: resultProfiles,
           hasSearched: true,
         }));
         const histKey = `rankhire_history_${vagaKey}`;
         const existing: string[] = JSON.parse(localStorage.getItem(histKey) || '[]');
-        const updated = [queryText, ...existing.filter(q => q !== queryText)].slice(0, 3);
+        const updated = [qText, ...existing.filter(q => q !== qText)].slice(0, 3);
         localStorage.setItem(histKey, JSON.stringify(updated));
         setSearchHistory(updated);
       } catch {}
@@ -531,6 +541,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
       console.error("Erro ao buscar candidatos:", err);
     } finally {
       setPhase('results');
+      setActiveTab('results');
       setFreeSearchesLeft(prev => Math.max(0, prev - 1));
     }
   };
@@ -759,14 +770,14 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
 
 
       {/* ── Outer Layout (Split-Screen Container) ── */}
-      <div className="flex-1 flex overflow-hidden w-full relative bg-white">
+      <div className="flex-1 flex overflow-hidden w-full relative bg-white dark:bg-slate-950">
         
         {/* ── Left Panel: Main Workspace Content ── */}
-        <div className={`transition-all duration-300 ease-in-out flex flex-col h-full overflow-hidden bg-white ${selectedProfile ? 'w-[65%]' : 'w-full'}`}>
+        <div className={`transition-all duration-300 ease-in-out flex flex-col h-full overflow-hidden bg-white dark:bg-slate-950 ${selectedProfile ? 'w-[65%]' : 'w-full'}`}>
           <div className="flex-1 overflow-y-auto flex flex-col relative" onScroll={handleScroll}>
             
             {/* ── Search Bar Area ── */}
-            <div className={`w-full flex flex-col gap-3 px-8 border-b border-slate-100 transition-all duration-300 bg-white z-20 ${
+            <div className={`w-full flex flex-col gap-3 px-8 border-b border-slate-100 dark:border-slate-800 transition-all duration-300 bg-white dark:bg-slate-950 z-20 ${
               isScrolled ? 'py-2 shadow-xs sticky top-0' : 'py-4'
             }`}>
               <AnimatePresence mode="wait">
@@ -794,6 +805,12 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       <textarea 
                         value={queryText}
                         onChange={(e) => setQueryText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleInitialSubmit();
+                          }
+                        }}
                         placeholder="Ex: Designer gráfico no Paraná com 5 anos de experiência e Photoshop..."
                         rows={3}
                         className="w-full resize-none bg-transparent px-5 py-4 text-[14px] text-slate-800 outline-none placeholder:text-slate-400"
@@ -939,7 +956,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                       Resetar busca
                     </button>
                     <button
-                      onClick={handleConfirmSearch}
+                      onClick={() => handleConfirmSearch()}
                       className="px-6 py-3 bg-[#7C3AED] text-white rounded-xl font-semibold shadow-md hover:bg-[#6d28d9] transition-all active:scale-95"
                     >
                       Executar busca
@@ -1188,7 +1205,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {profiles.filter(p => !hiddenProfileIds.has(p.id)).map((p, idx) => {
+                        {profiles.slice(0, 6).filter(p => !hiddenProfileIds.has(p.id)).map((p, idx) => {
                           const isSelected = selectedProfileIndex === idx;
                           const currentStatus = candidateStatuses[p.id] || "Sem status";
                           return (
@@ -1247,7 +1264,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
                   ) : (
                     // Visão de Lista Flat Minimalista (Juice.box Style)
                     <motion.div className="divide-y divide-slate-100" variants={resultsStagger} initial="hidden" animate="visible">
-                      {profiles.filter(p => !hiddenProfileIds.has(p.id)).map((p, idx) => {
+                      {profiles.slice(0, 6).filter(p => !hiddenProfileIds.has(p.id)).map((p, idx) => {
                         const isSelected = selectedProfileIndex === idx;
                         const isImported = selectedRowIds.has(p.id);
                         const isDropdownOpen = openCardDropdownId === p.id;

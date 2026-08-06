@@ -311,7 +311,7 @@ export default function CandidateDrawer({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
-            className="fixed inset-y-0 right-0 w-[540px] max-w-full bg-white shadow-2xl z-50 flex flex-col no-print border-l border-slate-200 font-sans"
+            className="fixed inset-y-0 right-0 w-[540px] max-w-full bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col no-print border-l border-slate-200 dark:border-slate-800 font-sans"
           >
             {/* Toast Notification */}
             {toast && (

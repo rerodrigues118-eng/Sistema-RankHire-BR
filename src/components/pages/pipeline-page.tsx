@@ -164,18 +164,18 @@ function KanbanColumn({
   return (
     <div
       className={`rounded-[12px] flex flex-col transition-colors ${
-        isOver ? "bg-[#F0FDF9] border-[#06D6A0]" : "bg-[#F9FAFB] border-[#E5E7EB]"
+        isOver ? "bg-[#F0FDF9] border-[#06D6A0]" : "bg-[#F9FAFB] dark:bg-slate-900 border-[#E5E7EB] dark:border-slate-800"
       } border`}
     >
       {/* Column header */}
-      <div className="px-4 py-3 flex items-center justify-between flex-shrink-0 border-b border-slate-200/60 bg-white rounded-t-[12px]">
+      <div className="px-4 py-3 flex items-center justify-between flex-shrink-0 border-b border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 rounded-t-[12px]">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color }} />
-          <span className="text-[12px] text-[#6B7280] uppercase tracking-wider font-semibold">
+          <span className="text-[12px] text-[#6B7280] dark:text-slate-400 uppercase tracking-wider font-semibold">
             {col.label}
           </span>
         </div>
-        <span className="text-[11px] text-[#4B5563] bg-[#F3F4F6] border border-[#E5E7EB] px-2 py-0.5 rounded-[4px] font-medium">
+        <span className="text-[11px] text-[#4B5563] dark:text-slate-400 bg-[#F3F4F6] dark:bg-slate-800 border border-[#E5E7EB] dark:border-slate-700 px-2 py-0.5 rounded-[4px] font-medium">
           {items.length}
         </span>
       </div>
@@ -185,7 +185,7 @@ function KanbanColumn({
         <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {items.length === 0 ? (
             <div
-              className="flex items-center justify-center h-24 rounded-[8px] mx-1 border border-dashed border-[#D1D5DB] bg-white/50"
+              className="flex items-center justify-center h-24 rounded-[8px] mx-1 border border-dashed border-[#D1D5DB] dark:border-slate-700 bg-white/50 dark:bg-slate-800/30"
             >
               <span className="text-[12px] text-[#9CA3AF]">Solte aqui</span>
             </div>

@@ -370,7 +370,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
         )}
       </div>
 
-      <section className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+      <section className="mb-6 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
         <div className="mb-6 flex items-center gap-2">
           <UserRound className="h-5 w-5 text-[#1B4FD8]" />
           <h2 className="text-[16px] font-semibold">Dados pessoais</h2>
@@ -386,7 +386,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
               )}
             </div>
             <div className="mt-4">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-50">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
                 {uploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                 Selecionar
                 <input
@@ -436,7 +436,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
                 </div>
               )}
             </div>
-            <button onClick={() => setShowSecurityModal(true)} className="mt-3 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-transparent px-3 py-1 text-sm text-slate-600 hover:bg-slate-50">
+            <button onClick={() => setShowSecurityModal(true)} className="mt-3 inline-flex items-center gap-2 rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-1 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">
               Redefinir Dados Pessoais
             </button>
           </div>
@@ -475,7 +475,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
 
       {showSecurityModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md bg-white rounded-lg p-6">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
             <h3 className="text-lg font-semibold mb-4">Redefinir informações pessoais</h3>
             <p className="text-sm text-slate-600 mb-4">Escolha o que deseja alterar. Para e-mail e telefone será enviado um código de segurança.</p>
 
@@ -517,7 +517,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => { setShowSecurityModal(false); setChangeType(null); setNewValue(''); setCode(''); setSent(false); }} className="px-3 py-2 rounded-md border">Cancelar</button>
+              <button onClick={() => { setShowSecurityModal(false); setChangeType(null); setNewValue(''); setCode(''); setSent(false); }} className="px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</button>
               {!sent ? (
                 <button onClick={requestChange} disabled={requesting || !changeType || (changeType !== 'password' && !newValue)} className="px-4 py-2 rounded-md bg-[#1B4FD8] text-white">Enviar código</button>
               ) : (
@@ -528,7 +528,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
         </div>
       )}
 
-      <section className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+      <section className="mb-6 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
         <div className="mb-6 flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-[#1B4FD8]" />
           <h2 className="text-[16px] font-semibold">Seguranca</h2>
@@ -539,7 +539,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
             <button
               onClick={handleResetPassword}
               disabled={sendingPasswordReset}
-              className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-4 text-left hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span>
                 <span className="block text-[13px] font-semibold">Redefinir senha</span>
@@ -554,7 +554,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
             ) : null}
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-4">
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-4">
             <span>
               <span className="block text-[13px] font-semibold">Sessao ativa</span>
               <span className="mt-1 block text-xs text-slate-500">{sessionInfo}</span>
@@ -572,7 +572,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6">
+      <section className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Palette className="h-5 w-5 text-[#1B4FD8]" />
@@ -586,7 +586,7 @@ const res = await fetch("/api/auth/reset-password", { method: "POST", credential
 
         <div className="grid gap-3 md:grid-cols-2">
           {labels.map((label, index) => (
-            <div key={label.posicao} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+            <div key={label.posicao} className="flex items-center gap-3 rounded-lg border border-slate-200 dark:border-slate-700 p-3 dark:bg-slate-800/40">
               <input type="color" value={label.cor} onChange={(e) => setLabels((prev) => prev.map((item, i) => i === index ? { ...item, cor: e.target.value } : item))} className="h-9 w-10 cursor-pointer rounded border border-slate-200 bg-white" aria-label={`Cor da etiqueta ${index + 1}`} />
               <input value={label.nome} onChange={(e) => setLabels((prev) => prev.map((item, i) => i === index ? { ...item, nome: e.target.value } : item))} className="profile-input" placeholder={`Etiqueta ${index + 1}`} />
             </div>

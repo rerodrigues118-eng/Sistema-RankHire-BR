@@ -264,6 +264,16 @@ body {
   outline: none;
 }
 
+html.dark .profile-input {
+  border-color: #1e293b;
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+html.dark .profile-input::placeholder {
+  color: #475569;
+}
+
 .profile-input:focus {
   border-color: #1b4fd8;
   box-shadow: 0 0 0 1px #1b4fd8;
@@ -292,6 +302,180 @@ body {
 }
 .landing-dark::-webkit-scrollbar-thumb:hover {
   background: #2b2b3f;
+}
+
+/* ── Dark Mode: Global Component Overrides ── */
+/* Covers pages/components that use light-only classes without dark: variants */
+
+html.dark .card-rh {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Slate/Gray cards & surfaces in dark mode ── */
+/* Exclude elements that use style attribute (inline color badges) and spans with color styles */
+html.dark [class*="bg-white"]:not([class*="dark:bg-"]):not([style*="background"]):not(span):not(.landing-dark *) {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Spans in dark mode - more targeted to avoid breaking colored badges */
+html.dark span[class*="bg-white"]:not([class*="dark:bg-"]):not([style*="background"]):not(.landing-dark *) {
+  background-color: #1E293B !important;
+}
+
+html.dark [class*="bg-slate-50"]:not([class*="dark:bg-"]):not(.landing-dark *) {
+  background-color: #0F172A !important;
+}
+
+html.dark [class*="bg-slate-100"]:not([class*="dark:bg-"]):not(.landing-dark *) {
+  background-color: #1E293B !important;
+}
+
+html.dark [class*="bg-slate-200"]:not([class*="dark:bg-"]):not(.landing-dark *) {
+  background-color: #1E293B !important;
+}
+
+html.dark [class*="bg-\[#F9FAFB\]"]:not([class*="dark:bg-"]):not(.landing-dark *) {
+  background-color: #0F172A !important;
+}
+
+html.dark [class*="bg-\[#F3F4F6\]"]:not([class*="dark:bg-"]):not(.landing-dark *) {
+  background-color: #1E293B !important;
+}
+
+/* ── Text overrides in dark mode ── */
+html.dark [class*="text-slate-900"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #F1F5F9 !important;
+}
+
+html.dark [class*="text-slate-800"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #E2E8F0 !important;
+}
+
+html.dark [class*="text-slate-700"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #CBD5E1 !important;
+}
+
+html.dark [class*="text-slate-600"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #94A3B8 !important;
+}
+
+html.dark [class*="text-slate-500"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #64748B !important;
+}
+
+html.dark [class*="text-\[#111827\]"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #F1F5F9 !important;
+}
+
+html.dark [class*="text-\[#374151\]"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #CBD5E1 !important;
+}
+
+html.dark [class*="text-\[#6B7280\]"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #94A3B8 !important;
+}
+
+html.dark [class*="text-\[#4B5563\]"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #94A3B8 !important;
+}
+
+html.dark [class*="text-\[#475569\]"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #94A3B8 !important;
+}
+
+html.dark [class*="text-gray-"]:not([class*="dark:text-"]):not(.landing-dark *) {
+  color: #94A3B8 !important;
+}
+
+/* ── Border overrides in dark mode ── */
+html.dark [class*="border-slate-200"]:not([class*="dark:border-"]):not(.landing-dark *) {
+  border-color: #1E293B !important;
+}
+
+html.dark [class*="border-slate-100"]:not([class*="dark:border-"]):not(.landing-dark *) {
+  border-color: #0F172A !important;
+}
+
+html.dark [class*="border-\[#E5E7EB\]"]:not([class*="dark:border-"]):not(.landing-dark *) {
+  border-color: #1E293B !important;
+}
+
+html.dark [class*="border-\[#E2E8F0\]"]:not([class*="dark:border-"]):not(.landing-dark *) {
+  border-color: #1E293B !important;
+}
+
+html.dark [class*="border-\[#D1D5DB\]"]:not([class*="dark:border-"]):not(.landing-dark *) {
+  border-color: #334155 !important;
+}
+
+/* ── Input overrides in dark mode ── */
+html.dark input:not([class*="dark:bg-"]):not([type="color"]):not([type="file"]):not([type="radio"]):not([type="checkbox"]),
+html.dark select:not([class*="dark:bg-"]),
+html.dark textarea:not([class*="dark:bg-"]) {
+  background-color: #0F172A !important;
+  color: #F1F5F9 !important;
+  border-color: #1E293B !important;
+}
+
+html.dark input::placeholder:not([class*="dark:"]),
+html.dark textarea::placeholder:not([class*="dark:"]) {
+  color: #475569 !important;
+}
+
+html.dark select option {
+  background-color: #0F172A;
+  color: #F1F5F9;
+}
+
+/* ── Shadows in dark mode ── */
+html.dark [class*="shadow-"]:not(.landing-dark *) {
+  --tw-shadow-color: rgba(0, 0, 0, 0.5);
+}
+
+/* ── Specific component dark fixes ── */
+/* Profile/Settings sections */
+html.dark section[class*="bg-white"]:not(.landing-dark *),
+html.dark div[class*="bg-white"]:not([class*="dark:"]):not(.landing-dark *) {
+  background-color: var(--bg-card) !important;
+}
+
+/* Dropdown menus */
+html.dark [class*="bg-white"][class*="shadow"][class*="rounded"]:not([class*="dark:"]):not(.landing-dark *) {
+  background-color: #0F172A !important;
+  border-color: #1E293B !important;
+}
+
+/* Hover bg-white effects */
+html.dark [class*="hover:bg-slate-50"]:not([class*="dark:hover:"]):hover:not(.landing-dark *) {
+  background-color: #1E293B !important;
+}
+
+html.dark [class*="hover:bg-\[#F9FAFB\]"]:not([class*="dark:hover:"]):hover:not(.landing-dark *) {
+  background-color: #1E293B !important;
+}
+
+/* ── Amber/Rose warning boxes in dark mode ── */
+html.dark [class*="bg-amber-50"]:not([class*="dark:bg-"]):not(.landing-dark *) {
+  background-color: rgba(120, 53, 15, 0.15) !important;
+}
+
+html.dark [class*="border-amber-200"]:not([class*="dark:border-"]):not(.landing-dark *) {
+  border-color: rgba(180, 100, 20, 0.4) !important;
+}
+
+html.dark [class*="bg-rose-50"]:not([class*="dark:bg-"]):not(.landing-dark *) {
+  background-color: rgba(120, 15, 20, 0.15) !important;
+}
+
+html.dark [class*="border-rose-200"]:not([class*="dark:border-"]):not(.landing-dark *) {
+  border-color: rgba(200, 50, 60, 0.4) !important;
+}
+
+/* ── Pipeline kanban columns ── */
+html.dark [class*="bg-\[#F9FAFB\]"][class*="border-\[#E5E7EB\]"]:not(.landing-dark *) {
+  background-color: #0F172A !important;
+  border-color: #1E293B !important;
 }
 
 /* ── Toast Animations ── */

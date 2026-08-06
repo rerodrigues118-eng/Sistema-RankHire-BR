@@ -8,7 +8,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
     const { id: vagaId } = await params;
-    const body = await req.json();
+    let body: { titulo_vaga?: string; briefing?: string } = {};
+    try {
+      body = await req.json();
+    } catch {
+      // body is optional
+    }
     const { titulo_vaga, briefing } = body;
 
     const { data: usuario } = await supabase
@@ -23,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const { data: vaga, error: vagaError } = await supabase
       .from("vagas")
-      .select("id, title")
+      .select("id, title, titulo, briefing")
       .eq("id", vagaId)
       .eq("empresa_id", usuario.empresa_id)
       .single();
@@ -32,7 +37,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Vaga não encontrada" }, { status: 404 });
     }
 
-    const safeTituloVaga = titulo_vaga || vaga.title || "Vaga";
+    const safeTituloVaga = titulo_vaga || vaga.title || vaga.titulo || "Vaga";
+    const safeBriefing = briefing || vaga.briefing || "";
 
     if (!safeTituloVaga) return NextResponse.json({ error: "titulo_vaga obrigatório" }, { status: 400 });
 

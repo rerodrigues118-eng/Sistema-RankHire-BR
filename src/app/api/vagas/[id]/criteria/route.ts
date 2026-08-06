@@ -128,7 +128,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (crit.id) {
           const result = await _supabase
             .from("criteria")
-            .update({ nome: crit.nome.trim(), peso })
+            .update({
+              nome: crit.nome.trim(),
+              peso,
+              description: crit.nome.trim(),
+              weight: peso,
+            })
             .eq("id", crit.id)
             .eq("vaga_id", vagaId);
 
@@ -142,8 +147,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             .from("criteria")
             .insert({
               vaga_id: vagaId,
+              empresa_id: usuario.empresa_id,
               nome: crit.nome.trim(),
               peso,
+              description: crit.nome.trim(),
+              weight: peso,
               gerado_por_ia: false,
             });
 
@@ -176,3 +184,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return handleApiError(error);
   }
 }
+
+export const PUT = POST;
+

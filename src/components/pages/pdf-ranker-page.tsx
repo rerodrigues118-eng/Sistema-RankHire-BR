@@ -274,7 +274,7 @@ export default function PdfRankerPage({
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          criteria: valid.map((c) => ({ nome: c.nome.trim(), peso: c.peso })),
+          criteria: valid.map((c) => ({ id: c.id, nome: c.nome.trim(), peso: c.peso })),
         }),
       });
       const data: SaveCriteriaResult = await res.json();
@@ -299,6 +299,10 @@ export default function PdfRankerPage({
       const res = await fetch(`/api/vagas/${activeJob.id}/criteria/generate`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo_vaga: activeJob.title,
+        }),
       });
       const data = await res.json();
       if (res.ok && Array.isArray(data.criteria) && data.criteria.length > 0) {
@@ -513,9 +517,9 @@ export default function PdfRankerPage({
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             
             {/* Coluna Esquerda: Fila de Processamento (Compacta) */}
-            <div className="w-full lg:w-[320px] flex flex-col flex-shrink-0 bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs">
+            <div className="w-full lg:w-[320px] flex flex-col flex-shrink-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs">
               <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
-                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <h2 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
                   <RefreshCw className={`w-3.5 h-3.5 text-[#7C3AED] ${isUploading ? "animate-spin" : ""}`} />
                   Fila de Upload ({uploads.length})
                 </h2>
@@ -530,9 +534,9 @@ export default function PdfRankerPage({
                   {uploads.map((file, idx) => {
                     const isActive = file.status === "extracting" || file.status === "scoring";
                     return (
-                      <div key={idx} className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2">
+                      <div key={idx} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 border border-slate-100 dark:border-slate-700 space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs font-semibold text-slate-800 truncate" title={file.name}>
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate" title={file.name}>
                             {file.name}
                           </p>
                           <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex-shrink-0 ${statusColor(file.status)}`}>
@@ -557,10 +561,10 @@ export default function PdfRankerPage({
             </div>
 
             {/* Coluna Direita: Resultados da Triagem (Estilo Busca Inteligente) */}
-            <div className="flex-1 w-full bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+            <div className="flex-1 w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs">
               <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-[#7C3AED]" />
                     Resultados da Triagem ({topCandidates.length})
                   </h2>
@@ -602,7 +606,7 @@ export default function PdfRankerPage({
                           exit={{ opacity: 0, y: -12, scale: 0.98 }}
                           transition={{ duration: 0.24 }}
                           onClick={() => onSelectCandidate(c)}
-                          className="py-3.5 px-3 hover:bg-slate-50/80 transition-all rounded-xl cursor-pointer flex items-center justify-between gap-4 group"
+                          className="py-3.5 px-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/60 transition-all rounded-xl cursor-pointer flex items-center justify-between gap-4 group"
                         >
                           {/* Avatar & Infos */}
                           <div className="flex items-center gap-3 min-w-0">
@@ -628,7 +632,7 @@ export default function PdfRankerPage({
                             </div>
 
                             <div className="min-w-0">
-                              <h3 className="text-xs font-bold text-slate-900 group-hover:text-[#7C3AED] transition-colors truncate">
+                              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#7C3AED] transition-colors truncate">
                                 {c.name}
                               </h3>
                               <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
@@ -669,13 +673,13 @@ export default function PdfRankerPage({
       {/* ── Clear Results Modal ── */}
       {showClearConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[400px] max-w-[calc(100vw-32px)] border border-slate-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl dark:shadow-[0_25px_50px_rgba(0,0,0,0.5)] p-6 w-[400px] max-w-[calc(100vw-32px)] border border-slate-200 dark:border-slate-800">
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center flex-shrink-0 text-rose-600">
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Esvaziar Resultados da Triagem</h3>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Esvaziar Resultados da Triagem</h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                   Os candidatos não favoritados serão removidos da lista.
                 </p>
@@ -689,7 +693,7 @@ export default function PdfRankerPage({
                 type="button"
                 onClick={() => setShowClearConfirm(false)}
                 disabled={isClearingResults}
-                className="text-xs text-slate-600 border border-slate-200 rounded-xl px-4 py-2 hover:bg-slate-50 transition-colors font-medium cursor-pointer"
+                className="text-xs text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium cursor-pointer"
               >
                 Cancelar
               </button>
@@ -729,10 +733,10 @@ export default function PdfRankerPage({
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
-                <h2 className="text-sm font-bold text-slate-900">Critérios de Avaliação</h2>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">Critérios de Avaliação</h2>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Escala de peso de 1 (baixo) a 5 (essencial)
                 </p>
@@ -776,7 +780,7 @@ export default function PdfRankerPage({
                       value={crit.nome}
                       onChange={(e) => handleUpdateCriteria(index, "nome", e.target.value)}
                       placeholder="Nome do critério…"
-                      className="flex-1 text-xs text-slate-900 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#7C3AED] transition-all font-medium"
+                      className="flex-1 text-xs text-slate-900 dark:text-slate-100 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-[#7C3AED] transition-all font-medium"
                     />
 
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -840,7 +844,7 @@ export default function PdfRankerPage({
                   <button
                     key={s.nome}
                     onClick={() => handleAddCriteria(s.nome, s.peso)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:border-blue-600 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-full text-xs font-semibold transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-slate-700 dark:text-slate-300 hover:text-blue-700 rounded-full text-xs font-semibold transition-all cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
                     {s.nome}

@@ -559,7 +559,7 @@ export default function AgenteIAPage() {
   if (!isLoadingEmpresa && !temAcesso) {
     return (
       <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-6 lg:px-8">
-        <div className="flex flex-col items-center justify-center min-h-96 gap-4 rounded-[28px] border border-slate-200 bg-white p-8">
+        <div className="flex flex-col items-center justify-center min-h-96 gap-4 rounded-[28px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8">
           <div className="text-6xl">🔒</div>
           <h2 className="text-2xl font-semibold text-slate-900">Agente IA</h2>
           <p className="text-gray-600 text-center max-w-md leading-6">
@@ -645,10 +645,10 @@ export default function AgenteIAPage() {
       {activeTab === "criar" && (
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-6">
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[28px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-[22px] font-semibold tracking-tight text-slate-900">Criar agente</h2>
+                  <h2 className="text-[22px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">Criar agente</h2>
                   <p className="mt-1 text-[14px] text-slate-500">
                     Preencha o briefing. A IA monta os filtros e os criterios iniciais automaticamente.
                   </p>
@@ -662,21 +662,21 @@ export default function AgenteIAPage() {
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2 grid gap-4 md:grid-cols-3">
                   <label className="space-y-2 md:col-span-2">
-                    <span className="text-[13px] font-semibold text-slate-700">Nome do agente</span>
+                    <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">Nome do agente</span>
                     <input
                       value={draft.nome}
                       onChange={(event) => setDraft((prev) => ({ ...prev, nome: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-[14px] text-slate-900 dark:text-slate-100 outline-none transition focus:border-[#1B4FD8] focus:bg-white dark:focus:bg-slate-900 dark:placeholder:text-slate-500"
                       placeholder="Ex: Agente Designer Email"
                     />
                   </label>
 
                   <label className="space-y-2 md:col-span-1">
-                    <span className="text-[13px] font-semibold text-slate-700">Categoria</span>
+                    <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">Categoria</span>
                     <select
                       value={draft.categoria}
                       onChange={(event) => setDraft((prev) => ({ ...prev, categoria: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-[14px] text-slate-900 dark:text-slate-100 outline-none transition focus:border-[#1B4FD8] focus:bg-white dark:focus:bg-slate-900"
                     >
                       <option value="Geral">Geral</option>
                       <option value="Engenharia">Engenharia</option>
@@ -691,11 +691,11 @@ export default function AgenteIAPage() {
 
                 <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
                   <label className="space-y-2 md:col-span-1">
-                    <span className="text-[13px] font-semibold text-slate-700">Vaga vinculada</span>
+                    <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">Vaga vinculada</span>
                     <select
                       value={draft.vagaId}
                       onChange={(event) => setDraft((prev) => ({ ...prev, vagaId: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-[14px] text-slate-900 dark:text-slate-100 outline-none transition focus:border-[#1B4FD8] focus:bg-white dark:focus:bg-slate-900"
                       disabled={jobs.length === 0}
                     >
                       <option value="">Selecione uma vaga...</option>
@@ -708,11 +708,11 @@ export default function AgenteIAPage() {
                   </label>
 
                   <label className="space-y-2 md:col-span-1">
-                    <span className="text-[13px] font-semibold text-slate-700">Frequência</span>
+                    <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">Frequência</span>
                     <select
                       value={draft.frequencia}
                       onChange={(event) => setDraft((prev) => ({ ...prev, frequencia: event.target.value as AgentFrequency }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-[14px] text-slate-900 dark:text-slate-100 outline-none transition focus:border-[#1B4FD8] focus:bg-white dark:focus:bg-slate-900"
                     >
                       <option value="diaria">Diária</option>
                       <option value="semanal">Semanal</option>
@@ -723,7 +723,7 @@ export default function AgenteIAPage() {
 
                 <div className="md:col-span-2 space-y-4">
                   <div className="space-y-2">
-                    <span className="text-[13px] font-semibold text-slate-700 block">Nível de acesso</span>
+                    <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300 block">Nível de acesso</span>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
                         draft.nivelAcesso === 'compartilhado' ? 'border-[#1B4FD8] bg-blue-50/20' : 'border-slate-200 hover:border-slate-300'
@@ -737,8 +737,8 @@ export default function AgenteIAPage() {
                           className="mt-1 text-[#1B4FD8] focus:ring-[#1B4FD8]"
                         />
                         <div>
-                          <span className="text-[14px] font-semibold text-slate-900 block">Compartilhado</span>
-                          <span className="text-[11.5px] text-slate-500">Visível para todos na sua organização.</span>
+                          <span className="text-[14px] font-semibold text-slate-900 dark:text-slate-100 block">Compartilhado</span>
+                          <span className="text-[11.5px] text-slate-500 dark:text-slate-400">Visível para todos na sua organização.</span>
                         </div>
                       </label>
                       <label className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
@@ -753,8 +753,8 @@ export default function AgenteIAPage() {
                           className="mt-1 text-[#1B4FD8] focus:ring-[#1B4FD8]"
                         />
                         <div>
-                          <span className="text-[14px] font-semibold text-slate-900 block">Privado</span>
-                          <span className="text-[11.5px] text-slate-500">Visível apenas para você, colaboradores e administradores.</span>
+                          <span className="text-[14px] font-semibold text-slate-900 dark:text-slate-100 block">Privado</span>
+                          <span className="text-[11.5px] text-slate-500 dark:text-slate-400">Visível apenas para você, colaboradores e administradores.</span>
                         </div>
                       </label>
                     </div>
@@ -830,22 +830,22 @@ export default function AgenteIAPage() {
                 </div>
 
                 <label className="space-y-2 md:col-span-2">
-                  <span className="text-[13px] font-semibold text-slate-700">Briefing livre</span>
+                  <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">Briefing livre</span>
                   <textarea
                     value={draft.briefing}
                     onChange={(event) => setDraft((prev) => ({ ...prev, briefing: event.target.value }))}
                     rows={5}
-                    className="w-full rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                    className="w-full rounded-[24px] border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-[14px] text-slate-900 dark:text-slate-100 outline-none transition focus:border-[#1B4FD8] focus:bg-white dark:focus:bg-slate-900 dark:placeholder:text-slate-500"
                     placeholder="Descreva o perfil ideal, diferenciais, senioridade, stack, empresas-alvo e qualquer restrição importante."
                   />
                 </label>
 
                 <label className="space-y-2 md:col-span-2">
-                  <span className="text-[13px] font-semibold text-slate-700">Score mínimo para notificar</span>
+                  <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">Score mínimo para notificar</span>
                   <select
                     value={draft.scoreMinimoNotificacao.toFixed(1)}
                     onChange={(event) => setDraft((prev) => ({ ...prev, scoreMinimoNotificacao: Number(event.target.value) }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] outline-none transition focus:border-[#1B4FD8] focus:bg-white"
+                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-[14px] text-slate-900 dark:text-slate-100 outline-none transition focus:border-[#1B4FD8] focus:bg-white dark:focus:bg-slate-900"
                   >
                     <option value="3.5">3.5+</option>
                     <option value="4.0">4.0+ (padrão)</option>
@@ -884,7 +884,7 @@ export default function AgenteIAPage() {
                       colaboradores: [],
                     });
                   }}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-3 text-[13px] font-semibold text-slate-700 dark:text-slate-300 transition hover:border-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
                 >
                   <PlayCircle className="h-4 w-4" />
                   Preencher exemplo
@@ -895,7 +895,7 @@ export default function AgenteIAPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[28px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[12px] uppercase tracking-[0.14em] text-slate-500">Etapa</div>
@@ -913,32 +913,32 @@ export default function AgenteIAPage() {
               </div>
 
               <div className="mt-6 grid gap-3">
-                <div className={`flex items-start gap-3 rounded-2xl border p-4 ${workflowStep >= 1 ? "border-[#1B4FD8]/20 bg-[#E8EEFB]" : "border-slate-200 bg-slate-50"}`}>
+                <div className={`flex items-start gap-3 rounded-2xl border p-4 ${workflowStep >= 1 ? "border-[#1B4FD8]/20 bg-[#E8EEFB] dark:bg-blue-950/30" : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"}`}>
                   <div className={`mt-0.5 flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold ${workflowStep >= 1 ? "bg-[#1B4FD8] text-white" : "bg-white text-slate-400"}`}>1</div>
                   <div>
-                    <div className="text-[13px] font-semibold text-slate-900">Descrever a vaga</div>
-                    <div className="text-[12px] text-slate-500">Nome, briefing, frequencia e score minimo.</div>
+                    <div className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">Descrever a vaga</div>
+                    <div className="text-[12px] text-slate-500 dark:text-slate-400">Nome, briefing, frequencia e score minimo.</div>
                   </div>
                 </div>
-                <div className={`flex items-start gap-3 rounded-2xl border p-4 ${workflowStep >= 2 ? "border-[#1B4FD8]/20 bg-[#E8EEFB]" : "border-slate-200 bg-slate-50"}`}>
+                <div className={`flex items-start gap-3 rounded-2xl border p-4 ${workflowStep >= 2 ? "border-[#1B4FD8]/20 bg-[#E8EEFB] dark:bg-blue-950/30" : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"}`}>
                   <div className={`mt-0.5 flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold ${workflowStep >= 2 ? "bg-[#1B4FD8] text-white" : "bg-white text-slate-400"}`}>2</div>
                   <div>
-                    <div className="text-[13px] font-semibold text-slate-900">Calibracao exclusiva</div>
-                    <div className="text-[12px] text-slate-500">8 perfis avaliados um por um para ajustar pesos.</div>
+                    <div className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">Calibracao exclusiva</div>
+                    <div className="text-[12px] text-slate-500 dark:text-slate-400">8 perfis avaliados um por um para ajustar pesos.</div>
                   </div>
                 </div>
-                <div className={`flex items-start gap-3 rounded-2xl border p-4 ${workflowStep >= 3 ? "border-[#1B4FD8]/20 bg-[#E8EEFB]" : "border-slate-200 bg-slate-50"}`}>
+                <div className={`flex items-start gap-3 rounded-2xl border p-4 ${workflowStep >= 3 ? "border-[#1B4FD8]/20 bg-[#E8EEFB] dark:bg-blue-950/30" : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"}`}>
                   <div className={`mt-0.5 flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold ${workflowStep >= 3 ? "bg-[#1B4FD8] text-white" : "bg-white text-slate-400"}`}>3</div>
                   <div>
-                    <div className="text-[13px] font-semibold text-slate-900">Ativar e monitorar</div>
-                    <div className="text-[12px] text-slate-500">Agente ativo, notificacoes e execucoes automaticas.</div>
+                    <div className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">Ativar e monitorar</div>
+                    <div className="text-[12px] text-slate-500 dark:text-slate-400">Agente ativo, notificacoes e execucoes automaticas.</div>
                   </div>
                 </div>
               </div>
             </div>
 
             {workflowStep === 2 && currentProfile && (
-              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="rounded-[28px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[12px] uppercase tracking-[0.14em] text-slate-500">Calibracao</div>
@@ -949,7 +949,7 @@ export default function AgenteIAPage() {
                   <Target className="h-5 w-5 text-[#1B4FD8]" />
                 </div>
 
-                <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                <div className="mt-5 rounded-[24px] border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
                   <div className="flex items-start gap-4">
                     <div
                       className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl text-[18px] font-semibold text-white shadow"
@@ -966,7 +966,7 @@ export default function AgenteIAPage() {
                     </div>
                   </div>
 
-                  <p className="mt-4 rounded-2xl bg-white p-4 text-[14px] leading-6 text-slate-700">
+                  <p className="mt-4 rounded-2xl bg-white dark:bg-slate-900 p-4 text-[14px] leading-6 text-slate-700 dark:text-slate-300">
                     {currentProfile.resumo}
                   </p>
 
@@ -1006,7 +1006,7 @@ export default function AgenteIAPage() {
             )}
 
             {workflowStep === 3 && (
-              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="rounded-[28px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <div className="text-[12px] uppercase tracking-[0.14em] text-slate-500">Resumo calibrado</div>
@@ -1023,7 +1023,7 @@ export default function AgenteIAPage() {
                   <MetricCard label="Pulados" value={`${calibrationSummary.skipped}`} hint="Perfis neutros ou incertos." accent="text-amber-600" />
                 </div>
 
-                <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4">
                   <div className="text-[13px] font-semibold text-slate-900">Ajuste estimado de pesos</div>
                   <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-200">
                     <div className="h-full rounded-full bg-gradient-to-r from-[#1B4FD8] to-[#06D6A0]" style={{ width: `${Math.min(100, 45 + calibrationSummary.weightBoost * 12)}%` }} />
@@ -1044,7 +1044,7 @@ export default function AgenteIAPage() {
                   </button>
                   <button
                     onClick={() => setWorkflowStep(2)}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300"
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-[13px] font-semibold text-slate-700 dark:text-slate-300 transition hover:border-slate-300"
                   >
                     Revisar calibracao
                   </button>
@@ -1052,7 +1052,7 @@ export default function AgenteIAPage() {
               </div>
             )}
 
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[28px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="text-[18px] font-semibold text-slate-900">Criterios gerados pela IA</h3>
@@ -1067,13 +1067,13 @@ export default function AgenteIAPage() {
 
               <div className="mt-5 grid gap-3">
                 {activeCriteria.map((criterion) => (
-                  <div key={criterion.nome} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div key={criterion.nome} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <div className="text-[14px] font-semibold text-slate-900">{criterion.nome}</div>
-                        <div className="mt-1 text-[12px] text-slate-500">{criterion.descricao}</div>
+                        <div className="text-[14px] font-semibold text-slate-900 dark:text-slate-100">{criterion.nome}</div>
+                        <div className="mt-1 text-[12px] text-slate-500 dark:text-slate-400">{criterion.descricao}</div>
                       </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-[#1B4FD8]">
+                      <span className="rounded-full bg-white dark:bg-slate-800 px-3 py-1 text-[11px] font-semibold text-[#1B4FD8] dark:text-blue-400">
                         peso {criterion.peso}
                       </span>
                     </div>

@@ -21,7 +21,7 @@ export default function CandidateCard({
 
   return (
     <div
-      className="bg-white p-4 rounded-xl flex items-center justify-between transition-all duration-200 hover:border-[#1B4FD8] group"
+      className="bg-white dark:bg-slate-900 p-4 rounded-xl flex items-center justify-between transition-all duration-200 hover:border-[#1B4FD8] dark:hover:border-blue-500 group"
       style={{ border: "0.5px solid #E2E8F0" }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#1B4FD8")}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#E2E8F0")}
@@ -37,7 +37,7 @@ export default function CandidateCard({
         </div>
 
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-gray-900 truncate">
+          <p className="text-[13px] font-medium text-gray-900 dark:text-slate-100 truncate">
             {candidate.name}
           </p>
           <p className="text-[11px] text-gray-500 truncate">
@@ -73,7 +73,7 @@ export default function CandidateCard({
             {candidate.otherTags.map((t) => (
               <span
                 key={t}
-                className="bg-gray-100 text-gray-500 px-2 py-[2px] rounded-[3px] text-[10px]"
+                className="bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 px-2 py-[2px] rounded-[3px] text-[10px]"
               >
                 {t}
               </span>
@@ -91,7 +91,7 @@ export default function CandidateCard({
           {/* Star shortlist */}
           <button
             onClick={() => onToggleShortlist(candidate.id)}
-            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-gray-50 transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
             style={{ border: "0.5px solid #E2E8F0" }}
             title={candidate.shortlist ? "Remover do shortlist" : "Adicionar ao shortlist"}
           >
@@ -110,7 +110,7 @@ export default function CandidateCard({
             href={candidate.linkedinUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-[#1B4FD8] hover:bg-gray-50 transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-[#1B4FD8] hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
             style={{ border: "0.5px solid #E2E8F0" }}
           >
             <Link className="w-3.5 h-3.5" strokeWidth={1.6} />
@@ -119,7 +119,7 @@ export default function CandidateCard({
           {/* Eye / details */}
           <button
             onClick={() => onViewDetails(candidate)}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
             style={{ border: "0.5px solid #E2E8F0" }}
           >
             <Eye className="w-3.5 h-3.5" strokeWidth={1.6} />

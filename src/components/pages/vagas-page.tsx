@@ -355,15 +355,15 @@ export default function VagasPage({
           <ChevronLeft className="w-4 h-4" /> Voltar para vagas
         </button>
 
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
-          <div className="p-8 border-b border-[#F3F4F6]">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#E5E7EB] dark:border-slate-800 overflow-hidden">
+          <div className="p-8 border-b border-[#F3F4F6] dark:border-slate-800">
             <div className="flex items-center gap-3 mb-4">
               <span className={`px-3 py-1 rounded-full text-[12px] font-semibold tracking-wide uppercase ${getStatusColor(viewingJob.status)} bg-opacity-10 border border-current`}>
                 {getStatusText(viewingJob.status)}
               </span>
-              <span className="text-[13px] text-[#6B7280]">Criada em {viewingJob.createdDate}</span>
+              <span className="text-[13px] text-[#6B7280] dark:text-slate-400">Criada em {viewingJob.createdDate}</span>
             </div>
-            <h1 className="text-[28px] font-bold text-[#111827] tracking-tight mb-2">
+            <h1 className="text-[28px] font-bold text-[#111827] dark:text-slate-100 tracking-tight mb-2">
               {viewingJob.title}
             </h1>
             <p className="text-[15px] text-[#6B7280]">{viewingJob.department}</p>
@@ -373,47 +373,47 @@ export default function VagasPage({
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
               {kpiLoading || !kpiData ? (
                 Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="h-24 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 animate-pulse" />
+                  <div key={index} className="h-24 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800 p-4 animate-pulse" />
                 ))
               ) : (
                 <>
-                  <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800 p-4">
                     <div className="flex items-center gap-3 mb-3 text-[#6B7280] text-[12px] uppercase tracking-wide">
                       <Users className="w-4 h-4" />
                       Candidatos
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[24px] font-semibold text-[#111827]">{kpiData.candidatos}</span>
+                      <span className="text-[24px] font-semibold text-[#111827] dark:text-slate-100">{kpiData.candidatos}</span>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800 p-4">
                     <div className="flex items-center gap-3 mb-3 text-[#6B7280] text-[12px] uppercase tracking-wide">
                       <Star className="w-4 h-4 text-[#F59E0B]" />
                       Score médio
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[24px] font-semibold text-[#111827]">{kpiData.score !== null ? kpiData.score.toFixed(1) : "—"}</span>
+                      <span className="text-[24px] font-semibold text-[#111827] dark:text-slate-100">{kpiData.score !== null ? kpiData.score.toFixed(1) : "—"}</span>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800 p-4">
                     <div className="flex items-center gap-3 mb-3 text-[#6B7280] text-[12px] uppercase tracking-wide">
                       <Check className="w-4 h-4 text-[#16A34A]" />
                       Shortlist
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[24px] font-semibold text-[#111827]">{kpiData.shortlist}</span>
+                      <span className="text-[24px] font-semibold text-[#111827] dark:text-slate-100">{kpiData.shortlist}</span>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F9FAFB] dark:bg-slate-800 p-4">
                     <div className="flex items-center gap-3 mb-3 text-[#6B7280] text-[12px] uppercase tracking-wide">
                       <CalendarDays className="w-4 h-4" />
                       Dias aberta
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[24px] font-semibold text-[#111827]">{kpiData.diasAbertos}</span>
+                      <span className="text-[24px] font-semibold text-[#111827] dark:text-slate-100">{kpiData.diasAbertos}</span>
                     </div>
                   </div>
                 </>
@@ -421,11 +421,11 @@ export default function VagasPage({
             </div>
 
             {!kpiLoading && kpiData ? (
-              <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 mb-6">
+              <div className="rounded-3xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900 p-6 mb-6">
                 <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
                   <div>
                     <p className="text-[12px] uppercase tracking-[0.18em] text-[#6B7280] font-semibold">Acompanhamento do processo</p>
-                    <h2 className="text-[18px] font-semibold text-[#111827] mt-2">Progresso por estágio</h2>
+                    <h2 className="text-[18px] font-semibold text-[#111827] dark:text-slate-100 mt-2">Progresso por estágio</h2>
                   </div>
                   <div className="text-right text-[12px] text-[#6B7280]">
                     Total de candidatos: <span className="font-semibold text-[#111827]">{kpiData.candidatos}</span>
@@ -442,11 +442,11 @@ export default function VagasPage({
                     const percent = kpiData.candidatos > 0 ? Math.round((item.value / kpiData.candidatos) * 100) : 0;
                     return (
                       <div key={item.label} className="space-y-2">
-                        <div className="flex items-center justify-between text-[12px] text-[#475569]">
+                        <div className="flex items-center justify-between text-[12px] text-[#475569] dark:text-slate-400">
                           <span>{item.label}</span>
-                          <span className="font-semibold text-[#111827]">{item.value} ({percent}%)</span>
+                          <span className="font-semibold text-[#111827] dark:text-slate-100">{item.value} ({percent}%)</span>
                         </div>
-                        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                           <div className={`h-full rounded-full ${item.accent}`} style={{ width: `${Math.min(percent, 100)}%` }} />
                         </div>
                       </div>
@@ -547,8 +547,8 @@ export default function VagasPage({
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-[6px] text-[13px] font-medium transition-colors border ${
                 filter === f
-                  ? "bg-[#111827] text-white border-[#111827]"
-                  : "bg-white text-[#6B7280] border-[#E5E7EB] hover:bg-[#F9FAFB]"
+                  ? "bg-[#111827] dark:bg-blue-600 text-white border-[#111827] dark:border-blue-600"
+                  : "bg-white dark:bg-slate-800 text-[#6B7280] dark:text-slate-400 border-[#E5E7EB] dark:border-slate-700 hover:bg-[#F9FAFB] dark:hover:bg-slate-700"
               }`}
             >
               {f}
@@ -569,7 +569,7 @@ export default function VagasPage({
       </div>
 
       {jobs.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center bg-white rounded-[12px] border border-dashed border-[#D1D5DB] min-h-[400px]">
+        <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-[12px] border border-dashed border-[#D1D5DB] dark:border-slate-700 min-h-[400px]">
           <div className="w-14 h-14 bg-[#F3F4F6] rounded-full flex items-center justify-center mb-4">
             <Briefcase className="w-6 h-6 text-[#9CA3AF]" />
           </div>
@@ -654,25 +654,25 @@ export default function VagasPage({
                 <div className="relative">
                   <button
                     onClick={() => setOpenMenuJobId((prev) => (prev === job.id ? null : job.id))}
-                    className="px-3 py-2 bg-white hover:bg-[#F9FAFB] text-[#6B7280] rounded-[6px] transition-colors border border-[#E5E7EB] flex items-center justify-center"
+                    className="px-3 py-2 bg-white dark:bg-slate-800 hover:bg-[#F9FAFB] dark:hover:bg-slate-700 text-[#6B7280] dark:text-slate-400 rounded-[6px] transition-colors border border-[#E5E7EB] dark:border-slate-700 flex items-center justify-center"
                     aria-expanded={openMenuJobId === job.id}
                   >
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {openMenuJobId === job.id ? (
-                    <div className="absolute z-50 top-full right-0 mt-2 w-52 rounded-[10px] border border-[#E5E7EB] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                    <div className="absolute z-50 top-full right-0 mt-2 w-52 rounded-[10px] border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900 shadow-[0_10px_30px_rgba(15,23,42,0.08)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
                       <button
                         onClick={() => {
                           handleOpenModal(job);
                           setOpenMenuJobId(null);
                         }}
-                        className="w-full px-4 py-3 text-left text-sm text-[#111827] hover:bg-[#F9FAFB]"
+                        className="w-full px-4 py-3 text-left text-sm text-[#111827] dark:text-slate-200 hover:bg-[#F9FAFB] dark:hover:bg-slate-800"
                       >
                         ✎ Editar vaga
                       </button>
                       <button
                         onClick={() => handleSelectJob(job)}
-                        className="w-full px-4 py-3 text-left text-sm text-[#111827] hover:bg-[#F9FAFB] flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-sm text-[#111827] dark:text-slate-200 hover:bg-[#F9FAFB] dark:hover:bg-slate-800 flex items-center gap-2"
                       >
                         {selectedJobId === job.id ? (
                           <>
@@ -689,14 +689,14 @@ export default function VagasPage({
                       {job.status !== "paused" ? (
                         <button
                           onClick={() => handlePauseJob(job)}
-                          className="w-full px-4 py-3 text-left text-sm text-[#111827] hover:bg-[#F9FAFB]"
+                          className="w-full px-4 py-3 text-left text-sm text-[#111827] dark:text-slate-200 hover:bg-[#F9FAFB] dark:hover:bg-slate-800"
                         >
                           ⏸ Pausar vaga
                         </button>
                       ) : (
                         <button
                           onClick={() => handleReactivateJob(job)}
-                          className="w-full px-4 py-3 text-left text-sm text-[#111827] hover:bg-[#F9FAFB]"
+                          className="w-full px-4 py-3 text-left text-sm text-[#111827] dark:text-slate-200 hover:bg-[#F9FAFB] dark:hover:bg-slate-800"
                         >
                           ✓ Reativar vaga
                         </button>
@@ -720,14 +720,14 @@ export default function VagasPage({
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[16px] shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E7EB] sticky top-0 bg-white z-10">
-              <h2 className="text-[18px] font-semibold text-[#111827]">
+          <div className="bg-white dark:bg-slate-900 rounded-[16px] shadow-xl dark:shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E7EB] dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
+              <h2 className="text-[18px] font-semibold text-[#111827] dark:text-slate-100">
                 {editingJobId ? "Editar Vaga" : "Nova Vaga"}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 text-[#9CA3AF] hover:text-[#111827] hover:bg-[#F3F4F6] rounded-full transition-colors"
+                className="p-2 text-[#9CA3AF] hover:text-[#111827] dark:hover:text-slate-100 hover:bg-[#F3F4F6] dark:hover:bg-slate-800 rounded-full transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -736,7 +736,7 @@ export default function VagasPage({
             <div className="p-6">
               <form onSubmit={handleSaveJob} className="space-y-5">
                 <div>
-                  <label className="block text-[13px] font-medium text-[#374151] mb-1.5">Nome da vaga *</label>
+                  <label className="block text-[13px] font-medium text-[#374151] dark:text-slate-300 mb-1.5">Nome da vaga *</label>
                   <input
                     required
                     type="text"
@@ -749,7 +749,7 @@ export default function VagasPage({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[13px] font-medium text-[#374151] mb-1.5">Área</label>
+                    <label className="block text-[13px] font-medium text-[#374151] dark:text-slate-300 mb-1.5">Área</label>
                     <select
                       value={newJob.area}
                       onChange={(e) => setNewJob({ ...newJob, area: e.target.value })}
@@ -765,7 +765,7 @@ export default function VagasPage({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[13px] font-medium text-[#374151] mb-1.5">Tipo de contrato</label>
+                    <label className="block text-[13px] font-medium text-[#374151] dark:text-slate-300 mb-1.5">Tipo de contrato</label>
                     <select
                       value={newJob.contract}
                       onChange={(e) => setNewJob({ ...newJob, contract: e.target.value })}
@@ -781,7 +781,7 @@ export default function VagasPage({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[13px] font-medium text-[#374151] mb-1.5">Localização</label>
+                    <label className="block text-[13px] font-medium text-[#374151] dark:text-slate-300 mb-1.5">Localização</label>
                     <input
                       type="text"
                       value={newJob.location}
@@ -792,7 +792,7 @@ export default function VagasPage({
                   </div>
                   {editingJobId && (
                     <div>
-                      <label className="block text-[13px] font-medium text-[#374151] mb-1.5">Status da vaga</label>
+                      <label className="block text-[13px] font-medium text-[#374151] dark:text-slate-300 mb-1.5">Status da vaga</label>
                       <select
                         value={newJob.status}
                         onChange={(e) => setNewJob({ ...newJob, status: e.target.value as JobStatus })}
@@ -807,7 +807,7 @@ export default function VagasPage({
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium text-[#374151] mb-1.5">Briefing da vaga</label>
+                  <label className="block text-[13px] font-medium text-[#374151] dark:text-slate-300 mb-1.5">Briefing da vaga</label>
                   <textarea
                     rows={4}
                     value={newJob.briefing}
@@ -841,7 +841,7 @@ export default function VagasPage({
                   </div>
                 ) : null}
 
-                <div className="pt-6 mt-4 border-t border-[#E5E7EB] flex justify-end gap-3 sticky bottom-0 bg-white">
+                <div className="pt-6 mt-4 border-t border-[#E5E7EB] dark:border-slate-800 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-slate-900">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}

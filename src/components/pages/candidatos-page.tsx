@@ -18,21 +18,21 @@ interface CandidatosPageProps {
 
 function FiltrosAvancados() {
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
-      <h3 className="mb-3 text-xs font-bold text-slate-800 uppercase tracking-wider">Filtros Gerais de Sourcing</h3>
+    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-xs">
+      <h3 className="mb-3 text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Filtros Gerais de Sourcing</h3>
       <div className="grid gap-3.5 md:grid-cols-3">
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1">Localidade</label>
           <input
             type="text"
             placeholder="Ex: Parana, Curitiba..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-violet-500 focus:bg-white transition"
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 px-3.5 py-2 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-violet-500 focus:bg-white dark:focus:bg-slate-900 transition"
           />
         </div>
 
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1">Senioridade</label>
-          <select className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-violet-500 focus:bg-white transition cursor-pointer">
+          <select className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 px-3.5 py-2 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-violet-500 focus:bg-white dark:focus:bg-slate-900 transition cursor-pointer">
             <option value="">Qualquer Nível</option>
             <option value="junior">Júnior</option>
             <option value="pleno">Pleno</option>
@@ -45,7 +45,7 @@ function FiltrosAvancados() {
           <input
             type="text"
             placeholder="Ex: Remoto, Híbrido..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-violet-500 focus:bg-white transition"
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 px-3.5 py-2 text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-violet-500 focus:bg-white dark:focus:bg-slate-900 transition"
           />
         </div>
       </div>
@@ -129,12 +129,12 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
   if (isCrmLocked) {
     return (
       <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-6 lg:px-8">
-        <div className="flex flex-col items-center justify-center min-h-96 gap-5 rounded-[28px] border border-slate-200 bg-white p-10 shadow-sm text-center">
+        <div className="flex flex-col items-center justify-center min-h-96 gap-5 rounded-[28px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 shadow-sm text-center">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg">
             <Lock className="w-8 h-8 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">CRM de Candidatos</h2>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">CRM de Candidatos</h2>
             <p className="text-slate-500 max-w-md leading-relaxed text-xs">
               O CRM completo está disponível nos planos <strong>Starter, Pro e Agência</strong>.
               No Trial, os candidatos ficam apenas no Pipeline (triagem temporária).
@@ -156,10 +156,10 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
       {/* Top Header */}
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Candidatos (CRM)</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Candidatos (CRM)</h1>
           <p className="text-xs text-slate-500 mt-1">Gestão centralizada de talentos importados, avaliados e ranqueados.</p>
         </div>
-        <button className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-2">
+        <button className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-2">
           <Filter className="w-3.5 h-3.5 text-slate-400" /> Exportar CSV
         </button>
       </div>
@@ -175,7 +175,7 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
             placeholder="Pesquise por nome, empresa ou cargo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:border-violet-500 transition shadow-xs"
+            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-violet-500 transition shadow-xs"
           />
         </div>
 
@@ -186,7 +186,7 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition ${
               hideAlreadySeen
                 ? "bg-slate-900 border-slate-800 text-white"
-                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
             }`}
             title="Ocultar candidatos já analisados"
           >
@@ -200,7 +200,7 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition ${
               showOnlyFavorites
                 ? "bg-amber-50 border-amber-300 text-amber-800"
-                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
             }`}
           >
             <Star className={`w-4 h-4 ${showOnlyFavorites ? "fill-amber-400 text-amber-500" : ""}`} strokeWidth={1.8} />
@@ -212,7 +212,7 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold outline-none focus:border-violet-500 cursor-pointer shadow-xs"
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 font-semibold outline-none focus:border-violet-500 cursor-pointer shadow-xs"
             >
               <option value="all">Todos os status</option>
               <option value="triado">Triado</option>
@@ -223,18 +223,18 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
             </select>
           </div>
 
-          <button className="px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition">
+          <button className="px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition">
             <SlidersHorizontal className="w-4 h-4 text-slate-400" /> Mais filtros
           </button>
         </div>
       </div>
 
       {/* Candidates Enterprise Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <tr className="bg-slate-50/80 dark:bg-slate-800 border-b border-slate-200/80 dark:border-slate-700 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                 <th className="px-5 py-4">Nome completo</th>
                 <th className="px-5 py-4">Fit Score</th>
                 <th className="px-5 py-4">Função atual</th>
@@ -243,21 +243,21 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
                 <th className="px-5 py-4 font-medium text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredCandidates.map((c) => (
                 <tr
                   key={c.id}
                   onClick={() => onSelectCandidate(c)}
-                  className="group cursor-pointer hover:bg-slate-50/70 transition-colors bg-white"
+                  className="group cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors bg-white dark:bg-slate-900"
                 >
                   {/* Name & Avatar — generic icon, no colored initials */}
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0">
                         <User className="w-4.5 h-4.5 text-slate-400" size={18} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900 group-hover:text-blue-700 transition">{c.name}</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition">{c.name}</p>
                         <p className="text-[11px] text-slate-400">{c.city || "Paraná, Brasil"}</p>
                       </div>
                     </div>
@@ -272,7 +272,7 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
 
                   {/* Function & Company */}
                   <td className="px-5 py-3.5">
-                    <p className="text-xs font-medium text-slate-800 truncate max-w-[180px]">{c.role}</p>
+                    <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{c.role}</p>
                     <p className="text-[11px] text-slate-400 truncate max-w-[180px]">{c.company}</p>
                   </td>
 
@@ -329,7 +329,7 @@ export default function CandidatosPage({ candidates, onSelectCandidate, onMoveCa
 
               {filteredCandidates.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-xs text-slate-500 bg-white">
+                  <td colSpan={6} className="px-6 py-16 text-center text-xs text-slate-500 bg-white dark:bg-slate-900">
                     {showOnlyFavorites
                       ? "Nenhum candidato favoritado no CRM."
                       : "Nenhum candidato corresponde aos filtros selecionados."}
