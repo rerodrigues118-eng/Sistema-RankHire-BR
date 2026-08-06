@@ -54,6 +54,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<number>(1);
   const [origem, setOrigem] = useState("");
   const [objetivo, setObjetivo] = useState("");
+  const [nome, setNome] = useState("");
   const [nomeEmpresa, setNomeEmpresa] = useState("");
   const [cargo, setCargo] = useState("");
   const [telefone, setTelefone] = useState("");
@@ -93,15 +94,21 @@ export default function OnboardingPage() {
             setIsGoogleAuth(true);
           }
 
+          const userFullName = user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.nome || "";
+          if (userFullName) {
+            setNome(userFullName);
+          }
+
           const { data: usuario } = await supabase
             .from("usuarios")
-            .select("empresa_id, cargo, telefone")
+            .select("empresa_id, nome, cargo, telefone")
             .eq("id", user.id)
             .maybeSingle();
 
           if (usuario) {
-            setCargo(usuario.cargo || "");
-            setTelefone(usuario.telefone || "");
+            if (usuario.nome) setNome(usuario.nome);
+            setCargo(usuario.cargo && usuario.cargo !== "Recrutador" ? usuario.cargo : "");
+            setTelefone(usuario.telefone && !usuario.telefone.includes("5541998934567") ? usuario.telefone : "");
           }
         }
       } catch (err) {
@@ -123,6 +130,10 @@ export default function OnboardingPage() {
 
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!nome.trim()) {
+      setError("Informe o seu Nome Completo.");
+      return;
+    }
     if (!cargo.trim()) {
       setError("Informe o seu cargo.");
       return;
@@ -149,18 +160,17 @@ export default function OnboardingPage() {
     try {
       const supabase = createClient();
 
-      // 1. Se informou senha (ex: usuário Google Auth querendo senha nativa)
       if (senha.trim().length >= 8) {
         await supabase.auth.updateUser({ password: senha.trim() });
       }
 
-      // 2. Criar / atualizar a empresa
       const companyRes = await fetch("/api/onboarding", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           step: "company",
+          nome: nome.trim() || undefined,
           nomeEmpresa: nomeEmpresa.trim() || "Minha Empresa",
           cargo: cargo.trim() || "Recrutador",
           telefone: telefone.trim() || undefined,
@@ -171,7 +181,6 @@ export default function OnboardingPage() {
         throw new Error(companyData.error || "Erro ao criar a empresa.");
       }
 
-      // 3. Se preencheu a primeira vaga no wizard, cria a vaga
       if (jobTitle.trim()) {
         await fetch("/api/onboarding/vaga", {
           method: "POST",
@@ -186,7 +195,6 @@ export default function OnboardingPage() {
         });
       }
 
-      // 4. Salvar preferências de telemetria
       await fetch("/api/onboarding", {
         method: "PATCH",
         credentials: "include",
@@ -206,47 +214,48 @@ export default function OnboardingPage() {
   const selected = step === 1 ? origem : objetivo;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-8 text-slate-900 dark:text-slate-100">
-      {/* Brand Header */}
-      <div className="mb-6 flex flex-col items-center gap-2">
-        <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-          <span className="text-white font-extrabold text-lg">R</span>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between p-6">
+      <div className="flex flex-col items-center gap-2 pt-4">
+        <div className="w-9 h-9 border border-blue-600/30 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-600/20">
+          <span className="text-white font-black text-sm">R</span>
         </div>
-        <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold tracking-wider uppercase">
-          RankHire BR
-        </span>
+        <span className="text-slate-400 font-bold text-xs tracking-widest uppercase">RankHire BR</span>
       </div>
 
-      {/* Step Indicators */}
-      <div className="flex items-center gap-2 mb-8">
-        {[1, 2, 3, 4, 5].map((s) => (
-          <div
-            key={s}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              step >= s ? "bg-blue-600 w-6" : "bg-slate-200 dark:bg-slate-800 w-2"
-            }`}
-          />
-        ))}
-      </div>
+      <div className="w-full max-w-2xl mx-auto my-auto py-8">
+        <div className="flex items-center justify-center gap-2 mb-8">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                step === i
+                  ? "w-8 bg-blue-600"
+                  : step > i
+                  ? "w-4 bg-blue-400 dark:bg-blue-800"
+                  : "w-4 bg-slate-200 dark:bg-slate-800"
+              }`}
+            />
+          ))}
+        </div>
 
-      <div className="w-full max-w-xl">
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            transition={{ duration: 0.25 }}
+            className="space-y-6"
           >
-            <div className="text-center mb-8">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">
-                {step === 1 && "Onde nossa marca cruzou seu caminho?"}
-                {step === 2 && "Qual seu principal objetivo aqui?"}
+            <div className="text-center max-w-lg mx-auto">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                {step === 1 && "Como você conheceu o RankHire BR?"}
+                {step === 2 && "Qual é o seu objetivo principal?"}
                 {step === 3 && "Complete seu perfil de acesso"}
-                {step === 4 && "Sobre a sua empresa"}
+                {step === 4 && "Qual é o nome da sua empresa?"}
                 {step === 5 && "Crie sua primeira vaga"}
               </h1>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-2 font-normal">
                 {step === 1 && "Isso nos ajuda a entender como você chegou ao RankHire."}
                 {step === 2 && "Personalizaremos a inteligência da plataforma para você."}
                 {step === 3 && "Defina os dados principais para gerenciar suas triagens."}
@@ -256,7 +265,7 @@ export default function OnboardingPage() {
             </div>
 
             {error && (
-              <div className="mb-6 p-3.5 bg-red-50 dark:bg-red-950/40 text-xs font-medium text-red-600 dark:text-red-300 rounded-xl border border-red-200 dark:border-red-800 text-center">
+              <div className="p-3.5 bg-red-50 dark:bg-red-950/40 text-xs font-medium text-red-600 dark:text-red-300 rounded-xl border border-red-200 dark:border-red-800 text-center">
                 {error}
               </div>
             )}
@@ -268,9 +277,8 @@ export default function OnboardingPage() {
                 </div>
                 <div className="text-center">
                   <p className="text-base font-bold">Configurando sua conta...</p>
-                  <p className="text-xs text-slate-400 mt-1">Preparando seu ambiente em instantes</p>
                 </div>
-                <Loader2 className="w-5 h-5 animate-spin text-blue-600 mt-2" />
+                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
               </div>
             ) : (
               <>
@@ -279,10 +287,7 @@ export default function OnboardingPage() {
                     {optionsForStep.map((option) => {
                       const Icon = ICONS[option.icon];
                       const isSelected = selected === option.value;
-                      const handleClick =
-                        step === 1
-                          ? () => handleSelectOrigem(option.value)
-                          : () => handleSelectObjetivo(option.value);
+                      const handleClick = step === 1 ? () => handleSelectOrigem(option.value) : () => handleSelectObjetivo(option.value);
                       return (
                         <button
                           key={option.value}
@@ -290,29 +295,15 @@ export default function OnboardingPage() {
                           onClick={handleClick}
                           className={`relative group flex flex-col items-center gap-3 p-5 rounded-2xl border transition-all text-center ${
                             isSelected
-                              ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/40 shadow-xs"
-                              : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700"
+                              ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/40"
+                              : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900"
                           }`}
                         >
-                          {isSelected && (
-                            <span className="absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
-                              <Check className="w-2.5 h-2.5 text-white" />
-                            </span>
-                          )}
-                          <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                              isSelected
-                                ? "bg-blue-600 text-white"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-950 group-hover:text-blue-600"
-                            }`}
-                          >
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isSelected ? "bg-blue-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"}`}>
                             {Icon && <Icon className="w-5 h-5" />}
                           </div>
                           <div>
-                            <p className={`text-xs font-bold ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-slate-800 dark:text-slate-200"}`}>
-                              {option.label}
-                            </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">{option.desc}</p>
+                            <p className="text-xs font-bold">{option.label}</p>
                           </div>
                         </button>
                       );
@@ -320,9 +311,19 @@ export default function OnboardingPage() {
                   </div>
                 )}
 
-                {/* Step 3: Perfil (Cargo, Telefone, Senha para Google Auth) */}
                 {step === 3 && (
                   <form onSubmit={handleProfileSubmit} className="bg-white dark:bg-slate-900 p-6 md:p-8 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xs space-y-4 max-w-md mx-auto">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nome Completo *</label>
+                      <input
+                        type="text"
+                        required
+                        value={nome}
+                        onChange={(e) => setNome(e.target.value)}
+                        placeholder="Ex: Maria Silva"
+                        className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      />
+                    </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Seu Cargo / Função *</label>
                       <input
@@ -334,7 +335,6 @@ export default function OnboardingPage() {
                         className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                       />
                     </div>
-
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Telefone / Celular</label>
                       <div className="relative">
@@ -347,25 +347,21 @@ export default function OnboardingPage() {
                           className="w-full pl-9 pr-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                         />
                       </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                        <Lock className="w-3.5 h-3.5 text-blue-600" /> Criar ou Redefinir Senha (Opcional)
+                      </label>
+                      <input
+                        type="password"
+                        value={senha}
+                        onChange={(e) => setSenha(e.target.value)}
+                        placeholder="Mínimo 8 caracteres para definir sua senha de acesso"
+                        className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      />
+                      <span className="text-[10px] text-slate-400 block mt-1">
+                        Permite fazer login diretamente com e-mail e senha a qualquer momento.
+                      </span>
                     </div>
-
-                    {isGoogleAuth && (
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                          <Lock className="w-3.5 h-3.5 text-blue-600" /> Criar senha nativa (Opcional)
-                        </label>
-                        <input
-                          type="password"
-                          value={senha}
-                          onChange={(e) => setSenha(e.target.value)}
-                          placeholder="Mínimo 8 caracteres para entrar com e-mail/senha"
-                          className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                        />
-                        <span className="text-[10px] text-slate-400 block mt-1">
-                          Permite fazer login com senha além do Google no futuro.
-                        </span>
-                      </div>
-                    )}
 
                     <button
                       type="submit"

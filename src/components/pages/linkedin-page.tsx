@@ -221,24 +221,24 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
     { id: "c2", nome: "The candidate has worked at a private security company.", descricao: "Passagem anterior por empresas de segurança privada.", peso: 4 }
   ]);
   
-  // Filters state (from Image 3)
+  // Filters state (dynamically populated by AI)
   const [filters, setFilters] = useState<FilterTags>({
-    minYears: "5",
+    minYears: "",
     maxYears: "",
-    location: "Parana",
+    location: "Brasil",
     countries: "Brasil",
-    workOption: { hybrid: true, remote: true, onsite: false },
-    currentJobTitles: "Designer",
+    workOption: { hybrid: true, remote: true, onsite: true },
+    currentJobTitles: "",
     pastJobTitles: "",
-    seniority: { junior: false, pleno: true, senior: true, lead: false },
+    seniority: { junior: false, pleno: false, senior: false, lead: false },
     currentCompany: "",
     pastCompany: "",
     excludeCompany: "",
-    industries: "Tecnologia, Design",
+    industries: "",
     revenue: "any",
     fundingRound: { seed: false, seriesA: false, seriesB: false, ipo: false },
-    requiredKeywords: "Photoshop",
-    optionalKeywords: "Illustrator, Figma",
+    requiredKeywords: "",
+    optionalKeywords: "",
     excludeKeywords: "",
     timeInRole: "any",
     companyGrowth: "any",
@@ -512,14 +512,41 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
         }
         if (data.filtros_sugeridos) {
           const fs = data.filtros_sugeridos;
-          setFilters(prev => ({
-            ...prev,
+          const reqKeywords = Array.isArray(fs.required_keywords) && fs.required_keywords.length > 0
+            ? fs.required_keywords.join(", ")
+            : Array.isArray(fs.keywords) && fs.keywords.length > 0
+            ? fs.keywords.join(", ")
+            : q;
+          const optKeywords = Array.isArray(fs.optional_keywords)
+            ? fs.optional_keywords.join(", ")
+            : "";
+          const exclKeywords = Array.isArray(fs.exclude_keywords)
+            ? fs.exclude_keywords.join(", ")
+            : "";
+
+          setFilters({
+            minYears: fs.experiencia_minima !== undefined && fs.experiencia_minima !== null ? String(fs.experiencia_minima) : "",
+            maxYears: fs.experiencia_maxima !== undefined && fs.experiencia_maxima !== null ? String(fs.experiencia_maxima) : "",
+            location: fs.localizacao || "Brasil",
+            countries: "Brasil",
+            workOption: { hybrid: true, remote: true, onsite: true },
             currentJobTitles: Array.isArray(fs.job_titles) && fs.job_titles.length > 0 ? fs.job_titles.join(", ") : q,
-            minYears: fs.experiencia_minima ? String(fs.experiencia_minima) : prev.minYears,
-            maxYears: fs.experiencia_maxima ? String(fs.experiencia_maxima) : prev.maxYears,
-            location: fs.localizacao || prev.location || "Brasil",
-            requiredKeywords: Array.isArray(fs.keywords) && fs.keywords.length > 0 ? fs.keywords.join(", ") : q,
-          }));
+            pastJobTitles: "",
+            seniority: fs.senioridade && typeof fs.senioridade === "object" ? fs.senioridade : { junior: false, pleno: false, senior: false, lead: false },
+            currentCompany: "",
+            pastCompany: "",
+            excludeCompany: "",
+            industries: fs.industries || "",
+            revenue: "any",
+            fundingRound: { seed: false, seriesA: false, seriesB: false, ipo: false },
+            requiredKeywords: reqKeywords,
+            optionalKeywords: optKeywords,
+            excludeKeywords: exclKeywords,
+            timeInRole: "any",
+            companyGrowth: "any",
+            likelyToSwitch: "any",
+            contactInfo: "any",
+          });
         }
       }
     } catch (err) {

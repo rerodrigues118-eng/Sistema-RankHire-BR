@@ -20,11 +20,11 @@ export async function POST(req: Request) {
     const systemPrompt =
       "Voce e um assistente especialista em recrutamento brasileiro. Analise a descricao de vaga fornecida e retorne APENAS um JSON valido, sem texto adicional, sem markdown, sem explicacoes.";
 
-    const userPrompt = `Analise esta descricao e extraia:
+    const userPrompt = `Analise a especificacao de vaga/candidato digitada pelo usuario e extraia:
 1. Ate 5 criterios de selecao com peso 1-5
-2. Filtros de busca sugeridos
+2. Filtros de busca dinamicos do LinkedIn extraidos ESTRITAMENTE do texto do usuario
 
-Descricao: ${text}
+Descricao do usuario: ${text}
 
 Retorne EXATAMENTE neste formato JSON:
 {
@@ -37,12 +37,15 @@ Retorne EXATAMENTE neste formato JSON:
   ],
   "filtros_sugeridos": {
     "job_titles": ["cargo1", "cargo2"],
-    "localizacao": "cidade ou estado",
-    "experiencia_minima": 3,
-    "experiencia_maxima": 8,
-    "idiomas": [{"idioma": "Ingles", "nivel": "fluente"}],
-    "keywords": ["palavra1", "palavra2"],
-    "boolean_expression": "keyword1 AND (\\"keyword2\\" OR keyword3)"
+    "localizacao": "cidade ou estado ou Brasil",
+    "experiencia_minima": 0,
+    "experiencia_maxima": 10,
+    "senioridade": { "junior": false, "pleno": false, "senior": false, "lead": false, "estagio": false },
+    "required_keywords": ["competenciaObrigatoria1"],
+    "optional_keywords": ["competenciaDesejavel1"],
+    "exclude_keywords": [],
+    "industries": "setores relacionados",
+    "boolean_expression": ""
   }
 }`;
 
