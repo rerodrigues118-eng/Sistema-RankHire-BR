@@ -245,14 +245,6 @@ export default function DashboardPage({
     });
   }, [candidates, totalCandidates]);
 
-  const handleChecklistItemClick = (item: ChecklistItem) => {
-    if (item.action === "create_job") {
-      onCreateProject();
-    } else if (item.page) {
-      onNavigate(item.page);
-    }
-  };
-
   const selectedJobSection = activeJob ? (
     <div className="bg-white dark:bg-slate-900 rounded-[20px] p-6 border border-slate-200 dark:border-slate-800 hover:shadow-md transition-all duration-300">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
