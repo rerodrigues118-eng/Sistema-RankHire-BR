@@ -209,7 +209,7 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   const [generatingShare, setGeneratingShare] = useState(false);
 
   // Search Results
-  const [profiles, setProfiles] = useState<LinkedinProfile[]>(INITIAL_MOCK_PROFILES);
+  const [profiles, setProfiles] = useState<LinkedinProfile[]>([]);
   const [selectedProfileIndex, setSelectedProfileIndex] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isScoring, setIsScoring] = useState(false);

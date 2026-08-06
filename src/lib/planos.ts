@@ -49,7 +49,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
     limite_pdfs_mes: 15,
     limite_buscas_linkedin: 3,
     limite_vagas: 1,
-    duracao_dias: 3,
+    duracao_dias: 7,
     linkedin_bloqueado: false,
     agente_ia_bloqueado: true,
   },

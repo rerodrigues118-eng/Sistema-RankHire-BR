@@ -169,6 +169,14 @@ export function DashboardShell({ initialPage = "dashboard" }: { initialPage?: Pa
     };
   }, [refreshAppData]);
 
+  // Se a conta não possui vagas ainda (jobs.length === 0), dispara automaticamente o Wizard de criação de vaga
+  useEffect(() => {
+    if (!isBootstrapping && !bootstrapError && jobs.length === 0) {
+      setActivePage("vagas");
+      setPendingOpenCreateModal(true);
+    }
+  }, [isBootstrapping, bootstrapError, jobs.length]);
+
   useEffect(() => {
     const supabase = createClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -190,7 +198,7 @@ export function DashboardShell({ initialPage = "dashboard" }: { initialPage?: Pa
         } finally {
           setIsBootstrapping(false);
         }
-      } else if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+      } else if (event === "USER_UPDATED") {
         refreshAppData();
       }
 
@@ -198,7 +206,7 @@ export function DashboardShell({ initialPage = "dashboard" }: { initialPage?: Pa
         setJobs([]);
         setCandidates([]);
         setQuota(null);
-        setSelectedJobId("");
+        setSelectedJobId(null);
       }
     });
 

@@ -12,12 +12,17 @@ export type CachedProfile = {
 
 const KEY = "rankhire.profile";
 
-export function getCachedProfile(): CachedProfile | null {
+export function getCachedProfile(currentUserId?: string): CachedProfile | null {
   try {
     if (typeof window === "undefined") return null;
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as CachedProfile;
+    const parsed = JSON.parse(raw) as CachedProfile;
+    if (currentUserId && parsed?.id && parsed.id !== currentUserId) {
+      localStorage.removeItem(KEY);
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }

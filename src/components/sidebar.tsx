@@ -183,6 +183,12 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
 
   const handleLogout = async () => {
     clearCachedProfile();
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {
+      /* ignore */
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/login');

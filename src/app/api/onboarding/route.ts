@@ -92,7 +92,7 @@ export async function POST(req: Request) {
         tamanho: body.tamanho || "1-10",
         segmento: body.segmento || "Tecnologia",
         plano: "trial",
-        trial_expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        trial_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         subscription_status: "trialing",
         limite_pdfs_mes: 15,
         limite_buscas_linkedin: 3,

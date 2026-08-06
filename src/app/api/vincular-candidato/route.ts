@@ -89,23 +89,47 @@ export async function POST(req: Request) {
       );
     }
 
+    // ── Cria ou obtém o candidato na tabela pdf_candidates ──────────
+    let candidateId: string | null = null;
+    const { data: existingCand } = await admin
+      .from("pdf_candidates")
+      .select("id")
+      .eq("empresa_id", usuario.empresa_id)
+      .eq("vaga_id", body.vaga_id)
+      .eq("linkedin_url", perfil.linkedin_url)
+      .maybeSingle();
+
+    if (existingCand?.id) {
+      candidateId = existingCand.id;
+    } else {
+      const { data: newCand, error: candErr } = await admin
+        .from("pdf_candidates")
+        .insert({
+          empresa_id: usuario.empresa_id,
+          vaga_id: body.vaga_id,
+          nome_candidato: perfil.nome || "Candidato LinkedIn",
+          linkedin_url: perfil.linkedin_url,
+          status: "triado",
+        })
+        .select("id")
+        .single();
+
+      if (candErr || !newCand) {
+        logger.error("[vincular-candidato] Erro ao criar candidato em pdf_candidates", { error: candErr?.message });
+        return NextResponse.json({ error: "Erro ao criar candidato para o pipeline" }, { status: 500 });
+      }
+      candidateId = newCand.id;
+    }
+
     // ── Cria entrada no pipeline_entries ────────────────────────────
     const { data: pipelineEntry, error: pipelineError } = await admin
       .from("pipeline_entries")
       .insert({
+        candidate_id: candidateId,
         vaga_id: body.vaga_id,
         empresa_id: usuario.empresa_id,
-        candidato_nome: perfil.nome || "Sem nome",
-        candidato_email: null,
-        status: "triagem",
+        status: "triado",
         notas: `Vinculado via Busca Inteligente\nLinkedIn: ${perfil.linkedin_url}\nCargo: ${perfil.cargo_atual || "N/A"}\nEmpresa: ${perfil.empresa_atual || "N/A"}`,
-        dados_extras: {
-          linkedin_url: perfil.linkedin_url,
-          cargo_atual: perfil.cargo_atual,
-          empresa_atual: perfil.empresa_atual,
-          cidade: perfil.cidade,
-          skills: perfil.skills,
-        },
       })
       .select("id")
       .single();

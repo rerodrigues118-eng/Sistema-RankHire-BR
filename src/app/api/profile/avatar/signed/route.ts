@@ -29,8 +29,8 @@ export async function POST(req: Request) {
     // admin-client: justificado — geração de URLs assinadas requer service-role
     const admin = createSupabaseAdminClient();
     const ext = String(body.filename).split('.').pop() || 'jpg';
-    // path inside bucket: use userId as filename to avoid collisions
-    const path = `${userId}.${ext}`;
+    // path inside bucket: use userId folder to avoid collisions
+    const path = `${userId}/avatar.${ext}`;
 
     // create signed upload URL
     // @ts-expect-error - supabase client typing variations
