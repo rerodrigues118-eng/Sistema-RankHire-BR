@@ -44,6 +44,12 @@ export function DashboardShell({ initialPage = "dashboard" }: { initialPage?: Pa
     try { sessionStorage.setItem('rh_activePage', activePage); } catch { /* ignore */ }
   }, [activePage]);
   const [drawerCandidate, setDrawerCandidate] = useState<Candidate | null>(null);
+
+  useEffect(() => {
+    if (drawerCandidate) {
+      window.dispatchEvent(new CustomEvent("collapse-sidebar"));
+    }
+  }, [drawerCandidate]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [uploads, setUploads] = useState<UploadFile[]>([]);

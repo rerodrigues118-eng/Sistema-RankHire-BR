@@ -74,10 +74,17 @@ const NAV_SECTIONS = [
 ];
 
 export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
-  const { isSidebarCollapsed, toggleSidebar } = useNotifications();
+  const { isSidebarCollapsed, toggleSidebar, setSidebarCollapsed } = useNotifications();
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
+
+  // Minimizar a sidebar quando o evento customizado 'collapse-sidebar' for disparado
+  useEffect(() => {
+    const handleCollapse = () => setSidebarCollapsed(true);
+    window.addEventListener("collapse-sidebar", handleCollapse);
+    return () => window.removeEventListener("collapse-sidebar", handleCollapse);
+  }, [setSidebarCollapsed]);
 
   const [userEmail, setUserEmail] = useState<string>("Carregando...");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);

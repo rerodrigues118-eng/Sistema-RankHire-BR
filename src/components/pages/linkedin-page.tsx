@@ -211,6 +211,12 @@ export default function LinkedinPage({ activeJob, onImportCandidate }: LinkedinP
   // Search Results
   const [profiles, setProfiles] = useState<LinkedinProfile[]>([]);
   const [selectedProfileIndex, setSelectedProfileIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (selectedProfileIndex !== null) {
+      window.dispatchEvent(new CustomEvent("collapse-sidebar"));
+    }
+  }, [selectedProfileIndex]);
   const [isSearching, setIsSearching] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());

@@ -1,5 +1,5 @@
 export const STRIPE_CHECKOUT_URLS = {
-  starter: "https://buy.stripe.com/test_8x24gAeaXeAh1wk7Az1ZS00",
+  starter: "https://buy.stripe.com/test_14A9AUgj5bo50sgcUT1ZS03",
   pro: "https://buy.stripe.com/test_5kQ4gA1obgIpa2Q5sr1ZS01",
   agencia: "https://buy.stripe.com/test_3cI4gA4An4ZHa2Q1cb1ZS02",
 } as const;

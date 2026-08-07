@@ -396,33 +396,37 @@ export default function OnboardingPage() {
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Telefone / Celular (Verificação Twilio) *</label>
                       <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <div className="relative flex-1 flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus-within:ring-2 focus-within:ring-blue-600 overflow-hidden">
+                          <span className="px-3 py-2.5 bg-slate-200/70 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1 border-r border-slate-200 dark:border-slate-700 select-none">
+                            🇧🇷 +55
+                          </span>
                           <input
                             type="tel"
                             required
-                            value={telefone}
+                            value={telefone.replace(/^\+?55/, "")}
                             onChange={(e) => {
-                              setTelefone(e.target.value);
+                              const raw = e.target.value.replace(/\D/g, "");
+                              setTelefone("+55" + raw);
                               setIsPhoneVerified(false);
+                              setExistingAccountError(false);
                             }}
-                            placeholder="+55 (11) 99999-8888"
-                            className="w-full pl-9 pr-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                            placeholder="(11) 99999-8888"
+                            className="w-full px-3.5 py-2.5 bg-transparent text-xs outline-none text-slate-900 dark:text-slate-100"
                           />
                         </div>
                         <button
                           type="button"
                           onClick={handleSendPhoneOtp}
-                          disabled={isSendingOtp || !telefone.trim()}
-                          className="px-3 py-2.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-semibold hover:bg-blue-100 transition whitespace-nowrap disabled:opacity-50"
+                          disabled={isSendingOtp || !telefone.trim() || isPhoneVerified}
+                          className="px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition whitespace-nowrap disabled:opacity-50 cursor-pointer"
                         >
                           {isSendingOtp ? "Enviando..." : isOtpSent ? "Reenviar SMS" : "Enviar SMS"}
                         </button>
                       </div>
 
                       {isOtpSent && !isPhoneVerified && (
-                        <div className="mt-2.5 space-y-2 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-                          <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Código de 6 dígitos recebido por SMS:</label>
+                        <div className="mt-2.5 space-y-2 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Digite o código de 6 dígitos enviado por SMS:</label>
                           <div className="flex gap-2">
                             <input
                               type="text"
@@ -430,13 +434,13 @@ export default function OnboardingPage() {
                               value={phoneCode}
                               onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, ""))}
                               placeholder="000000"
-                              className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-center font-mono font-bold tracking-widest text-xs bg-white dark:bg-slate-900"
+                              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-center font-mono font-bold tracking-widest text-xs bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-blue-600"
                             />
                             <button
                               type="button"
                               onClick={handleVerifyPhoneOtp}
                               disabled={isVerifyingOtp || phoneCode.length !== 6}
-                              className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition disabled:opacity-50"
+                              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition disabled:opacity-50 cursor-pointer"
                             >
                               {isVerifyingOtp ? "Validando..." : "Confirmar"}
                             </button>
@@ -445,9 +449,24 @@ export default function OnboardingPage() {
                       )}
 
                       {isPhoneVerified && (
-                        <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
-                          <Check className="w-3.5 h-3.5 text-emerald-600" /> Número verificado via Twilio com sucesso!
+                        <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-600" /> Telefone verificado com sucesso via Twilio!
                         </span>
+                      )}
+
+                      {existingAccountError && (
+                        <div className="p-4 mt-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl text-center space-y-2.5">
+                          <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                            Já existe uma conta cadastrada com este e-mail.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => router.push("/login")}
+                            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+                          >
+                            Ir para a página de Login
+                          </button>
+                        </div>
                       )}
                     </div>
 

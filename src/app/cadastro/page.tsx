@@ -302,8 +302,21 @@ export default function CadastroPage() {
           </div>
 
           {error && (
-            <div className="p-3 mb-4 bg-red-50 text-xs font-semibold text-red-700 rounded-xl border border-red-200 leading-normal">
-              {error}
+            <div className={`p-4 mb-4 rounded-xl border text-xs leading-relaxed ${
+              error.includes("já está cadastrado")
+                ? "bg-amber-50 text-amber-900 border-amber-200 text-center space-y-2 font-medium"
+                : "bg-red-50 text-red-700 border-red-200 font-semibold"
+            }`}>
+              <p>{error}</p>
+              {error.includes("já está cadastrado") && (
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer mt-1"
+                >
+                  Ir para a página de Login
+                </button>
+              )}
             </div>
           )}
 
@@ -406,25 +419,22 @@ export default function CadastroPage() {
               </div>
 
               <Field label="Celular / WhatsApp">
-                <input
-                  value={telefone}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (!val.startsWith("+55")) {
-                      if (val === "" || val === "+" || val === "+5" || val === "5" || val === "55") {
-                        setTelefone("+55");
-                      } else {
-                        setTelefone("+55" + val.replace(/^\+?55/, ""));
-                      }
-                    } else {
-                      setTelefone(val);
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
-                  placeholder="+5511999999999"
-                  inputMode="tel"
-                  required
-                />
+                <div className="flex items-center rounded-lg border border-slate-300 bg-white focus-within:ring-2 focus-within:ring-blue-600 focus-within:border-transparent overflow-hidden">
+                  <span className="px-3 py-2 bg-slate-100 border-r border-slate-300 text-slate-700 font-bold text-xs flex items-center gap-1 select-none">
+                    🇧🇷 +55
+                  </span>
+                  <input
+                    value={telefone.replace(/^\+?55/, "")}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "");
+                      setTelefone("+55" + raw);
+                    }}
+                    className="w-full px-3 py-2 text-sm text-slate-900 placeholder-slate-400 bg-transparent focus:outline-none"
+                    placeholder="(11) 99999-8888"
+                    inputMode="tel"
+                    required
+                  />
+                </div>
               </Field>
 
               <ConsentChecks
